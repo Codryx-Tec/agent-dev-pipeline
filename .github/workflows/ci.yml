@@ -1,0 +1,50 @@
+# The tool audits itself with itself.
+#
+# `npm ci` rather than `npm install` on purpose: ci refuses to proceed when
+# package.json and package-lock.json disagree. With zero dependencies the
+# lockfile is nearly empty, and that is exactly what makes it useful — it is a
+# positive assertion that there are no dependencies, and any commit that quietly
+# adds one fails here instead of shipping.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20 is the floor declared in engines; 22 is what the container runs.
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Audit the example project
+        run: npm run example
+
+      - name: Supply-chain and consent invariants
+        run: node --test "test/supply-chain.test.js" "test/trust.test.js"
+
+      - name: Payload manifest is current
+        run: node scripts/build-manifest.js --check
+
+      - name: Nothing unexpected in the published tarball
+        run: npm pack --dry-run

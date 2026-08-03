@@ -1,0 +1,64 @@
+{
+  "name": "@codryx/agent-dev-pipeline",
+  "version": "0.4.0",
+  "description": "Spec-anchored development with six mechanical gates: SCOPE, PRD, RFC, TDD, code, proof. Proof comes from running your tests, not from a claim. The verdict is an exit code. Zero dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Codryx-Tec/agent-dev-pipeline.git"
+  },
+  "homepage": "https://github.com/Codryx-Tec/agent-dev-pipeline#readme",
+  "bugs": {
+    "url": "https://github.com/Codryx-Tec/agent-dev-pipeline/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "adp": "bin/adp.js"
+  },
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "payload/",
+    "scripts/",
+    ".exemplo/",
+    "README.md",
+    "README.pt-BR.md",
+    "INSTALL.md",
+    "ARCHITECTURE.md"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "audit": "node bin/adp.js audit",
+    "audit:ci": "node bin/adp.js audit --ci",
+    "status": "node bin/adp.js status",
+    "prepublishOnly": "npm run manifest && npm run manifest:check && npm test",
+    "example": "cd .exemplo && node ../bin/adp.js audit",
+    "manifest": "node scripts/build-manifest.js",
+    "manifest:check": "node scripts/build-manifest.js --check",
+    "doctor": "node bin/adp.js doctor"
+  },
+  "keywords": [
+    "spec-driven",
+    "spec-anchored",
+    "prd",
+    "rfc",
+    "tdd",
+    "traceability",
+    "audit",
+    "ai-coding",
+    "agent-skill"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  }
+}

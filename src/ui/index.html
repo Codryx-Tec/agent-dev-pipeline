@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agent-dev-pipeline</title>
+<style>/* {{CSS}} */</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="dot" id="live-dot" title="connection"></span>
+    <strong>agent-dev-pipeline</strong>
+    <span class="muted" id="root"></span>
+  </div>
+  <div class="verdict" id="verdict"></div>
+</header>
+
+<main>
+  <section id="gates-section">
+    <h2>Gates</h2>
+    <ol class="gates" id="gates"></ol>
+  </section>
+
+  <section id="findings-section" hidden>
+    <h2>What is blocking <span id="findings-gate"></span></h2>
+    <p class="muted note">Only the first red gate is shown. The rest are its consequences.</p>
+    <ul class="findings" id="findings"></ul>
+  </section>
+
+  <section id="features-section">
+    <h2>Features</h2>
+    <div id="features"></div>
+  </section>
+
+  <section id="errors-section" hidden>
+    <h2>Could not read</h2>
+    <ul class="findings" id="errors"></ul>
+  </section>
+</main>
+
+<footer>
+  <span id="stamp"></span>
+  <span class="ro" title="This server has no write endpoints">read-only</span>
+</footer>
+
+<script>/* {{JS}} */</script>
+</body>
+</html>

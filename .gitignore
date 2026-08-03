@@ -1,0 +1,11 @@
+node_modules/
+*.tgz
+*.log
+
+# WSL debris beside downloaded files. A test asserts these never reach the
+# payload; ignoring them keeps them out of commits in the first place.
+*:Zone.Identifier
+
+# Execution telemetry lives outside the repository (RFC D-007). This is a
+# belt-and-braces entry in case a stateDir is ever configured inside a project.
+.adp/

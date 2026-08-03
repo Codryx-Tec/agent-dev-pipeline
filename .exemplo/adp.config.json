@@ -1,0 +1,17 @@
+{
+  "testCommand": "node --test --test-reporter=tap \"test/*.test.js\"",
+  "reporter": "tap",
+  "testGlobs": [
+    "test/**",
+    "tests/**",
+    "src/**/*.test.*",
+    "src/**/*.spec.*"
+  ],
+  "srcGlobs": [
+    "src/**"
+  ],
+  "delivery": "local-only",
+  "parallel": {
+    "maxParallel": 3
+  }
+}

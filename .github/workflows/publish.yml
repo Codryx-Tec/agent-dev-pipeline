@@ -1,0 +1,83 @@
+# Publish to npm with provenance, from CI only.
+#
+# Two properties matter here, and they defend against different attacks.
+#
+# TRUSTED PUBLISHING. There is no NODE_AUTH_TOKEN anywhere in this file and no
+# publish token in the repository secrets. npm mints a short-lived credential
+# from the OIDC token GitHub issues for this exact workflow in this exact
+# repository, which is why `permissions: id-token: write` is not optional. A
+# long-lived token is the thing that actually gets stolen in npm compromises —
+# from a laptop, a CI log, a misconfigured secret — so the strongest version of
+# protecting it is not having one.
+#
+#   Setup, once, on npmjs.com: package settings → Trusted Publisher → GitHub
+#   Actions → this repository, workflow `publish.yml`. Until that is configured
+#   the publish step fails with a 404, which is the correct failure: it means
+#   npm does not yet believe this workflow speaks for the package.
+#
+# PROVENANCE. `--provenance` attaches a signed Sigstore attestation binding the
+# tarball to the commit and the workflow run that built it. Anyone can then check
+# that what they downloaded came from this source and not from someone with a
+# stolen credential:
+#
+#   npm audit signatures
+#
+# Note what this does NOT do: it proves origin, not intent. A malicious commit
+# published through this workflow is perfectly attested. Provenance narrows the
+# question from "did anyone tamper with this?" to "do I trust this repository?",
+# which is the question a user can actually answer.
+
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for both trusted publishing and provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish # gate this in repo settings for a manual approval
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      # Trusted publishing needs a recent npm; the runner's bundled version
+      # lags. Pinning the major keeps this from silently drifting.
+      - name: Use an npm that supports trusted publishing
+        run: npm install -g npm@^11.5.1
+
+      - run: npm ci
+
+      # Everything below must pass before anything is published. prepublishOnly
+      # also runs the tests, but relying on that alone would mean a failure
+      # surfaces halfway through `npm publish` rather than before it starts.
+      - name: Tests
+        run: npm test
+
+      - name: Supply-chain and consent invariants
+        run: node --test "test/supply-chain.test.js" "test/trust.test.js"
+
+      - name: Payload manifest matches the payload
+        run: node scripts/build-manifest.js --check
+
+      - name: Tag matches package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "${{ github.event_name }}" = "release" ] && [ "$tag" != "$pkg" ]; then
+            echo "release tag $tag does not match package.json version $pkg" >&2
+            exit 1
+          fi
+
+      - name: Publish
+        run: npm publish --provenance --access public

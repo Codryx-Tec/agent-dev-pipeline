@@ -1,0 +1,715 @@
+{
+  "feature": "agent-dev-pipeline",
+  "reporter": "tap",
+  "command": "node --test --test-reporter=tap \"test/*.test.js\"",
+  "exitCode": 0,
+  "durationMs": 6555,
+  "verifiedAt": "2026-08-03T16:18:24.026Z",
+  "gitRev": null,
+  "gitDirty": null,
+  "codeMtime": 1785772400197.8677,
+  "results": {
+    "AC-001": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "init scaffolds a project and installs the agent skill @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "a scaffolded scope starts unapproved, so G0 is red on purpose @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "the agent is detected from the directories already present @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "an ambiguous project says so instead of guessing silently @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "an unknown agent name is refused, not silently ignored @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "minimal installs the engine contract and nothing else @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "a non-Claude agent gets the skills but not the role agents @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "--agent none installs no skill @spec:AC-001",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-002": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "re-running init destroys nothing and reports what it kept @spec:AC-002",
+          "status": "pass"
+        },
+        {
+          "title": "init recreates only what was deleted @spec:AC-002",
+          "status": "pass"
+        },
+        {
+          "title": "a stale singular .claude/skill directory is called out @spec:AC-002",
+          "status": "pass"
+        },
+        {
+          "title": "new refuses a feature name the grammar cannot carry @spec:AC-002",
+          "status": "pass"
+        },
+        {
+          "title": "new creates the three documents and does not renumber over existing codes @spec:AC-002",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-004": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an unapproved scope turns G0 red and blocks everything after it @spec:AC-004",
+          "status": "pass"
+        },
+        {
+          "title": "every code the audit can emit is mapped to exactly one gate @spec:AC-004",
+          "status": "pass"
+        },
+        {
+          "title": "no code is claimed by two gates @spec:AC-004",
+          "status": "pass"
+        },
+        {
+          "title": "gates after the first red one are blocked, never red @spec:AC-004",
+          "status": "pass"
+        },
+        {
+          "title": "warnings alone never turn a gate red @spec:AC-004",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-005": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a story with no criterion is a finding @spec:AC-005",
+          "status": "pass"
+        },
+        {
+          "title": "duplicate traceability codes are caught across documents @spec:AC-005",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-006": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an incomplete criterion names the missing clause @spec:AC-006",
+          "status": "pass"
+        },
+        {
+          "title": "a criterion body stops at the next story, not at the next criterion only @spec:AC-006",
+          "status": "pass"
+        },
+        {
+          "title": "both English and Portuguese clause keywords are accepted @spec:AC-006",
+          "status": "pass"
+        },
+        {
+          "title": "a criterion before the first story is flagged as orphan @spec:AC-006",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-007": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a decision with fewer than two alternatives is a finding @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "only the numbered list under the alternatives marker counts @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "an RFC from the create-rfc skill is read natively @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "a template placeholder in Outcome is not a decision @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "a single option is still not a decision @spec:AC-007",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-008": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a missing assumptions or questions section is a finding @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "a question marked blocking is a distinct field, not a text convention @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "assumptions are read from a table as well as from bullets @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "a numbered assumption row is counted as uncoded, not silently dropped @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "confidence is not mapped onto status @spec:AC-008",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-009": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an open assumption warns during the work and errors once the feature claims done @spec:AC-009",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-010": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a criterion covered by no task is a finding @spec:AC-010",
+          "status": "pass"
+        },
+        {
+          "title": "CI mode escalates the softer findings to errors @spec:AC-010",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-011": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a task referencing an undefined code is a finding @spec:AC-011",
+          "status": "pass"
+        },
+        {
+          "title": "a task heading shown inside a code span is documentation, not a task @spec:AC-011",
+          "status": "pass"
+        },
+        {
+          "title": "task status comes from the heading line, never from later prose @spec:AC-011",
+          "status": "pass"
+        },
+        {
+          "title": "an unrecognised task status is reported, never silently skipped @spec:AC-011",
+          "status": "pass"
+        },
+        {
+          "title": "accented and upper-case statuses fold to the canonical token @spec:AC-011",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-012": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a task with no declared files is reported as never parallelizable @spec:AC-012",
+          "status": "pass"
+        },
+        {
+          "title": "file lists keep spaces inside paths and drop empties @spec:AC-012",
+          "status": "pass"
+        },
+        {
+          "title": "a task with no declared files is never parallelised @spec:AC-012",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-014": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a task cannot declare itself done without proof @spec:AC-014",
+          "status": "pass"
+        },
+        {
+          "title": "a task with real PASS proof is accepted as done @spec:AC-014",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-016": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a criterion with no annotated test is a finding @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "TAP: output that is not TAP is an error, not an empty pass @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "an unknown reporter is refused rather than guessed @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "a criterion claimed by several tests needs all of them to pass @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "one test may prove more than one criterion @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "the test command is executed and its results become proof @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "a project with no test command is refused, not silently passed @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "a run that produced unreadable output records no proof @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "proof is read from the reporter output file when one is configured @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "a missing reporter output file is an error, not an empty pass @spec:AC-016",
+          "status": "pass"
+        },
+        {
+          "title": "proof is stamped with the git revision, not only a modification time @spec:AC-016",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-017": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a skipped test is recorded as no proof, never as proof @spec:AC-017",
+          "status": "pass"
+        },
+        {
+          "title": "TAP: a skipped test is never read as a pass @spec:AC-017",
+          "status": "pass"
+        },
+        {
+          "title": "vitest JSON: every non-passing status collapses to skip or fail @spec:AC-017",
+          "status": "pass"
+        },
+        {
+          "title": "JUnit: failure, error and skipped are all distinguished from pass @spec:AC-017",
+          "status": "pass"
+        },
+        {
+          "title": "a skipped test yields skip, and skip is not proof @spec:AC-017",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-018": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a clean project exits 0 with no red gate @spec:AC-018",
+          "status": "pass"
+        },
+        {
+          "title": "an empty folder reaches every gate green once the documents are filled in @spec:AC-018",
+          "status": "pass"
+        },
+        {
+          "title": "the full chain closes with no remote and no network @spec:AC-018",
+          "status": "pass"
+        },
+        {
+          "title": "the chain never invokes the GitHub CLI @spec:AC-018",
+          "status": "pass"
+        },
+        {
+          "title": "proof survives a fresh checkout, where every mtime is new @spec:AC-018",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-019": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "tasks sharing a file land in one lane, disjoint tasks in another @spec:AC-019",
+          "status": "pass"
+        },
+        {
+          "title": "overlap is transitive @spec:AC-019",
+          "status": "pass"
+        },
+        {
+          "title": "only pending tasks are planned @spec:AC-019",
+          "status": "pass"
+        },
+        {
+          "title": "waves bound concurrency without changing the lanes @spec:AC-019",
+          "status": "pass"
+        },
+        {
+          "title": "the same document always plans the same way @spec:AC-019",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-020": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "each lane runs in its own worktree, one commit per task @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "a worker that changes nothing fails the lane rather than committing @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "a file touched but not declared is reported, not hidden @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "a conflicting lane is not merged and not resolved @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "the brief carries the task, its criteria and the rules @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "the agent command is argv, never a shell string @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "an unknown agent is refused with the ones that are known @spec:AC-020",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-021": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "worker output goes outside the repository, never into it @spec:AC-021",
+          "status": "pass"
+        },
+        {
+          "title": "progress is built from events and summaries, never from a transcript @spec:AC-021",
+          "status": "pass"
+        },
+        {
+          "title": "a torn trailing line does not lose the history @spec:AC-021",
+          "status": "pass"
+        },
+        {
+          "title": "pruning drops old streams and keeps the ledger @spec:AC-021",
+          "status": "pass"
+        },
+        {
+          "title": "the summary is the one line the orchestrator reads @spec:AC-021",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-022": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "re-running one lane leaves merged work alone @spec:AC-022",
+          "status": "pass"
+        },
+        {
+          "title": "an unknown lane is refused with the lanes that do exist @spec:AC-022",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-023": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a red gate produces a paste-ready prompt with its findings @spec:AC-023",
+          "status": "pass"
+        },
+        {
+          "title": "a red gate becomes a paste-ready prompt with codes and locations @spec:AC-023",
+          "status": "pass"
+        },
+        {
+          "title": "a clean gate produces no prompt at all @spec:AC-023",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-024": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "every mapped code has a human-readable label @spec:AC-024",
+          "status": "pass"
+        },
+        {
+          "title": "gateOf resolves a known code and refuses an unknown one @spec:AC-024",
+          "status": "pass"
+        },
+        {
+          "title": "a finding renders its readable name before its stable code @spec:AC-024",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-027": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "code changed after the last proof is reported @spec:AC-027",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-028": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a test pointing at a removed criterion is a finding @spec:AC-028",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-029": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a MUST principle with no verification is a finding @spec:AC-029",
+          "status": "pass"
+        },
+        {
+          "title": "principle levels are read in both vocabularies @spec:AC-029",
+          "status": "pass"
+        },
+        {
+          "title": "a gate-only principle is declared but not executable @spec:AC-029",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-030": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a declared forbidden pattern is executed against its glob @spec:AC-030",
+          "status": "pass"
+        },
+        {
+          "title": "a required pattern absent from its glob is a violation @spec:AC-030",
+          "status": "pass"
+        },
+        {
+          "title": "a verification whose glob matches nothing is reported as inert @spec:AC-030",
+          "status": "pass"
+        },
+        {
+          "title": "a pathological regex degrades into a finding instead of hanging the gate @spec:AC-030",
+          "status": "pass"
+        },
+        {
+          "title": "an invalid regex is reported even when the glob matches nothing @spec:AC-030",
+          "status": "pass"
+        },
+        {
+          "title": "pattern and glob are read from inside backticks @spec:AC-030",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-031": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an unapproved command is refused @spec:AC-031 @principle:P-009",
+          "status": "pass"
+        },
+        {
+          "title": "the CI escape hatch is explicit and never a default @spec:AC-031 @principle:P-009",
+          "status": "pass"
+        },
+        {
+          "title": "verify refuses to run an unapproved command @spec:AC-031 @principle:P-009",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-032": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "approval binds to the exact command, not to the project @spec:AC-032 @principle:P-009",
+          "status": "pass"
+        },
+        {
+          "title": "reformatting whitespace does not revoke approval @spec:AC-032 @principle:P-009",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-033": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the trust store lives outside the repository @spec:AC-033 @principle:P-009",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-034": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the page is served self-contained, with no external reference @spec:AC-034",
+          "status": "pass"
+        },
+        {
+          "title": "the state reports gates and features @spec:AC-034",
+          "status": "pass"
+        },
+        {
+          "title": "nothing is proven without a verification record @spec:AC-034",
+          "status": "pass"
+        },
+        {
+          "title": "renderPage works without a server @spec:AC-034",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-035": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "every write method is refused @spec:AC-035",
+          "status": "pass"
+        },
+        {
+          "title": "a write is refused even at a path that does not exist @spec:AC-035",
+          "status": "pass"
+        },
+        {
+          "title": "the server exports no write handler at all @spec:AC-035",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-036": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a non-loopback Host header is refused @spec:AC-036",
+          "status": "pass"
+        },
+        {
+          "title": "the response carries no-store and anti-embedding headers @spec:AC-036",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-037": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an unchanged project is reported without reparsing @spec:AC-037",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-038": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an occupied port fails loudly and starts nothing @spec:AC-038",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-039": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the payload matches its manifest @spec:AC-039 @principle:P-006",
+          "status": "pass"
+        },
+        {
+          "title": "the manifest covers every executable hook @spec:AC-039 @principle:P-006",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-040": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a write escaping the project directory is refused @spec:AC-040 @principle:P-007",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-041": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the briefing is derived, and only the note is stored @spec:AC-041",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-042": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a checkpoint does not leak between projects @spec:AC-042",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-043": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a merged lane is cleaned up; an unmerged one is kept @spec:AC-043",
+          "status": "pass"
+        },
+        {
+          "title": "cleanup never touches a worktree this tool did not create @spec:AC-043",
+          "status": "pass"
+        }
+      ]
+    }
+  }
+}

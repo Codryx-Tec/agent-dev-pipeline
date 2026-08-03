@@ -1,0 +1,245 @@
+// Parser tests. The first two suites exist because both bugs they describe were
+// found in Projeto_Agent's original audit.js, by dogfooding this very document
+// chain against it.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { parseTdd } from '../src/parsers/tdd.js';
+import { parsePrd } from '../src/parsers/prd.js';
+import { parseRfc } from '../src/parsers/rfc.js';
+import { parseConstitution } from '../src/parsers/constitution.js';
+
+test('a task heading shown inside a code span is documentation, not a task @spec:AC-011', () => {
+  const doc = `# TDD
+
+| task | \`## T-001 — Title [pendente|concluida]\` then Refs |
+
+## T-005 — The only real task [pendente]
+
+- Refs: AC-001
+- Arquivos: a.js
+`;
+  const { tasks } = parseTdd(doc, 'TDD.md');
+  assert.equal(tasks.length, 1, 'the code span must not invent a task');
+  assert.equal(tasks[0].id, 'T-005');
+});
+
+test('task status comes from the heading line, never from later prose @spec:AC-011', () => {
+  const doc = `## T-001 — Last task [pendente]
+
+- Refs: AC-001
+- Arquivos: a.js
+
+## Migration notes
+
+Tasks marked [concluida] may fall back to TEST until real tests exist.
+`;
+  const { tasks } = parseTdd(doc, 'TDD.md');
+  // The block of the last task runs to end of file. Searching it for a status
+  // token would read the migration paragraph as this task's own status.
+  assert.equal(tasks[0].status, 'pendente');
+});
+
+test('an unrecognised task status is reported, never silently skipped @spec:AC-011', () => {
+  const { tasks } = parseTdd('## T-001 — Done-ish [feito]\n\n- Refs: AC-001\n', 'TDD.md');
+  assert.equal(tasks.length, 1, 'the task must still be visible to the audit');
+  assert.equal(tasks[0].statusValid, false);
+  assert.equal(tasks[0].rawStatus, 'feito');
+});
+
+test('accented and upper-case statuses fold to the canonical token @spec:AC-011', () => {
+  const { tasks } = parseTdd('## T-001 — x [CONCLUÍDA]\n\n- Refs: AC-001\n', 'TDD.md');
+  assert.equal(tasks[0].status, 'concluida');
+  assert.equal(tasks[0].statusValid, true);
+});
+
+test('file lists keep spaces inside paths and drop empties @spec:AC-012', () => {
+  const doc = '## T-001 — x [pendente]\n\n- Refs: AC-001\n- Arquivos: a b/c.js, , d.js\n';
+  const { tasks } = parseTdd(doc, 'TDD.md');
+  assert.deepEqual(tasks[0].files, ['a b/c.js', 'd.js']);
+});
+
+test('a criterion body stops at the next story, not at the next criterion only @spec:AC-006', () => {
+  const doc = `### US-001 — first
+
+#### AC-001 — only clause here
+
+- **Given** a
+- **When** b
+- **Then** c
+
+### US-002 — second
+
+#### AC-002 — incomplete
+
+- **Given** a
+`;
+  const prd = parsePrd(doc, 'PRD.md');
+  assert.equal(prd.acs[0].complete, true);
+  assert.equal(prd.acs[1].complete, false);
+  assert.deepEqual(prd.acs[1].missingClauses, ['when', 'then']);
+});
+
+test('both English and Portuguese clause keywords are accepted @spec:AC-006', () => {
+  const doc = `### US-001 — x
+
+#### AC-001 — y
+
+- **Dado** a
+- **Quando** b
+- **Então** c
+`;
+  assert.equal(parsePrd(doc, 'PRD.md').acs[0].complete, true);
+});
+
+test('a criterion before the first story is flagged as orphan @spec:AC-006', () => {
+  const doc = `#### AC-001 — loose
+
+- **Given** a
+- **When** b
+- **Then** c
+
+### US-001 — later
+`;
+  const prd = parsePrd(doc, 'PRD.md');
+  assert.equal(prd.orphanAcs.length, 1);
+});
+
+test('only the numbered list under the alternatives marker counts @spec:AC-007', () => {
+  const doc = `### D-001 — x
+
+Some steps we followed:
+
+1. did this
+2. did that
+
+**Decision: alternative 1 — x.**
+`;
+  // The numbered list is prose, not a list of alternatives. Counting every
+  // numbered list in the block would let unrelated steps satisfy the rule.
+  assert.equal(parseRfc(doc, 'RFC.md').decisions[0].alternatives, 0);
+});
+
+test('a question marked blocking is a distinct field, not a text convention @spec:AC-008', () => {
+  const doc = `## Assumptions
+
+- **ASM-001** — a *(status: aberta)*
+
+## Open questions
+
+- **Q-001** — a *(status: aberta — **blocking**)*
+- **Q-002** — b *(status: aberta)*
+`;
+  const rfc = parseRfc(doc, 'RFC.md');
+  assert.equal(rfc.questions[0].blocking, true);
+  assert.equal(rfc.questions[1].blocking, false);
+  assert.equal(rfc.assumptions[0].status, 'aberta');
+});
+
+test('principle levels are read in both vocabularies @spec:AC-029', () => {
+  const doc = `## P-001 [MUST] a
+
+- verification(gate): manual
+
+## P-002 [DEVE] b
+
+- verification(forbidden): \`secret\` in \`src/**\`
+
+## P-003 [WHATEVER] c
+`;
+  const { principles } = parseConstitution(doc, 'CONSTITUTION.md');
+  assert.equal(principles[0].level, 'MUST');
+  assert.equal(principles[1].level, 'MUST');
+  assert.equal(principles[2].levelValid, false);
+});
+
+test('pattern and glob are read from inside backticks @spec:AC-030', () => {
+  const doc = '## P-001 [MUST] a\n\n- verification(forbidden): `password\\s*=` in `src/**/*.py`\n';
+  const v = parseConstitution(doc, 'CONSTITUTION.md').principles[0].verifications[0];
+  assert.equal(v.kind, 'forbidden');
+  assert.equal(v.pattern, 'password\\s*=');
+  assert.equal(v.glob, 'src/**/*.py');
+  assert.equal(v.malformed, false);
+});
+
+test('a gate-only principle is declared but not executable @spec:AC-029', () => {
+  const doc = '## P-001 [MUST] a\n\n- verification(gate): reviewed by hand\n';
+  assert.equal(parseConstitution(doc, 'CONSTITUTION.md').principles[0].executable, false);
+});
+
+// ---- dialect B: documents produced by the `create-rfc` skill ----
+
+const CREATE_RFC = `# RFC: Choose a queue
+
+## Assumptions
+
+| # | Assumption | Owner | Confidence | Invalidation Trigger |
+|---|------------|-------|------------|----------------------|
+| ASM-001 | traffic stays under 10k req/s *(status: aberta)* | @ana | High | projections change |
+| 2 | the team has Q2 capacity | @bob | Medium | roadmap changes |
+
+## Decision Criteria
+
+| Criterion | Weight |
+|---|---|
+| operational cost | High |
+
+## Options Considered
+
+### Option 1: Managed queue ⭐ (Recommended)
+
+**Pros**: no operations
+**Cons**: vendor lock-in
+
+### Option 2: Self-hosted
+
+**Pros**: control
+**Cons**: we carry the pager
+
+## Outcome
+
+**Decision**: Option 1 was chosen
+`;
+
+test('an RFC from the create-rfc skill is read natively @spec:AC-007', () => {
+  const rfc = parseRfc(CREATE_RFC, 'RFC.md');
+  assert.equal(rfc.dialect, 'create-rfc');
+  const d = rfc.decisions[0];
+  assert.equal(d.alternatives, 2, 'the Option headings are the alternatives');
+  assert.equal(d.decided, true);
+  assert.equal(d.outcomeRecorded, true);
+});
+
+test('a template placeholder in Outcome is not a decision @spec:AC-007', () => {
+  // The upstream template ships this line verbatim. Accepting it would mean
+  // every freshly generated RFC passes the gate having decided nothing.
+  const doc = CREATE_RFC
+    .replace('**Decision**: Option 1 was chosen', '**Decision**: [Option X was chosen / rejected / deferred]')
+    .replace(' ⭐ (Recommended)', '');
+  const d = parseRfc(doc, 'RFC.md').decisions[0];
+  assert.equal(d.decided, false);
+});
+
+test('a single option is still not a decision @spec:AC-007', () => {
+  const doc = CREATE_RFC.replace(/### Option 2: Self-hosted[\s\S]*?(?=## Outcome)/, '');
+  assert.equal(parseRfc(doc, 'RFC.md').decisions[0].alternatives, 1);
+});
+
+test('assumptions are read from a table as well as from bullets @spec:AC-008', () => {
+  const rfc = parseRfc(CREATE_RFC, 'RFC.md');
+  assert.equal(rfc.assumptions.length, 1);
+  assert.equal(rfc.assumptions[0].id, 'ASM-001');
+  assert.equal(rfc.assumptions[0].status, 'aberta');
+});
+
+test('a numbered assumption row is counted as uncoded, not silently dropped @spec:AC-008', () => {
+  // It is written down but cannot be referenced, tracked or closed — so it is
+  // reported rather than quietly accepted.
+  assert.equal(parseRfc(CREATE_RFC, 'RFC.md').uncodedAssumptions, 1);
+});
+
+test('confidence is not mapped onto status @spec:AC-008', () => {
+  const doc = CREATE_RFC.replace(' *(status: aberta)*', '');
+  // "High confidence" does not mean "confirmed". Missing status stays missing.
+  assert.equal(parseRfc(doc, 'RFC.md').assumptions[0].status, null);
+});

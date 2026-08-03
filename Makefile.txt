@@ -1,0 +1,43 @@
+# Commands that get run more than once, per AGENTS.md rule 11.
+#
+# This Makefile is for working ON the engine, not for using it. A project that
+# consumes the tool runs `npx @codryx/agent-dev-pipeline <command>` and needs
+# none of this — which is why there are no install targets here any more.
+
+ADP := node bin/adp.js
+
+.DEFAULT_GOAL := help
+.PHONY: help status audit audit-ci prompt monitor doctor test manifest pack
+
+help: ## show this help
+	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+status: ## where the work stands: six gates, one line each
+	@-$(ADP) status
+# `-` on purpose: status is informational, and its exit code is the failing gate,
+# which would otherwise make `make status` look like a broken build every time a
+# gate is red. audit-ci below keeps the exit code, because that one IS the verdict.
+
+audit: ## every gate, with the findings behind the first red one
+	@$(ADP) audit
+
+audit-ci: ## the pipeline verdict; exit code IS the failing gate (0 clean, 1..6 = G0..G5)
+	@$(ADP) audit --ci
+
+prompt: ## the paste-ready text to send back to the AI for the red gate
+	@$(ADP) prompt
+
+monitor: ## serve the read-only page for this repository
+	@$(ADP) monitor
+
+doctor: ## verify this working copy's payload against its manifest
+	@$(ADP) doctor
+
+test: ## the engine's own test suite
+	@node --test "test/*.test.js"
+
+manifest: ## regenerate payload/MANIFEST.json — run after changing anything in payload/
+	@node scripts/build-manifest.js
+
+pack: ## show exactly what would be published, without publishing
+	@npm pack --dry-run
