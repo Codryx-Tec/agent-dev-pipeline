@@ -11,14 +11,31 @@ GRAMMAR:
   ## T-001 — Task title [pendente]
   - Refs: US-001, AC-001
   - Arquivos: src/one.js, src/two.js
+  - Lê: src/three.js
+  - Depende: T-000
 
 Statuses: pendente · em-andamento · em-teste · concluida. They are engine
 tokens — never translate them.
 
-`Arquivos:` is not paperwork. It is what lets the planner compute which tasks
-can run at the same time: tasks whose file sets do not intersect become parallel
-lanes, each in its own git worktree. A task with no file list is never
-parallelized — it runs alone, at the end.
+`Arquivos:` is not paperwork. It is what the task WRITES, and it is what lets the
+planner compute which tasks can run at the same time: tasks whose written files
+do not intersect become parallel lanes, each in its own git worktree. A task with
+no file list is never parallelized — it runs alone, at the end.
+
+`Lê:` is what the task reads without writing. It costs nothing in parallelism,
+because every lane has its own worktree and two readers never collide. Put a file
+here rather than in `Arquivos:` when you only need to look at it — declaring it as
+written forfeits the concurrency of everyone who actually writes it.
+
+`Depende:` is ordering, and it is the only way to say "after". File overlap cannot
+express it: overlap is symmetric and "after" is not. You need it whenever your
+task must see another task's OUTPUT, because a lane is branched from HEAD — so a
+file you merely read is the version from before the run until you declare that you
+follow whoever writes it. The plan warns you when that gap exists.
+
+A cycle, a dependency on a task id that does not exist, or a dependency on a task
+that is not going to run all keep a task out of the plan, with the reason stated.
+Nothing invents an order on your behalf.
 
 Gate G3 passes when every criterion in PRD.md is referenced by some task, every
 reference resolves, and every task carries a valid status.

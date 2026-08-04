@@ -3,7 +3,7 @@
   "algorithm": "sha256",
   "fileCount": 47,
   "files": {
-    "AGENTS.md": "46795008e914bf50caf608f9f9a0d714d48552bbea69844c1c955800f9d77ed2",
+    "AGENTS.md": "f9135004e847f1c3389ba6f6a0f9c56c9926ea1e1684e99ec18ed284ab625ccb",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/architect.md": "66dac301b9385f03a56ccf88d71a0879a0eb9d174b1829c7a7675b832c89e328",
     "claude/agents/backend.md": "4320af5e158579adafcc77bee43ac790460f902eebc84d6802b756a1eaf72122",
@@ -17,7 +17,7 @@
     "claude/hooks/context-persistence.sh": "e861b5c664f08406fb9905628f8ef5e10d28b49dba67e262205ce284e1f1c503",
     "claude/hooks/secrets-scanner.sh": "607a245d9b8b198f5a4b1ba9ecdb3554589aae460bef6951ba7b39bdb8ef4f96",
     "claude/settings.json": "f1e0dca95dd7cf42e2545c470a413e535281cf75f9bfd6cc29c86404d99ece7d",
-    "claude/skills/adp/SKILL.md": "e658c7dbb80fdb04427a44bfc16881d6374a1fd32cc7e7d94c9cdbeb9e5c4719",
+    "claude/skills/adp/SKILL.md": "6cf8d1c9946b9e29d7b0ee4ea45a9f8ba34d09c07f977636d442c32efcc786ba",
     "claude/skills/create-rfc/.skill-meta.json": "b3368039e2352688f48fc7aea068ac9dd9ff027a5165e645a3adeb79d0050e7e",
     "claude/skills/create-rfc/INTEGRATION.md": "c4e14c0c53ea3b86e879d0947025177cbb93a84ee65583bbe71d34d2448fed15",
     "claude/skills/create-rfc/LICENSE": "8cd58eae8e643a9d0f900d279f0b6f80a6db3f86f885b122b52e930d6bcd1264",
@@ -48,7 +48,7 @@
     "templates/PRD.md": "6d3e05ebed635a7cdb026950f9c53e06dedde75bbe972887b7818f3197a0fda8",
     "templates/RFC.md": "3db558a86725253a64c66ebae1ecc9d6d1042892281fbe444af772b9b1387241",
     "templates/SCOPE.md": "2059651a3a9d0cb7f1ea9d81e54c4b627f25d8e2b5b87be0d4ed22907052bf3e",
-    "templates/TDD.md": "1d42306b3521b0e27b1695ee1e170261d167d8b5895cd3d311f00943e5d53fb3",
+    "templates/TDD.md": "86cbbc6d75cdd2e2f9828587c6bab13db31d446273410527bac1b36930183685",
     "templates/adp.config.json": "c9f83536f04d550baacc93204fc282d0a2ee263fef91cfa1488d5a0635df8104"
   }
 }

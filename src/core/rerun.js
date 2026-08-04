@@ -29,7 +29,7 @@ export function laneById(plan, laneId) {
  *
  * @param runTask the same injected worker used by a full run.
  */
-export function rerunLane(project, config, plan, laneId, runTask, { runId } = {}) {
+export function rerunLane(project, config, plan, laneId, runTask, { runId, runTests = null } = {}) {
   const lane = laneById(plan, laneId);
 
   append(config, { runId, laneId: lane.id, type: 'lane-rerun-requested' });
@@ -43,13 +43,13 @@ export function rerunLane(project, config, plan, laneId, runTask, { runId } = {}
   // lane never leaks into its own retry.
   cleanLane(project.rootDir, lane, config);
 
-  const result = runLane(project, config, lane, runTask, { runId, base });
+  const result = runLane(project, config, lane, runTask, { runId, base, runTests });
   return { ...result, base };
 }
 
 /** Re-run a lane and merge it if it completed. */
-export function rerunAndMerge(project, config, plan, laneId, runTask, { runId } = {}) {
-  const result = rerunLane(project, config, plan, laneId, runTask, { runId });
+export function rerunAndMerge(project, config, plan, laneId, runTask, { runId, runTests = null } = {}) {
+  const result = rerunLane(project, config, plan, laneId, runTask, { runId, runTests });
   if (result.state !== 'done') return { ...result, merged: false };
   const merge = mergeLane(project, config, laneById(plan, laneId), { runId });
   return { ...result, merged: merge.ok, mergeMessage: merge.message ?? null };

@@ -434,6 +434,63 @@ reconstruct an answer the engine already holds.
   are kept with the reason given, and a worktree this tool did not create is
   never touched
 
+### US-015 — The captain orders the work without spending the parallelism
+
+As a captain breaking a feature into tasks, I want to say that one task runs
+after another, and to name the files a task only reads, so that expressing an
+order does not cost me the concurrency that made background execution worth
+having.
+
+#### AC-044 — A declared order is honoured without collapsing lanes
+
+- **Given** pending tasks writing disjoint files, one of which declares
+  `Depende:` on another
+- **When** the execution plan is built
+- **Then** they remain separate lanes, the dependent lane is scheduled in a later
+  stage than the one it follows, and tasks sharing a lane are ordered so that a
+  dependency always runs before its dependent
+
+#### AC-045 — A file a task only reads costs no parallelism, and says so
+
+- **Given** two tasks writing disjoint files, one of which declares the other's
+  file under `Lê:`
+- **When** the execution plan is built
+- **Then** they are placed in separate lanes, and the plan reports that the
+  reader will see the version from before the run unless it also declares
+  `Depende:` on the writer
+
+#### AC-046 — An order that cannot be satisfied is refused, not invented
+
+- **Given** tasks forming a dependency cycle, or depending on an id no task
+  declares, or depending on a task that will not run in this plan
+- **When** the execution plan is built
+- **Then** none of them is placed in a lane, each appears in the sequential
+  remainder with the reason named, and no partial order is chosen on their behalf
+
+### US-016 — The captain learns which task broke the tests, in the run that broke them
+
+As a captain running tasks in the background, I want the suite run inside each
+lane and its result attached to the task that just committed, so that a failure
+belongs to something instead of surfacing after the merge belonging to nobody.
+
+#### AC-047 — The approved test command runs in the lane and names the culprit
+
+- **Given** a lane whose task has committed, in a project whose test command has
+  been approved
+- **When** the lane runs
+- **Then** that command is executed inside the lane's worktree, a non-zero exit
+  fails that task by name and stops the lane, the commit it produced is kept, and
+  the failure is recorded against the task in the event ledger
+
+#### AC-048 — In-lane verification needs no grant beyond the one already given
+
+- **Given** a project that declares no test command, or one whose command has not
+  been approved on this machine
+- **When** a lane runs
+- **Then** nothing from the repository is executed, the run proceeds and reports
+  why the tests were not run, and no permission is requested from or granted to
+  the agent
+
 ## Out of scope for this PRD
 
 - The GitHub delivery mode, its issue and pull-request mapping, and any rate-limit

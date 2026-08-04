@@ -131,6 +131,18 @@ Tasks whose `Arquivos:` lists overlap land in the same lane and run in order;
 disjoint tasks run at the same time. A task that declares no files is never
 parallelized — that is the file list earning its keep.
 
+`Arquivos:` is what a task WRITES. Use `Lê:` for a file it only reads, which costs
+no parallelism, and `Depende: T-001` to say it runs after another task. Ordering
+cannot be inferred from file overlap, because overlap is symmetric and "after" is
+not — and a lane is branched from HEAD, so a file you only read is the pre-run
+version until you declare the dependency.
+
+After each task commits, the pipeline runs the project's approved test command
+inside that lane and stops the lane if it fails, so a broken test belongs to the
+task that broke it. That uses the consent `adp trust` already recorded; it grants
+the agent nothing. `--no-lane-tests` turns it off for a suite too slow to run
+after every task.
+
 `adp run` invokes an AI that writes code and whose work gets committed. Show the
 person `adp plan` first and let them start it. It refuses on a dirty working
 tree, outside a git repository, and without a terminal to confirm at.
@@ -194,7 +206,8 @@ and record the answer. Mark a question **blocking** when the path genuinely cann
 be chosen without it.
 
 **G3 — TDD.** Break the work into tasks. Every task declares `Refs:` (the stories
-and criteria it serves) and `Arquivos:` (the files it will touch, comma-separated).
+and criteria it serves) and `Arquivos:` (the files it will WRITE, comma-separated),
+and optionally `Lê:` (files it only reads) and `Depende:` (tasks it runs after).
 The file list is not paperwork: it is what lets the planner compute which tasks can
 run at the same time. A task with no file list is never parallelized.
 

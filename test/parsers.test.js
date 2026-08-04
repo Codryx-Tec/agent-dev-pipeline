@@ -59,6 +59,46 @@ test('file lists keep spaces inside paths and drop empties @spec:AC-012', () => 
   assert.deepEqual(tasks[0].files, ['a b/c.js', 'd.js']);
 });
 
+test('what a task writes, what it reads and what it follows are three claims @spec:AC-045', () => {
+  const doc = [
+    '## T-004 — Integration [pendente]',
+    '',
+    '- Refs: AC-001',
+    '- Arquivos: src/join.js',
+    '- Lê: src/a.js, src/b.js',
+    '- Depende: T-001, T-002',
+    '',
+  ].join('\n');
+  const { tasks } = parseTdd(doc, 'TDD.md');
+
+  assert.deepEqual(tasks[0].files, ['src/join.js']);
+  assert.deepEqual(tasks[0].reads, ['src/a.js', 'src/b.js']);
+  assert.deepEqual(tasks[0].dependsOn, ['T-001', 'T-002']);
+});
+
+test('the English spellings and a lower-case id parse the same @spec:AC-045', () => {
+  const doc = [
+    '## T-004 — Integration [pendente]',
+    '',
+    '- Arquivos: src/join.js',
+    '- Reads: src/a.js',
+    '- Depends on: t-001',
+    '',
+  ].join('\n');
+  const { tasks } = parseTdd(doc, 'TDD.md');
+  assert.deepEqual(tasks[0].reads, ['src/a.js']);
+  // Upper-cased because ids are compared: a `Depende: t-001` matching nothing
+  // would drop the constraint, and a dropped constraint is invisible until the
+  // run produces the wrong result.
+  assert.deepEqual(tasks[0].dependsOn, ['T-001']);
+});
+
+test('a task declaring neither reads nor dependencies gets empty lists @spec:AC-045', () => {
+  const { tasks } = parseTdd('## T-001 — x [pendente]\n\n- Arquivos: a.js\n', 'TDD.md');
+  assert.deepEqual(tasks[0].reads, []);
+  assert.deepEqual(tasks[0].dependsOn, []);
+});
+
 test('a criterion body stops at the next story, not at the next criterion only @spec:AC-006', () => {
   const doc = `### US-001 — first
 
