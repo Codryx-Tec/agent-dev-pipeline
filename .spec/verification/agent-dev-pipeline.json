@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 6487,
-  "verifiedAt": "2026-08-04T18:20:58.336Z",
-  "gitRev": "f15cb9a991b5b3fdab16d59d259ed4c090f9e862",
+  "durationMs": 6234,
+  "verifiedAt": "2026-08-04T18:55:54.661Z",
+  "gitRev": "525e80b32017154d77d721919005b9689604c920",
   "gitDirty": true,
-  "codeMtime": 1785867559218.2566,
+  "codeMtime": 1785869716418.07,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -511,6 +511,15 @@
         },
         {
           "title": "a finding renders its readable name before its stable code @spec:AC-024",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-050": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the agent contract carries what an agent needs to obey it @spec:AC-050",
           "status": "pass"
         }
       ]
