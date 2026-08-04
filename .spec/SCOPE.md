@@ -100,7 +100,7 @@
 ## 10. Open scope items
 
 - [ ] **Q-001** — Which scope does the repository root own: the tool or Portal Proauto?
-- [ ] **Q-002** — Does Agent Dev Pipeline get its own repository, or stay a folder inside `Projeto_Agent`?
-- [ ] **Q-003** — Is `agent-dev-pipeline` the final name?
-- [ ] To confirm: whether the existing eight sub-agents in `.claude/agents/` map onto pipeline roles, or whether the executor introduces its own worker roles.
+- [x] **Q-002** — Does Agent Dev Pipeline get its own repository, or stay a folder inside `Projeto_Agent`? — its own: `Codryx-Tec/agent-dev-pipeline`.
+- [x] **Q-003** — Is `agent-dev-pipeline` the final name? — yes, published as `@codryx/agent-dev-pipeline`.
+- [x] To confirm: whether the existing eight sub-agents in `.claude/agents/` map onto pipeline roles, or whether the executor introduces its own worker roles. — neither. Those agents stayed behind in `Projeto_Agent` when the tool was extracted (Q-002); the executor invokes one configured CLI and takes its division of labour from the task graph. Recorded as ASM-007, invalidada.
 - [ ] To confirm: retention policy for worker output streams (how many runs are kept before pruning).

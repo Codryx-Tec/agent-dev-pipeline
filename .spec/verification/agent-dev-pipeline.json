@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 6555,
-  "verifiedAt": "2026-08-03T16:18:24.026Z",
-  "gitRev": null,
-  "gitDirty": null,
-  "codeMtime": 1785772400197.8677,
+  "durationMs": 5985,
+  "verifiedAt": "2026-08-04T13:27:24.955Z",
+  "gitRev": "b6cbce349db90497375c71b5358d6bb60f45e206",
+  "gitDirty": true,
+  "codeMtime": 1785849132393.015,
   "results": {
     "AC-001": {
       "status": "pass",

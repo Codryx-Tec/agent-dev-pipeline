@@ -439,7 +439,15 @@ Status values: `aberta` · `confirmada` · `invalidada`.
 
 - **ASM-001** — The configured agent CLI supports a non-interactive invocation
   that accepts a prompt, performs file edits and exits with a meaningful status
-  code. *(status: aberta — verify against the CLI version actually installed before T-016)*
+  code. *(status: aberta — half of this is now settled and half is not, and the
+  half that is not is the half that matters. Settled: the invocation exists and
+  is stable. `resolveAgentCommand` maps claude to `claude -p '{{PROMPT}}'`, and
+  that CLI documents `-p/--print` as its non-interactive mode; a CLI missing from
+  PATH already fails by name rather than by crash. Unsettled: that a run actually
+  edits files and reports success or failure honestly through its exit code.
+  Nothing here has ever observed that, because the executor has never run — the
+  ledger holds 17 entries and every one of them is a `verify`. This closes the
+  first time `adp run` completes a real task, not before.)*
 - **ASM-002** — The host project's test runner can emit per-test results in a
   machine-readable form. Their `spec.config.json` runs `pytest` and `vitest`, both
   of which can, but the exact reporter flags are unconfirmed. *(status: confirmada —
@@ -454,15 +462,35 @@ Status values: `aberta` · `confirmada` · `invalidada`.
   humans. *(status: confirmada — SCOPE §2 states single-tenant, single-operator)*
 - **ASM-004** — Task granularity in `TDD.md` stays small enough that one task is
   one commit and one worker invocation. If tasks routinely need conversation, the
-  worker contract in D-002 is wrong. *(status: aberta — re-evaluate after M6)*
+  worker contract in D-002 is wrong. *(status: aberta — and it cannot honestly be
+  closed yet, because there is no evidence either way. Confirming it needs runs
+  to look at, and the execution ledger contains none: 17 entries, all `verify`,
+  no lane has ever been executed. The 27 tasks in this document were written to
+  be one commit each, which is an intention rather than a measurement. What
+  closes this is a handful of real `adp run` invocations and a count of how many
+  needed a second pass — until then the worker contract in D-002 is a design
+  under test, and it should be described that way to anyone evaluating it.)*
 - **ASM-005** — Declaring a task's file list up front is accurate enough often
   enough to be useful. A worker that touches an undeclared file breaks the
   disjointness guarantee that makes lanes safe. *(status: confirmada — the mitigation is built: `runLane` compares what the commit actually touched against what the task declared and records an `undeclared-files` event. The declaration is trusted for planning and checked afterwards, which is the only honest combination.)*
 - **ASM-006** — Reading and parsing the documents on every board request is fast
-  enough at the stated volumes, so no caching layer is needed for MVP. *(status: aberta — measure at M4; the fallback is a modification-time cache)*
+  enough at the stated volumes, so no caching layer is needed for MVP. *(status:
+  confirmada — measured against this project's own `.spec/`, the largest real
+  corpus available: 13 stories, 38 criteria, 27 tasks, 9 principles. A full
+  `adp audit`, parsing every document from cold, runs in 323–473 ms wall clock
+  including Node's own startup. The modification-time cache in the fallback
+  would be optimising something that is already an order of magnitude below the
+  threshold where a human notices a delay.)*
 - **ASM-007** — The eight existing role agents in `.claude/agents/` remain the
   right division of labour and the pipeline maps onto them rather than replacing
-  them. *(status: aberta — depends on the confirmation item in SCOPE §10)*
+  them. *(status: invalidada — the premise no longer holds. Those agents belonged
+  to `Projeto_Agent`, and this tool has since been extracted into its own
+  repository, which is what SCOPE Q-002 was asking. `.claude/agents/` does not
+  exist here and nothing in the package depends on it. What replaced the
+  assumption is narrower and already built: the agent is whatever
+  `resolveAgentCommand` names — claude, codex, cursor or an explicit
+  `agent.command` — and the division of labour is the task graph in `TDD.md`,
+  not a fixed roster of roles.)*
 
 ## Open questions
 
