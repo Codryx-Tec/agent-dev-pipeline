@@ -12,7 +12,9 @@ import { tmpdir } from 'os';
 import path from 'path';
 
 import { buildPlan, renderPlan } from '../src/core/plan.js';
-import { runLane, mergeLane, git, filesInCommit } from '../src/core/executor.js';
+import { runLane, mergeLane, git, filesInCommit, linkIntoWorktree } from '../src/core/executor.js';
+import { makeLaneTestRunner } from '../src/core/verify.js';
+import { grantTrust } from '../src/core/trust.js';
 import { rerunLane } from '../src/core/rerun.js';
 import { append, read, progress, prune, streamPath, ledgerPath } from '../src/core/ledger.js';
 import { buildPrompt } from '../src/core/prompts.js';
@@ -26,8 +28,13 @@ function fakeProject(tasks) {
   };
 }
 
-function task(id, files, status = 'pendente') {
-  return { id, title: `task ${id}`, status, files, refs: [] };
+function task(id, files, status = 'pendente', { reads = [], dependsOn = [] } = {}) {
+  return { id, title: `task ${id}`, status, files, refs: [], reads, dependsOn };
+}
+
+/** The lane a task ended up in, by task id. */
+function laneWith(plan, taskId) {
+  return plan.lanes.find((l) => l.tasks.some((t) => t.id === taskId));
 }
 
 function gitRepo() {
@@ -138,6 +145,183 @@ test('the same document always plans the same way @spec:AC-019', () => {
   assert.match(renderPlan(JSON.parse(a)), /lane-01/);
 });
 
+// --------------------------------------------------------- ordering (Q-010)
+
+test('a task declares what it runs after, and keeps its own lane @spec:AC-044', () => {
+  // The failure this replaces: before `Depende:` the only way to run last was to
+  // declare somebody else's files, which put you in their lane. Ordering and
+  // parallelism were the same mechanism, so buying one spent the other.
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', ['src/a.js']),
+      task('T-002', ['src/b.js']),
+      task('T-003', ['src/c.js'], 'pendente', { dependsOn: ['T-001'] }),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+
+  assert.equal(plan.lanes.length, 3, 'declaring an order must not collapse lanes');
+
+  const first = laneWith(plan, 'T-001');
+  const dependent = laneWith(plan, 'T-003');
+  assert.deepEqual(dependent.after, [first.id]);
+  assert.ok(dependent.wave > first.wave, 'a dependent lane runs in a later stage');
+
+  // And the stages are what the executor iterates, so the order has to be there.
+  const stageOf = (id) => plan.waves.findIndex((w) => w.includes(id));
+  assert.ok(stageOf(dependent.id) > stageOf(first.id));
+  assert.equal(stageOf(laneWith(plan, 'T-002').id), stageOf(first.id), 'independent lanes stay together');
+});
+
+test('a dependency orders tasks inside a lane too @spec:AC-044', () => {
+  // Same file, so one lane — but the declared order still has to beat document
+  // order, which is the only thing deciding it otherwise.
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-002'] }),
+      task('T-002', ['src/a.js']),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+  assert.equal(plan.lanes.length, 1);
+  assert.deepEqual(plan.lanes[0].tasks.map((t) => t.id), ['T-002', 'T-001']);
+});
+
+test('lanes that depend on each other are merged, not ordered @spec:AC-044', () => {
+  // No single task is circular: T-001 → T-002 and T-004 → T-003. But T-001 and
+  // T-003 share a file, and so do T-002 and T-004, so the two lanes each need to
+  // run after the other. There is no order, and pretending otherwise would run
+  // one of them against a tree missing the work it asked to follow.
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-002'] }),
+      task('T-002', ['src/b.js']),
+      task('T-003', ['src/a.js']),
+      task('T-004', ['src/b.js'], 'pendente', { dependsOn: ['T-003'] }),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+
+  assert.equal(plan.lanes.length, 1, 'mutually dependent lanes cannot run in parallel');
+  assert.equal(plan.sequential.length, 0, 'and this is not a contradiction, so nothing is refused');
+
+  const order = plan.lanes[0].tasks.map((t) => t.id);
+  assert.ok(order.indexOf('T-002') < order.indexOf('T-001'));
+  assert.ok(order.indexOf('T-003') < order.indexOf('T-004'));
+});
+
+test('a file a task only reads does not collapse lanes @spec:AC-045', () => {
+  // Every lane has its own worktree, so two readers of a file never collide.
+  // Charging a reader the parallelism of everyone who writes it was the whole
+  // cost of having one declaration for two different claims.
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', ['src/a.js']),
+      task('T-002', ['src/b.js'], 'pendente', { reads: ['src/a.js'] }),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+
+  assert.equal(plan.lanes.length, 2);
+  assert.deepEqual(plan.lanes.map((l) => l.wave), [0, 0], 'reading alone implies no order');
+
+  // What reading does NOT get you is the writer's version, because the lane is
+  // branched from HEAD. Reported rather than refused: reading the pre-run file
+  // is legitimate, and the two cases look identical in the document.
+  assert.equal(plan.warnings.length, 1);
+  assert.equal(plan.warnings[0].task, 'T-002');
+  assert.equal(plan.warnings[0].writtenBy, 'T-001');
+  assert.match(plan.warnings[0].message, /before the run/);
+  assert.match(renderPlan(plan), /will not see this run's changes/);
+});
+
+test('declaring the order silences the stale-read warning @spec:AC-045', () => {
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', ['src/a.js']),
+      task('T-002', ['src/b.js'], 'pendente', { reads: ['src/a.js'], dependsOn: ['T-001'] }),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+  assert.equal(plan.lanes.length, 2);
+  assert.deepEqual(plan.warnings, [], 'the reader now runs after the writer, so it sees the change');
+  assert.ok(laneWith(plan, 'T-002').wave > laneWith(plan, 'T-001').wave);
+});
+
+test('a dependency cycle is reported, never broken arbitrarily @spec:AC-046', () => {
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-002'] }),
+      task('T-002', ['src/b.js'], 'pendente', { dependsOn: ['T-001'] }),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+
+  assert.equal(plan.lanes.length, 0, 'picking a member to go first invents a decision nobody made');
+  assert.deepEqual(plan.sequential.map((t) => t.id).sort(), ['T-001', 'T-002']);
+  for (const t of plan.sequential) assert.match(t.reason, /circular dependency: T-001 → T-002/);
+});
+
+test('a task depending on itself is a cycle of one @spec:AC-046', () => {
+  const plan = buildPlan(
+    fakeProject([task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-001'] })]),
+    {},
+    { runId: 'r1' }
+  );
+  assert.equal(plan.lanes.length, 0);
+  assert.match(plan.sequential[0].reason, /circular dependency/);
+});
+
+test('a dependency on an id no task declares is refused @spec:AC-046', () => {
+  const plan = buildPlan(
+    fakeProject([task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-999'] })]),
+    {},
+    { runId: 'r1' }
+  );
+  assert.equal(plan.lanes.length, 0);
+  assert.match(plan.sequential[0].reason, /T-999, which no task declares/);
+});
+
+test('waiting on a task that will not run keeps you out of the plan too @spec:AC-046', () => {
+  // T-001 has no file footprint, so it is never placed in a lane — and the
+  // sequential remainder is printed, not executed. Anything waiting on it is
+  // waiting for something that will not happen.
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', []),
+      task('T-002', ['src/b.js'], 'pendente', { dependsOn: ['T-001'] }),
+      task('T-003', ['src/c.js'], 'pendente', { dependsOn: ['T-002'] }),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+
+  assert.equal(plan.lanes.length, 0);
+  assert.match(plan.sequential.find((t) => t.id === 'T-002').reason, /not in this plan/);
+  // Propagated: the dependent of a dependent is in exactly the same position.
+  assert.match(plan.sequential.find((t) => t.id === 'T-003').reason, /not in this plan/);
+});
+
+test('a dependency already concluded is satisfied, not waited for @spec:AC-044', () => {
+  const plan = buildPlan(
+    fakeProject([
+      task('T-001', ['src/a.js'], 'concluida'),
+      task('T-002', ['src/b.js'], 'pendente', { dependsOn: ['T-001'] }),
+    ]),
+    {},
+    { runId: 'r1' }
+  );
+  assert.equal(plan.lanes.length, 1);
+  assert.equal(plan.lanes[0].wave, 0, 'there is nothing in this plan to wait for');
+  assert.deepEqual(plan.lanes[0].after, []);
+});
+
 // ------------------------------------------------------------------ executor
 
 test('each lane runs in its own worktree, one commit per task @spec:AC-020', () => {
@@ -239,6 +423,129 @@ test('a conflicting lane is not merged and not resolved @spec:AC-020', () => {
   assert.equal(git(root, ['rev-parse', '--verify', lane.branch], { allowFail: true }).status, 0);
   // And the main tree must be left clean, not mid-merge.
   assert.equal(git(root, ['status', '--porcelain']).stdout, '');
+});
+
+// -------------------------------------------------------- lane tests (Q-009)
+
+// Green when the worker left a `pass.txt` behind, red otherwise. `node` rather
+// than a shell builtin because node is the one binary this project can assume.
+const MARKER_TEST = 'node -e "process.exit(require(\'fs\').existsSync(\'pass.txt\') ? 0 : 1)"';
+
+function laneFor(runId, taskId, files) {
+  return {
+    id: 'lane-01',
+    branch: `adp/${runId}/lane-01`,
+    worktree: path.join('worktrees', runId, 'lane-01'),
+    tasks: [{ id: taskId, title: 'work', files, refs: [] }],
+    files,
+  };
+}
+
+test('the approved tests run in the lane, and a failure names the task @spec:AC-047', () => {
+  const root = gitRepo();
+  const cfg = { ...state(), testCommand: MARKER_TEST };
+  const project = { rootDir: root, features: [] };
+  grantTrust(root, cfg.testCommand, cfg);
+
+  const { runner, command } = makeLaneTestRunner(project, cfg);
+  assert.equal(command, MARKER_TEST);
+
+  const lane = laneFor('rt1', 'T-001', ['work.txt']);
+  const result = runLane(project, cfg, lane, ({ cwd }) => {
+    // Work, but no `pass.txt` — exactly the worker that writes a test it cannot
+    // run and is wrong about it.
+    writeFileSync(path.join(cwd, 'work.txt'), 'half done\n');
+    return { ok: true, summary: 'wrote the thing' };
+  }, { runId: 'rt1', runTests: runner });
+
+  assert.equal(result.state, 'failed');
+  assert.equal(result.results[0].ok, false);
+  assert.match(result.results[0].summary, /tests FAILED in the lane/);
+  assert.equal(result.results[0].tests.ok, false);
+  // The worker's own account is kept rather than overwritten: it said it
+  // succeeded, and that it was wrong is the finding.
+  assert.equal(result.results[0].workerSummary, 'wrote the thing');
+
+  // The work is committed BEFORE the tests run, on purpose. A failing task has
+  // still produced something, and its branch is the only place that exists.
+  assert.ok(result.results[0].commit, 'the commit must survive the failure');
+  assert.equal(git(root, ['log', '--format=%s', lane.branch]).stdout.split('\n')[0], 'T-001: work');
+
+  const { events } = read(cfg, { runId: 'rt1' });
+  assert.ok(events.some((e) => e.type === 'task-tests-failed'), 'the failure must reach the ledger');
+  // Attribution is the whole point: the event carries the task it belongs to.
+  assert.equal(events.find((e) => e.type === 'task-tests-failed').taskId, 'T-001');
+});
+
+test('a lane whose tests pass finishes normally @spec:AC-047', () => {
+  const root = gitRepo();
+  const cfg = { ...state(), testCommand: MARKER_TEST };
+  const project = { rootDir: root, features: [] };
+  grantTrust(root, cfg.testCommand, cfg);
+
+  const result = runLane(project, cfg, laneFor('rt2', 'T-001', ['pass.txt']), ({ cwd }) => {
+    writeFileSync(path.join(cwd, 'pass.txt'), 'green\n');
+    return { ok: true, summary: 'done' };
+  }, { runId: 'rt2', runTests: makeLaneTestRunner(project, cfg).runner });
+
+  assert.equal(result.state, 'done');
+  assert.equal(result.results[0].tests.ok, true);
+  assert.ok(read(cfg, { runId: 'rt2' }).events.some((e) => e.type === 'task-tests-passed'));
+});
+
+test('lane tests need no grant beyond the one already given @spec:AC-048', () => {
+  const root = gitRepo();
+  const project = { rootDir: root, features: [] };
+
+  // Nothing to run.
+  const none = makeLaneTestRunner(project, state());
+  assert.equal(none.runner, null);
+  assert.match(none.reason, /no testCommand/);
+
+  // A command, but nobody approved it. The lane worktree is still this machine,
+  // and a command out of the repository is still a stranger's code.
+  const cfg = { ...state(), testCommand: MARKER_TEST };
+  const untrusted = makeLaneTestRunner(project, cfg);
+  assert.equal(untrusted.runner, null);
+  assert.match(untrusted.reason, /adp trust/);
+
+  // Approval of a DIFFERENT command does not carry over.
+  grantTrust(root, 'npm run something-else', cfg);
+  assert.match(makeLaneTestRunner(project, cfg).reason, /changed since it was approved/);
+
+  // And a run with no test runner is still a run: the check is optional, so its
+  // absence costs the run its attribution, not its result.
+  const result = runLane(project, cfg, laneFor('rt3', 'T-001', ['work.txt']), ({ cwd }) => {
+    writeFileSync(path.join(cwd, 'work.txt'), 'x\n');
+    return { ok: true, summary: 'done' };
+  }, { runId: 'rt3', runTests: null });
+  assert.equal(result.state, 'done');
+  assert.equal(result.results[0].tests, null);
+});
+
+test('a fresh worktree gets the ignored artefacts the tests need @spec:AC-047', () => {
+  // A worktree holds what git tracks, and installed dependencies are the one
+  // thing every project deliberately does not track — so `npm test` in a new
+  // lane would fail on a missing module rather than on the code.
+  const root = gitRepo();
+  const cfg = { ...state(), parallel: { linkIntoWorktree: ['node_modules', 'vendor'] } };
+  writeFileSync(path.join(root, '.gitignore'), 'node_modules\n');
+  mkdirSync(path.join(root, 'node_modules'));
+  writeFileSync(path.join(root, 'node_modules', 'marker'), 'installed\n');
+  mkdirSync(path.join(root, 'vendor'));
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-q', '-m', 'ignore deps']);
+
+  const wt = mkdtempSync(path.join(tmpdir(), 'adp-wt-'));
+  const { linked, skipped } = linkIntoWorktree(root, wt, cfg);
+
+  assert.deepEqual(linked, ['node_modules']);
+  assert.ok(existsSync(path.join(wt, 'node_modules', 'marker')), 'the tests must be able to resolve it');
+
+  // `vendor` is tracked, so linking it would sweep it into the lane's `git add
+  // -A` and commit it — a worse outcome than the tests not running.
+  assert.deepEqual(skipped.map((s) => s.name), ['vendor']);
+  assert.match(skipped[0].reason, /not git-ignored/);
 });
 
 // ------------------------------------------------------------------ re-run

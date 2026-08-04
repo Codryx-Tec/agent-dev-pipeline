@@ -380,6 +380,20 @@ it succeeds, fails, or times out.
 - Arquivos: src/core/resume.js
 - Notas: Follows D-001 rather than inventing a store. Gate states, the first red gate, unproven counts, proof staleness and the next action are all DERIVED, so they cannot go stale or disagree with the repository. The single exception is intent — what the last session was in the middle of — which leaves no trace in any document; that note is stored in the state directory and rendered separately, labelled as the only part that can be wrong. Only `em-andamento` counts as in flight: `em-teste` is a resting state and on a mature project is most of the board, so listing it would cost a fresh session the very tokens this briefing exists to save.
 
+## T-037 — Declared ordering and read-only file declarations [em-teste]
+
+- Refs: AC-044, AC-045, AC-046
+- Arquivos: src/parsers/tdd.js, src/core/plan.js
+- Notas: Implements D-014. The parser gains `Lê:` and `Depende:`; the planner stops treating one declaration as the answer to two questions. Lanes are still union-find over WRITTEN files, so safety is unchanged; ordering is a separate directed graph laid over the result. Three refusals rather than a guess: a cycle among tasks, a dependency on an unknown id, and a dependency on a task already excluded — the last one propagated to a fixpoint, because the sequential remainder is printed and not executed, so anything waiting on it waits forever. Mutually dependent LANES are a different case and are merged rather than refused: two lanes can each need to follow the other without any single task being circular, and there is no contradiction to report, only no parallelism to have. Strongly connected components do both jobs — reporting the first, contracting the second.
+
+## T-038 — In-lane verification of each task [em-teste]
+
+- Refs: AC-047, AC-048
+- Arquivos: src/core/verify.js, src/core/executor.js, src/core/rerun.js, src/cli.js
+- Lê: src/core/trust.js
+- Depende: T-037
+- Notas: Implements D-015. `makeLaneTestRunner` reuses the `adp trust` consent rather than asking for a new one, and returns a null runner with a reason instead of throwing — a lane that cannot run tests is still worth running. The executor runs it AFTER the commit so a failing task's work survives on its branch. The CLI change is the one that makes D-014 real at runtime: the run loop iterates stages and merges each before branching the next, since a lane sees the work it depends on only because that work already landed. `linkIntoWorktree` exists because a fresh worktree has no installed dependencies, and it links only what git confirms is ignored.
+
 ## T-029 — Test suite [em-teste]
 
 - Refs: AC-018

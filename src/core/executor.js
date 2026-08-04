@@ -23,7 +23,7 @@
 //     the commit actually touched, per ASM-005.
 
 import { spawnSync } from 'child_process';
-import { existsSync, rmSync } from 'fs';
+import { existsSync, rmSync, symlinkSync } from 'fs';
 import path from 'path';
 import { append, appendStream, streamPath } from './ledger.js';
 import { resolveStateDir } from './trust.js';
@@ -56,6 +56,48 @@ export function filesInCommit(cwd, rev = 'HEAD') {
   return out.split('\n').map((s) => s.trim()).filter(Boolean);
 }
 
+/**
+ * Link the build artefacts a fresh worktree does not have.
+ *
+ * A git worktree contains what git tracks, and installed dependencies are the
+ * one thing every project deliberately does not track. So `npm test` inside a
+ * new lane fails on a missing module rather than on the code — which would make
+ * in-lane verification useless everywhere except a project with no dependencies.
+ *
+ * TWO CONDITIONS, both of them the safety. The path must already exist at the
+ * repository root, so nothing is installed or fetched on anyone's behalf. And it
+ * must be git-ignored, checked with git rather than guessed: a linked directory
+ * that git can see would be swept into the lane's `git add -A` and committed,
+ * which is a far worse outcome than the tests not running.
+ */
+export function linkIntoWorktree(rootDir, wt, config = {}) {
+  const names = config.parallel?.linkIntoWorktree ?? ['node_modules'];
+  const linked = [];
+  const skipped = [];
+
+  for (const name of names) {
+    const src = path.join(rootDir, name);
+    const dest = path.join(wt, name);
+    if (!existsSync(src) || existsSync(dest)) continue;
+
+    if (git(rootDir, ['check-ignore', '-q', name], { allowFail: true }).status !== 0) {
+      skipped.push({ name, reason: 'not git-ignored — linking it would commit it into the lane' });
+      continue;
+    }
+
+    try {
+      // 'junction' is what makes this work on Windows for a directory; POSIX
+      // ignores the argument.
+      symlinkSync(src, dest, 'junction');
+      linked.push(name);
+    } catch (err) {
+      skipped.push({ name, reason: err.message });
+    }
+  }
+
+  return { linked, skipped };
+}
+
 function cleanLane(rootDir, lane, config = {}) {
   const wt = worktreePath(config, lane);
   // `worktree remove` refuses on a dirty tree; --force is right here because we
@@ -74,8 +116,12 @@ function cleanLane(rootDir, lane, config = {}) {
  *        UNCOMMITTED — this function does the committing, so that "one task, one
  *        commit, named for the task" is a property of the executor rather than a
  *        request the worker may forget.
+ * @param opts.runTests ({task, cwd, lane}) => {ok, summary, output, exitCode}
+ *        The project's approved test command, run in the lane after each task
+ *        commits (Q-009). Null when there is no command or no approval, which is
+ *        not an error — it costs the run its attribution, not its result.
  */
-export function runLane(project, config, lane, runTask, { runId, base = 'HEAD' } = {}) {
+export function runLane(project, config, lane, runTask, { runId, base = 'HEAD', runTests = null } = {}) {
   const rootDir = project.rootDir;
   const wt = worktreePath(config, lane);
 
@@ -83,6 +129,11 @@ export function runLane(project, config, lane, runTask, { runId, base = 'HEAD' }
 
   cleanLane(rootDir, lane, config);
   git(rootDir, ['worktree', 'add', '-b', lane.branch, wt, base]);
+
+  const linked = linkIntoWorktree(rootDir, wt, config);
+  if (linked.linked.length || linked.skipped.length) {
+    append(config, { runId, laneId: lane.id, type: 'worktree-linked', ...linked });
+  }
 
   const results = [];
   try {
@@ -141,6 +192,37 @@ export function runLane(project, config, lane, runTask, { runId, base = 'HEAD' }
         });
       }
 
+      // Q-009: the tests run AFTER the commit, deliberately. A task whose tests
+      // fail has still produced work, and that work existing on the lane branch
+      // is what makes the failure inspectable and the lane re-runnable. Stopping
+      // before the commit would leave it only in a worktree, one `git worktree
+      // remove` away from gone.
+      let tests = null;
+      if (runTests) {
+        tests = runTests({ task, cwd: wt, lane });
+        if (tests.output) appendStream(config, runId, lane.id, `${task.id}-tests`, tests.output);
+
+        if (!tests.ok) {
+          append(config, {
+            runId, laneId: lane.id, taskId: task.id, type: 'task-tests-failed',
+            commit: after, exitCode: tests.exitCode ?? null, summary: tests.summary ?? null,
+          });
+          results.push({
+            task: task.id, ok: false, commit: after,
+            summary: tests.summary ?? 'the tests failed in the lane',
+            workerSummary: outcome.summary ?? null,
+            tests: { ok: false, exitCode: tests.exitCode ?? null },
+            undeclared,
+          });
+          return finish(config, runId, lane, results, 'failed', wt);
+        }
+
+        append(config, {
+          runId, laneId: lane.id, taskId: task.id, type: 'task-tests-passed',
+          commit: after, durationMs: tests.durationMs ?? null,
+        });
+      }
+
       append(config, {
         runId, laneId: lane.id, taskId: task.id, type: 'task-done',
         commit: after, from: before, summary: outcome.summary ?? null,
@@ -148,6 +230,7 @@ export function runLane(project, config, lane, runTask, { runId, base = 'HEAD' }
       results.push({
         task: task.id, ok: true, commit: after,
         summary: outcome.summary ?? null, undeclared,
+        tests: tests ? { ok: true } : null,
       });
     }
   } catch (err) {

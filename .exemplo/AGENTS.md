@@ -122,6 +122,18 @@ Tasks whose `Arquivos:` lists overlap share a lane and run in order; disjoint
 tasks run at the same time. **A task with no declared files is never
 parallelised** — that is the file list earning its keep, not paperwork.
 
+`Arquivos:` is what a task WRITES. `Lê:` is what it only reads, and costs no
+parallelism. `Depende: T-001` is how a task says it runs after another one —
+overlap cannot say it, because overlap is symmetric and "after" is not. A lane is
+branched from HEAD, so a file you merely read is the version from before the run
+until you declare the dependency; the plan tells you when that gap exists.
+
+After every task commits, the pipeline runs the project's **approved** test
+command inside that lane and stops the lane if it fails, so a broken test is
+attributed to the task that broke it instead of surfacing at `adp verify` after
+the merge. This spends the consent `adp trust` already holds and grants the agent
+nothing new.
+
 `adp monitor` serves a read-only page with the gates and per-feature progress.
 `adp doctor` checks this copy of the tool against its own manifest — reach for it
 when something behaves impossibly, before blaming the project.

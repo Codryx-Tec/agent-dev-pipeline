@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 5758,
-  "verifiedAt": "2026-08-04T14:32:54.612Z",
-  "gitRev": "be80f7c8ec04849848045840fb73cc5fdb9bdfe4",
+  "durationMs": 6419,
+  "verifiedAt": "2026-08-04T17:43:00.137Z",
+  "gitRev": "f5fca8b5b8475d5749fd6f001ea91180bd6a561d",
   "gitDirty": true,
-  "codeMtime": 1785853674468.9326,
+  "codeMtime": 1785865041771.4487,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -723,6 +723,99 @@
         },
         {
           "title": "cleanup never touches a worktree this tool did not create @spec:AC-043",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-044": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a task declares what it runs after, and keeps its own lane @spec:AC-044",
+          "status": "pass"
+        },
+        {
+          "title": "a dependency orders tasks inside a lane too @spec:AC-044",
+          "status": "pass"
+        },
+        {
+          "title": "lanes that depend on each other are merged, not ordered @spec:AC-044",
+          "status": "pass"
+        },
+        {
+          "title": "a dependency already concluded is satisfied, not waited for @spec:AC-044",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-045": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "what a task writes, what it reads and what it follows are three claims @spec:AC-045",
+          "status": "pass"
+        },
+        {
+          "title": "the English spellings and a lower-case id parse the same @spec:AC-045",
+          "status": "pass"
+        },
+        {
+          "title": "a task declaring neither reads nor dependencies gets empty lists @spec:AC-045",
+          "status": "pass"
+        },
+        {
+          "title": "a file a task only reads does not collapse lanes @spec:AC-045",
+          "status": "pass"
+        },
+        {
+          "title": "declaring the order silences the stale-read warning @spec:AC-045",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-046": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a dependency cycle is reported, never broken arbitrarily @spec:AC-046",
+          "status": "pass"
+        },
+        {
+          "title": "a task depending on itself is a cycle of one @spec:AC-046",
+          "status": "pass"
+        },
+        {
+          "title": "a dependency on an id no task declares is refused @spec:AC-046",
+          "status": "pass"
+        },
+        {
+          "title": "waiting on a task that will not run keeps you out of the plan too @spec:AC-046",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-047": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the approved tests run in the lane, and a failure names the task @spec:AC-047",
+          "status": "pass"
+        },
+        {
+          "title": "a lane whose tests pass finishes normally @spec:AC-047",
+          "status": "pass"
+        },
+        {
+          "title": "a fresh worktree gets the ignored artefacts the tests need @spec:AC-047",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-048": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "lane tests need no grant beyond the one already given @spec:AC-048",
           "status": "pass"
         }
       ]

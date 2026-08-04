@@ -431,6 +431,132 @@ never renders with `innerHTML`: the documents are the user's own, but a title is
 still untrusted input. And a read-only page means the whole of M5 stays dead —
 if editing is ever wanted, this decision is what must be revisited first.
 
+### D-014 — Ordering is declared; parallelism is inferred from writes alone
+
+**Answers Q-010.**
+
+**Alternatives considered**
+
+1. *`Depende:` alone.* Add explicit ordering, and keep uniting lanes on every
+   file a task declares. The smallest change to the planner.
+2. *`Lê:` alone.* Distinguish reading from writing so lanes stop collapsing on a
+   shared read, and leave ordering to emerge from write overlap as it does today.
+3. *Both.* Ordering becomes declarable and reading stops implying collision.
+
+**Decision: alternative 3 — both, because either one alone leaves the other's
+failure in place.**
+
+**Rationale.** Option 1 answers the question as asked and leaves the reason it was
+asked. The experiment's fourth task did not want to declare three files; it wanted
+to run last, and declaring files was the only lever available. Give it `Depende:`
+while `Lê:` still costs parallelism and the lever is still there, still cheaper
+than being precise. Option 2 removes the incentive but not the gap: without a way
+to say "after", a task that genuinely needs another's output has nothing to say it
+with, and the honest thing left is to declare a false write. Each option fixes the
+half that makes the other half survivable.
+
+A task says what it runs after with `Depende: T-001`, and what it merely reads
+with `Lê: src/a.js`. Neither existed before, and their absence had a cost that
+only showed up when the executor first ran.
+
+**Why ordering cannot be inferred.** The planner had exactly one mechanism: two
+tasks declaring the same file run in the same lane. That is the right rule for
+safety and it cannot express "after", because file overlap is symmetric and
+"after" is not. The experiment that raised Q-010 showed what people do with the
+mechanism they have — the fourth task declared three files it only READ, in order
+to be pulled into everyone else's lane and therefore run last. It worked, and it
+collapsed all four tasks into one lane. Ordering and parallelism were the same
+mechanism, so buying either one spent the other.
+
+**Why reads are a separate claim.** A lane is a worktree, so two tasks reading the
+same file cannot collide; charging a reader the parallelism of every writer was
+paying for a conflict that cannot happen. What reading does not buy is the
+writer's version: the worktree is branched from HEAD, so a reader sees the
+pre-run file. That gap is REPORTED rather than refused — reading the pre-run
+version is legitimate and often the intent, and the two cases are indistinguishable
+in the document. A warning names the task, the file and the writer.
+
+**What is refused rather than guessed.** A dependency cycle, a dependency on an id
+no task declares, and a dependency on a task that will not run in this plan. All
+three go to the sequential remainder with the reason stated. Breaking a cycle by
+picking a member to go first would invent a decision the documents did not make,
+which is the same shape of mistake as counting a skipped test as proof.
+
+**Mutually dependent LANES are merged, not refused.** Two lanes can each need to
+follow the other without any single task being circular — A's first task follows
+B's, B's second follows A's. There is no order, but there is no contradiction
+either, so the lanes become one lane and the tasks inside it are ordered normally.
+
+**Consequences.** Lanes carry a stage number and the executor iterates stages
+rather than lanes, merging each stage before branching the next — which is the
+only thing that makes "after" mean anything at runtime, since a lane sees a
+dependency's work solely because it already landed. `--no-merge` therefore cannot
+be combined with a plan of more than one stage: nothing would land, and the
+ordering would be announced and not delivered. `--lane` can still select a lane
+whose dependency is not in the run; that is the operator's choice and is printed
+before the confirmation rather than discovered in the diff.
+
+### D-015 — The orchestrator runs the tests in the lane; the worker still cannot
+
+**Answers Q-009.**
+
+**Alternatives considered**
+
+1. *`--allow-tests`.* A flag permitting the worker to execute exactly the approved
+   `testCommand` through its harness, giving it a real feedback loop: run, watch
+   it fail, fix it.
+2. *The orchestrator runs them.* After each task commits, the executor runs that
+   same approved command in the lane and attributes the result to the task.
+3. *Both*, with the lane's run as an independent verdict on top of the worker's.
+
+**Decision: alternative 2 — the orchestrator runs them, and the worker is granted
+nothing.**
+
+**Rationale.** The failure recorded in Q-009 was not that workers guessed; it was
+that nothing in the lane noticed when they guessed wrong, so a broken test arrived
+at `adp verify` after the merge belonging to no task. Option 2 fixes exactly that,
+using consent that already exists. Option 1 fixes a different and unproven problem
+— all four workers in the experiment were in fact correct — and pays for it with a
+much larger grant. Option 3 buys the same verdict twice: the orchestrator would
+not take the worker's word for it anyway, so the worker's run is a second full
+suite per task in exchange for a feedback loop nothing yet says is needed.
+
+After each task commits, the executor runs the project's `testCommand` inside that
+lane's worktree and attributes the result to that task. The worker is granted
+nothing it did not have before.
+
+**The grant already existed.** `adp trust` binds consent to one exact command,
+and the orchestrator holds it. Running that command is not a new permission, it
+is the permission already given, used in a directory that happens to be a
+worktree. The alternative under consideration — letting the worker execute the
+test command through its harness — would have been a genuinely larger grant:
+editing files in a worktree is bounded by the diff a human reviews, and executing
+commands is not.
+
+**What this buys, stated narrowly.** Attribution, and nothing else. Before it, a
+worker that wrote a failing test could not run it, said so, and the failure
+surfaced at `adp verify` after the merge, belonging to no task in particular. Now
+it stops the lane and names the task. What it does NOT buy is a feedback loop:
+the worker still cannot see its own tests fail and fix them, so Q-009's second
+half is answered "no" rather than "later".
+
+**The tests run after the commit, deliberately.** A task whose tests fail has
+still produced work, and its branch is the only place that work exists. Stopping
+before the commit would leave it in a worktree, one `git worktree remove` from
+gone.
+
+**Consequences.** A fresh worktree holds what git tracks, and installed
+dependencies are the one thing every project deliberately does not track — so
+`npm test` in a new lane would fail on a missing module rather than on the code,
+which would make this useless everywhere except a project with no dependencies.
+Paths named in `parallel.linkIntoWorktree` (default `node_modules`) are symlinked
+in, but only when they already exist at the root and only when git confirms they
+are ignored: a linked directory git can see would be swept into the lane's
+`git add -A`, which is worse than the tests not running. When there is no test
+command, or none approved, the runner is absent and the run proceeds without it —
+the check is optional, and its absence costs the run its attribution, not its
+result. `--no-lane-tests` turns it off for a suite too slow to run per task.
+
 ---
 
 ## Assumptions
@@ -594,23 +720,36 @@ answered before G2 can pass.
   the diff is reviewed before it merges. Handing it those rights by default, and
   silently, is the same mistake `adp trust` was built to prevent.)*
 - **Q-009** — Should a worker be able to run the tests it writes? *(status:
-  aberta — surfaced by the first real run. `--allow-edits` grants writes and not
-  execution, so all four workers wrote tests they could never execute and said
-  so: "tests were not run locally because execution required approval". They
-  happened to be correct. The next four might not be, and nothing in the lane
-  would notice — the failure would surface at `adp verify`, after the merge,
-  attributed to no particular task.*
+  respondida — no, and it does not need to. The question assumed the only way to
+  get a test result inside a lane was to let the worker produce it. The
+  orchestrator can run the tests itself, in the worktree, using consent it
+  already holds, and attribute the result to the task that just committed. See
+  D-015.*
 
-  *The tension is real in both directions. A worker that can run its own tests
-  gets a feedback loop and stops guessing; a worker that can run arbitrary
-  commands in a worktree is a much larger grant than editing files in one, and
-  it is the grant `adp trust` spends its whole existence withholding. A middle
-  option exists — permit exactly the project's configured `testCommand`, which
-  is already the one command a human has explicitly approved.)*
+  *So the answer splits the question in two. The part that mattered — a failing
+  test surfacing in the lane that caused it rather than at `adp verify` after
+  the merge, owned by nobody — is delivered. The part that was a genuine grant
+  is declined: the worker still cannot execute anything, because letting an agent
+  run commands in a worktree is not the same size of decision as letting it edit
+  files there, and no evidence yet says the feedback loop is worth it. Reopen it
+  if workers start failing in ways only they could have caught.)*
+
+  *Original finding, kept because it is the evidence: surfaced by the first real
+  run. `--allow-edits` grants writes and not execution, so all four workers wrote
+  tests they could never execute and said so: "tests were not run locally because
+  execution required approval". They happened to be correct. The next four might
+  not be, and nothing in the lane would notice.)*
 - **Q-010** — How does a task declare that it runs after another one? *(status:
-  aberta — surfaced by the same run. There is no way to say "after"; there is
-  only file overlap, and overlap is symmetric. The experiment's fourth task
-  declared the three files it merely reads, to force itself to run last, and the
-  planner collapsed all four tasks into a single lane — the connected component
-  swallowed the graph. Ordering and parallelism are currently the same
-  mechanism, so buying either one spends the other.)*
+  respondida — with `Depende: T-001`, and the companion it turned out to need,
+  `Lê:` for files a task reads without writing. See D-014.*
+
+  *The question as asked has a one-line answer, and answering only that would
+  have left the hack in place: the fourth task's real problem was that declaring
+  a file it merely read cost everyone who wrote that file their parallelism.
+  Ordering had to become declarable AND reading had to stop implying collision,
+  or the second would keep being used to buy the first.)*
+
+  *Original finding, kept because it is the evidence: surfaced by the same run.
+  The experiment's fourth task declared the three files it merely reads, to force
+  itself to run last, and the planner collapsed all four tasks into a single lane
+  — the connected component swallowed the graph.)*

@@ -207,6 +207,93 @@ export function runVerification(project, config, { env = process.env, timeout } 
 }
 
 /**
+ * The test command, prepared to run inside a lane's worktree.
+ *
+ * Q-009 asked whether a worker should be able to run the tests it writes. The
+ * answer is that nobody needs to grant it anything: the orchestrator already
+ * holds consent for exactly one command — the project's `testCommand`, approved
+ * by a human through `adp trust` — so it runs that command itself, in the lane,
+ * and attributes the result to the task that just committed.
+ *
+ * What that buys is attribution. Before it, a worker that wrote a failing test
+ * could not run it and said so; the failure surfaced at `adp verify` after the
+ * merge, belonging to no task in particular. What it deliberately does not buy
+ * is a feedback loop for the worker — the worker still cannot execute anything,
+ * because letting an agent run arbitrary commands in a worktree is a far larger
+ * grant than letting it edit files there, and it is the grant `adp trust` spends
+ * its whole existence withholding.
+ *
+ * Returns `{runner: null, reason}` rather than throwing when the command is
+ * missing or unapproved. A lane that cannot run tests is still worth running;
+ * refusing the whole run would make an optional check mandatory, and the caller
+ * is told exactly why it is off.
+ *
+ * @returns {{runner: function|null, command: string|null, reason: string|null}}
+ */
+export function makeLaneTestRunner(project, config, { env = process.env, timeout } = {}) {
+  const command = config.testCommand;
+  if (!command) {
+    return { runner: null, command: null, reason: 'the project declares no testCommand' };
+  }
+
+  // Consent, before the process exists — the same check `verify` makes, for the
+  // same reason. A worktree is still this machine, and a command out of the
+  // repository is still a stranger's code.
+  const trust = checkTrust(project.rootDir, command, config, env);
+  if (!trust.trusted) {
+    return {
+      runner: null,
+      command,
+      reason:
+        trust.reason === 'changed'
+          ? 'the test command changed since it was approved — run `adp trust`'
+          : 'the test command has not been approved on this machine — run `adp trust`',
+    };
+  }
+
+  const timeoutMs = timeout ?? DEFAULT_TIMEOUT_MS;
+
+  return {
+    command,
+    reason: null,
+    runner({ cwd }) {
+      const started = Date.now();
+      const proc = spawnSync(command, {
+        cwd,
+        shell: true,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        maxBuffer: 128 * 1024 * 1024,
+        env,
+      });
+      const durationMs = Date.now() - started;
+      const output = `${proc.stdout ?? ''}${proc.stderr ?? ''}`;
+
+      if (proc.error?.code === 'ETIMEDOUT') {
+        return {
+          ok: false,
+          exitCode: null,
+          durationMs,
+          output,
+          summary: `the tests exceeded ${Math.round(timeoutMs / 1000)}s in the lane and were killed`,
+        };
+      }
+      if (proc.error) {
+        return { ok: false, exitCode: null, durationMs, output, summary: `could not run the tests: ${proc.error.message}` };
+      }
+
+      return {
+        ok: proc.status === 0,
+        exitCode: proc.status,
+        durationMs,
+        output,
+        summary: proc.status === 0 ? 'tests passed in the lane' : `tests FAILED in the lane (exit ${proc.status})`,
+      };
+    },
+  };
+}
+
+/**
  * Write one record per feature, holding only the criteria that feature owns.
  *
  * Per feature rather than one global file because the audit reads per feature,

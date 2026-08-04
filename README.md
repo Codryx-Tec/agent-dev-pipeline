@@ -88,7 +88,7 @@ unique **across the whole project**, not per file.
 |---|---|---|
 | `PRD.md` | **what**, for **whom**, **why** | `US-xxx` stories · `AC-xxx` acceptance criteria |
 | `RFC.md` | **which path**, among the possible ones | `ASM-xxx` assumptions · `Q-xxx` open questions |
-| `TDD.md` | **how**, in detail | `T-xxx` tasks, each declaring `Refs:` and `Arquivos:` |
+| `TDD.md` | **how**, in detail | `T-xxx` tasks, each declaring `Refs:`, `Arquivos:` and optionally `Lê:` and `Depende:` |
 
 They are three documents rather than one because the three questions have
 different audiences and different lifetimes: *what and why* changes when the

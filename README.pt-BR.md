@@ -92,7 +92,7 @@ arquivo.
 |---|---|---|
 | `PRD.md` | **o quê**, para **quem**, **por quê** | histórias `US-xxx` · critérios de aceite `AC-xxx` |
 | `RFC.md` | **qual caminho**, entre os possíveis | premissas `ASM-xxx` · questões em aberto `Q-xxx` |
-| `TDD.md` | **como**, em detalhe | tarefas `T-xxx`, cada uma declarando `Refs:` e `Arquivos:` |
+| `TDD.md` | **como**, em detalhe | tarefas `T-xxx`, cada uma declarando `Refs:`, `Arquivos:` e opcionalmente `Lê:` e `Depende:` |
 
 São três documentos em vez de um porque as três perguntas têm públicos e tempos
 de vida diferentes: *o quê e por quê* muda quando o negócio muda, *qual

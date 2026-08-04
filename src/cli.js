@@ -16,7 +16,7 @@ import { initProject, newFeature, renderReport, AGENT_SKILL_DIRS, PAYLOAD_DIR } 
 import { verifyPayload, renderIntegrity } from './core/integrity.js';
 import { checkTrust, grantTrust, revokeTrust, renderRefusal, storePath, TRUST_ENV } from './core/trust.js';
 import { startMonitor } from './server/server.js';
-import { runVerification, writeRecords, summarise, VerifyRefused } from './core/verify.js';
+import { runVerification, writeRecords, summarise, VerifyRefused, makeLaneTestRunner } from './core/verify.js';
 import { buildPlan, renderPlan } from './core/plan.js';
 import { runLane, mergeLane, isGitRepo, cleanupLane, cleanWorktrees, listOurWorktrees } from './core/executor.js';
 import { rerunLane } from './core/rerun.js';
@@ -49,9 +49,9 @@ usage: adp <command> [options]
   verify [--background]     run the project's tests and record what they prove
   verify --status           how the last background verification is doing
   plan                      show the execution lanes, without running anything
-  run [--lane <id>] [--yes] [--allow-edits]
+  run [--lane <id>] [--yes] [--allow-edits] [--no-lane-tests]
                             execute pending tasks in isolated git worktrees
-  rerun <lane> [--yes] [--allow-edits]
+  rerun <lane> [--yes] [--allow-edits] [--no-lane-tests]
                             re-run one lane, leaving merged work alone
   clean [--force]           remove worktrees whose work is already merged
   resume                    where the work stands — read this first in a new session
@@ -78,6 +78,7 @@ options:
   --yes           skip the confirmation prompt (trust, run, rerun)
   --lane <id>     execute only this lane (run)
   --allow-edits   let the agent write to the worktree unasked (run, rerun)
+  --no-lane-tests skip the approved test command after each task (run, rerun)
   --note <s>      what the session was doing (checkpoint)
   --next <s>      what it intended to do next (checkpoint)
   --clear         forget the recorded note (checkpoint)
@@ -507,10 +508,35 @@ export async function run(argv) {
       console.error(err.message);
       return 2;
     }
+    // Q-009. The tests are the orchestrator's own, not a grant to the agent:
+    // this is the command a human already approved through `adp trust`, run in
+    // the lane so that a failure belongs to the task that caused it instead of
+    // surfacing at `adp verify` after the merge, owned by nobody.
+    const laneTests = flags['no-lane-tests']
+      ? { runner: null, command: config.testCommand ?? null, reason: 'disabled with --no-lane-tests' }
+      : makeLaneTestRunner(project, config);
+
+    // Ordering is delivered by merging each stage before the next one starts, so
+    // a later lane is branched from a tree that already holds what it depends on.
+    // With --no-merge nothing lands, and a lane that declared `Depende:` would
+    // run against a tree missing that work — announcing an order and not
+    // delivering it, which is worse than refusing to start.
+    if (flags['no-merge'] && new Set(lanes.map((l) => l.wave)).size > 1) {
+      console.error('error: --no-merge cannot deliver this plan.');
+      console.error('  It has more than one stage, which only works because each stage merges');
+      console.error('  before the next is branched. With --no-merge nothing merges, so a lane');
+      console.error('  that declared Depende: would run without the work it asked to follow.');
+      console.error('  Drop --no-merge, or narrow the run with --lane.');
+      return 2;
+    }
+
     console.log(renderPlan(plan));
     console.log('');
     console.log(`agent : ${agentCommand}`);
     console.log(`edits : ${allowEdits ? 'ALLOWED — the agent may write without asking' : 'not allowed (pass --allow-edits)'}`);
+    console.log(
+      `tests : ${laneTests.runner ? `${laneTests.command} — after every task, in the lane` : `not run (${laneTests.reason})`}`
+    );
     console.log(`state : ${storePath(config).replace(/\/[^/]+$/, '')}`);
     console.log('');
     console.log('Each task will be given to that agent in an isolated worktree, and its');
@@ -520,6 +546,20 @@ export async function run(argv) {
       console.log('Without --allow-edits the agent cannot write to the worktree, so every');
       console.log('task will finish having changed nothing. Pass it once you have read');
       console.log('the plan above and accept that the agent edits files unattended.');
+    }
+
+    // `--lane` can select a lane whose dependency is not in the same run. That is
+    // the caller's choice and not an error, but it changes what the lane is
+    // branched from, so it is said out loud before the confirmation rather than
+    // discovered in the diff.
+    const unmet = lanes.flatMap((l) =>
+      (l.after ?? []).filter((id) => !lanes.some((s) => s.id === id)).map((id) => `${l.id} runs after ${id}`)
+    );
+    if (unmet.length) {
+      console.log('');
+      console.log('these lanes declare an order against a lane this run will not execute:');
+      for (const line of unmet) console.log(`  ${line}`);
+      console.log('they will be branched from HEAD as it stands now.');
     }
     console.log('');
 
@@ -538,35 +578,21 @@ export async function run(argv) {
 
     const runTask = makeAgentRunner(project, config, { allowEdits });
     const outcomes = [];
-
-    if (command === 'rerun') {
-      outcomes.push(rerunLane(project, config, plan, positional[1], runTask, { runId }));
-    } else {
-      for (const lane of lanes) {
-        console.log(`\n── ${lane.id} ─────────────────────────────`);
-        const result = runLane(project, config, lane, runTask, { runId });
-        for (const r of result.results) {
-          console.log(`  ${r.ok ? '✔' : '✘'} ${r.task}  ${r.summary ?? ''}`);
-          if (r.undeclared?.length) {
-            console.log(`      touched undeclared: ${r.undeclared.join(', ')}`);
-          }
-        }
-        outcomes.push(result);
-      }
-    }
-
-    console.log('');
     let merged = 0;
     let conflicts = 0;
-    for (const outcome of outcomes) {
+
+    // Settling a lane is part of the loop rather than a pass at the end, because
+    // a later stage is branched from HEAD: a lane that declared `Depende:` only
+    // sees the work it depends on if that work has already merged back.
+    const settle = (outcome) => {
       const lane = plan.lanes.find((l) => l.id === outcome.lane);
       if (outcome.state !== 'done') {
         console.log(`✘ ${outcome.lane} ${outcome.state} — left on ${outcome.branch}`);
-        continue;
+        return;
       }
       if (flags['no-merge']) {
         console.log(`• ${outcome.lane} done — left on ${outcome.branch} (--no-merge)`);
-        continue;
+        return;
       }
       const m = mergeLane(project, config, lane, { runId });
       if (m.ok) {
@@ -579,6 +605,32 @@ export async function run(argv) {
       } else {
         conflicts++;
         console.log(m.message);
+      }
+    };
+
+    if (command === 'rerun') {
+      outcomes.push(rerunLane(project, config, plan, positional[1], runTask, { runId, runTests: laneTests.runner }));
+      console.log('');
+      for (const outcome of outcomes) settle(outcome);
+    } else {
+      const selected = new Set(lanes.map((l) => l.id));
+      const stages = plan.waves.map((w) => w.filter((id) => selected.has(id))).filter((w) => w.length);
+
+      for (const stage of stages) {
+        for (const laneId of stage) {
+          const lane = plan.lanes.find((l) => l.id === laneId);
+          console.log(`\n── ${lane.id} ─────────────────────────────`);
+          const result = runLane(project, config, lane, runTask, { runId, runTests: laneTests.runner });
+          for (const r of result.results) {
+            console.log(`  ${r.ok ? '✔' : '✘'} ${r.task}  ${r.summary ?? ''}`);
+            if (r.undeclared?.length) {
+              console.log(`      touched undeclared: ${r.undeclared.join(', ')}`);
+            }
+          }
+          outcomes.push(result);
+        }
+        console.log('');
+        for (const laneId of stage) settle(outcomes.find((o) => o.lane === laneId));
       }
     }
 
