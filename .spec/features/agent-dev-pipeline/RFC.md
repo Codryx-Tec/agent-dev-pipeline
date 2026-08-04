@@ -467,14 +467,30 @@ Status values: `aberta` · `confirmada` · `invalidada`.
   humans. *(status: confirmada — SCOPE §2 states single-tenant, single-operator)*
 - **ASM-004** — Task granularity in `TDD.md` stays small enough that one task is
   one commit and one worker invocation. If tasks routinely need conversation, the
-  worker contract in D-002 is wrong. *(status: aberta — and it cannot honestly be
-  closed yet, because there is no evidence either way. Confirming it needs runs
-  to look at, and the execution ledger contains none: 17 entries, all `verify`,
-  no lane has ever been executed. The 27 tasks in this document were written to
-  be one commit each, which is an intention rather than a measurement. What
-  closes this is a handful of real `adp run` invocations and a count of how many
-  needed a second pass — until then the worker contract in D-002 is a design
-  under test, and it should be described that way to anyone evaluating it.)*
+  worker contract in D-002 is wrong. *(status: confirmada at n=4 — measured, not
+  assumed, by running the executor against a throwaway project built for the
+  purpose. Four tasks of deliberately uneven size: two as small as a task can
+  honestly be, one carrying a real edge case, one written underspecified on
+  purpose to be the one that broke. **Four tasks, four invocations, no second
+  pass**, and the result was not merely accepted — `adp verify` proved 4/4
+  criteria and every gate came back clean. The underspecified task landed too,
+  which is the part that surprises.*
+
+  *Three conditions bound that number and must travel with it. The sample is
+  four, all written by one author who knew what the criteria meant. The tasks
+  were pure functions with obvious contracts — the easiest shape there is. And
+  no worker could run anything: `acceptEdits` grants file writes, not execution,
+  so all four wrote their tests blind and were right anyway. Confirmation
+  therefore covers "small, well-specified tasks succeed in one pass" and says
+  nothing yet about tasks needing exploration. What would invalidate it is a
+  run where workers routinely come back needing a second attempt; the count is
+  the measurement, and it is cheap to repeat.*
+
+  *One thing the run demonstrated incidentally: ASM-005's mitigation works, and
+  is needed more than expected. All four workers touched a file they had not
+  declared — `.claude/session-log.md` in every case, plus a `pnpm-lock.yaml`
+  nobody asked for — and all four were reported. Declared file lists are
+  routinely incomplete, and the check that notices is not optional.)*
 - **ASM-005** — Declaring a task's file list up front is accurate enough often
   enough to be useful. A worker that touches an undeclared file breaks the
   disjointness guarantee that makes lanes safe. *(status: confirmada — the mitigation is built: `runLane` compares what the commit actually touched against what the task declared and records an `undeclared-files` event. The declaration is trusted for planning and checked afterwards, which is the only honest combination.)*
@@ -577,3 +593,24 @@ answered before G2 can pass.
   rights inside a worktree is defensible, because the worktree is disposable and
   the diff is reviewed before it merges. Handing it those rights by default, and
   silently, is the same mistake `adp trust` was built to prevent.)*
+- **Q-009** — Should a worker be able to run the tests it writes? *(status:
+  aberta — surfaced by the first real run. `--allow-edits` grants writes and not
+  execution, so all four workers wrote tests they could never execute and said
+  so: "tests were not run locally because execution required approval". They
+  happened to be correct. The next four might not be, and nothing in the lane
+  would notice — the failure would surface at `adp verify`, after the merge,
+  attributed to no particular task.*
+
+  *The tension is real in both directions. A worker that can run its own tests
+  gets a feedback loop and stops guessing; a worker that can run arbitrary
+  commands in a worktree is a much larger grant than editing files in one, and
+  it is the grant `adp trust` spends its whole existence withholding. A middle
+  option exists — permit exactly the project's configured `testCommand`, which
+  is already the one command a human has explicitly approved.)*
+- **Q-010** — How does a task declare that it runs after another one? *(status:
+  aberta — surfaced by the same run. There is no way to say "after"; there is
+  only file overlap, and overlap is symmetric. The experiment's fourth task
+  declared the three files it merely reads, to force itself to run last, and the
+  planner collapsed all four tasks into a single lane — the connected component
+  swallowed the graph. Ordering and parallelism are currently the same
+  mechanism, so buying either one spends the other.)*
