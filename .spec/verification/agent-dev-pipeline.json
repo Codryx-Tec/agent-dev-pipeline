@@ -3,9 +3,9 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 5731,
-  "verifiedAt": "2026-08-04T14:28:30.811Z",
-  "gitRev": "dd985b5c157a0afbfeeeff523aa32b4dc5c6886b",
+  "durationMs": 5758,
+  "verifiedAt": "2026-08-04T14:32:54.612Z",
+  "gitRev": "be80f7c8ec04849848045840fb73cc5fdb9bdfe4",
   "gitDirty": true,
   "codeMtime": 1785853674468.9326,
   "results": {

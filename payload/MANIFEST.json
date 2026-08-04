@@ -3,7 +3,7 @@
   "algorithm": "sha256",
   "fileCount": 47,
   "files": {
-    "AGENTS.md": "cefc525f67d8b83341153939faebc626b083fdbeab38fa17d375b568ee9255b3",
+    "AGENTS.md": "46795008e914bf50caf608f9f9a0d714d48552bbea69844c1c955800f9d77ed2",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/architect.md": "66dac301b9385f03a56ccf88d71a0879a0eb9d174b1829c7a7675b832c89e328",
     "claude/agents/backend.md": "4320af5e158579adafcc77bee43ac790460f902eebc84d6802b756a1eaf72122",
