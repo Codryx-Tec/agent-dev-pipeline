@@ -32,6 +32,7 @@
     "!.exemplo/.spec/verification/*.json",
     "README.md",
     "README.pt-BR.md",
+    "THIRD-PARTY-NOTICES.md",
     "INSTALL.md",
     "ARCHITECTURE.md"
   ],

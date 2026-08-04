@@ -439,15 +439,20 @@ Status values: `aberta` · `confirmada` · `invalidada`.
 
 - **ASM-001** — The configured agent CLI supports a non-interactive invocation
   that accepts a prompt, performs file edits and exits with a meaningful status
-  code. *(status: aberta — half of this is now settled and half is not, and the
-  half that is not is the half that matters. Settled: the invocation exists and
-  is stable. `resolveAgentCommand` maps claude to `claude -p '{{PROMPT}}'`, and
-  that CLI documents `-p/--print` as its non-interactive mode; a CLI missing from
-  PATH already fails by name rather than by crash. Unsettled: that a run actually
-  edits files and reports success or failure honestly through its exit code.
-  Nothing here has ever observed that, because the executor has never run — the
-  ledger holds 17 entries and every one of them is a `verify`. This closes the
-  first time `adp run` completes a real task, not before.)*
+  code. *(status: confirmada — exercised directly against Claude Code 2.1.221 in
+  a scratch directory, all three clauses separately. Prompt accepted and answered:
+  `claude -p` returned the requested output and exited 0. File edits performed: a
+  run asked for a named file with exact contents produced that file, with those
+  contents. Status code meaningful: an invalid flag exited 1 where the successful
+  runs exited 0, so the executor can tell the two apart.*
+
+  *One finding came out of confirming it, and it matters more than the assumption
+  did. The edit only happened because the invocation carried
+  `--permission-mode acceptEdits`. What `resolveAgentCommand` actually configures
+  is `claude -p '{{PROMPT}}'`, with no permission flag, and under the default mode
+  a non-interactive run has no way to answer the approval it needs. The CLI can do
+  what D-002 requires; the invocation this project would send it cannot. See
+  Q-008.)*
 - **ASM-002** — The host project's test runner can emit per-test results in a
   machine-readable form. Their `spec.config.json` runs `pytest` and `vitest`, both
   of which can, but the exact reporter flags are unconfirmed. *(status: confirmada —
@@ -542,3 +547,21 @@ answered before G2 can pass.
   feedback than a job id; background is opt-in for the case where it is not.
   Nothing about the verdict changes — a background run writes the same proof
   record, so the audit cannot tell the difference and neither can a gate.)*
+- **Q-008** — **blocking for M6.** Under which permission mode does the executor
+  invoke the agent? *(status: aberta — surfaced while confirming ASM-001. The
+  invocation in `resolveAgentCommand` is `claude -p '{{PROMPT}}'`. In the default
+  permission mode that run cannot edit a file: it needs an approval, and a
+  non-interactive process has nobody to ask. The same prompt with
+  `--permission-mode acceptEdits` wrote the file and exited 0. So the executor as
+  configured cannot perform the work D-002 assigns it, and no test caught this
+  because the executor has never run.*
+
+  *The fix is one flag and the decision behind it is not. This project's whole
+  argument is that execution requires consent — `adp trust` exists so that a test
+  command cannot run until a human approves it. Handing an agent blanket edit
+  rights inside a worktree is defensible, because the worktree is disposable and
+  the diff is reviewed before it merges; handing it those rights by default,
+  silently, is the same mistake `adp trust` was built to prevent. The options are
+  to carry the flag in the default args, to require the operator to put it in
+  `agent.command`/`agent.args` themselves, or to gate it behind an explicit
+  `adp run --allow-edits`. Answer before M6.)*
