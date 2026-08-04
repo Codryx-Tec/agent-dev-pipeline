@@ -24,7 +24,7 @@
 // Assumptions and questions are read from bullets OR from a table, because
 // dialect B tabulates them.
 
-import { lineOf, blocksBetween, stripCode, fold } from '../util/text.js';
+import { lineOf, blocksBetween, stripNonGrammar, fold } from '../util/text.js';
 
 const RE_DECISION = /^###\s+(D-\d+)\s*[—–-]\s*(.+?)\s*$/gm;
 const RE_ITEM = /^\s*[-*]\s*\*\*((?:ASM|Q)-\d+)\*\*/gm;
@@ -140,7 +140,7 @@ function parseTableItems(scan, content, file, sectionRe, kind) {
 }
 
 export function parseRfc(content, file) {
-  const scan = stripCode(content);
+  const scan = stripNonGrammar(content);
 
   const decisions = parseNativeDecisions(scan, content, file);
   const optionsDecision = parseOptionsDecision(scan, content, file);

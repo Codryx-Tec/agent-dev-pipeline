@@ -65,5 +65,7 @@ jobs:
       - name: Payload manifest is current
         run: node scripts/build-manifest.js --check
 
-      - name: Nothing unexpected in the published tarball
-        run: npm pack --dry-run
+      # The tarball is checked by the supply-chain invariants above, which read
+      # what `npm pack` reports and compare it to an expectation. The step that
+      # used to live here ran the same command and discarded the output, so it
+      # passed no matter what was in the package.

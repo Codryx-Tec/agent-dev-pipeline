@@ -49,8 +49,10 @@ usage: adp <command> [options]
   verify [--background]     run the project's tests and record what they prove
   verify --status           how the last background verification is doing
   plan                      show the execution lanes, without running anything
-  run [--lane <id>] [--yes] execute pending tasks in isolated git worktrees
-  rerun <lane> [--yes]      re-run one lane, leaving merged work alone
+  run [--lane <id>] [--yes] [--allow-edits]
+                            execute pending tasks in isolated git worktrees
+  rerun <lane> [--yes] [--allow-edits]
+                            re-run one lane, leaving merged work alone
   clean [--force]           remove worktrees whose work is already merged
   resume                    where the work stands — read this first in a new session
   checkpoint --note "<s>"   record what you were doing, for the next session
@@ -75,6 +77,7 @@ options:
   --host <addr>   bind address for the monitor (default 127.0.0.1, loopback)
   --yes           skip the confirmation prompt (trust, run, rerun)
   --lane <id>     execute only this lane (run)
+  --allow-edits   let the agent write to the worktree unasked (run, rerun)
   --note <s>      what the session was doing (checkpoint)
   --next <s>      what it intended to do next (checkpoint)
   --clear         forget the recorded note (checkpoint)
@@ -490,14 +493,34 @@ export async function run(argv) {
     // CONSENT. `run` invokes an AI that writes code and whose work gets
     // committed. The agent command comes out of the project's config, same as
     // testCommand — and unlike a test run, the blast radius is the repository.
-    const agentCommand = describeAgentCommand(config);
+    // Granting write access is a separate decision from starting a run, so it is
+    // a separate flag and it is named in the consent text. Without it the agent
+    // is invoked in whatever mode it defaults to, which for every harness worth
+    // trusting means it must ask before writing — and a headless process has
+    // nobody to ask. That produces a lane that does nothing, reports nothing
+    // useful, and looks like the agent failed.
+    const allowEdits = Boolean(flags['allow-edits']);
+    let agentCommand;
+    try {
+      agentCommand = describeAgentCommand(config, { allowEdits });
+    } catch (err) {
+      console.error(err.message);
+      return 2;
+    }
     console.log(renderPlan(plan));
     console.log('');
     console.log(`agent : ${agentCommand}`);
+    console.log(`edits : ${allowEdits ? 'ALLOWED — the agent may write without asking' : 'not allowed (pass --allow-edits)'}`);
     console.log(`state : ${storePath(config).replace(/\/[^/]+$/, '')}`);
     console.log('');
     console.log('Each task will be given to that agent in an isolated worktree, and its');
     console.log('work committed. Your working tree is not touched until a lane merges.');
+    if (!allowEdits) {
+      console.log('');
+      console.log('Without --allow-edits the agent cannot write to the worktree, so every');
+      console.log('task will finish having changed nothing. Pass it once you have read');
+      console.log('the plan above and accept that the agent edits files unattended.');
+    }
     console.log('');
 
     if (!flags.yes) {
@@ -513,7 +536,7 @@ export async function run(argv) {
       }
     }
 
-    const runTask = makeAgentRunner(project, config);
+    const runTask = makeAgentRunner(project, config, { allowEdits });
     const outcomes = [];
 
     if (command === 'rerun') {

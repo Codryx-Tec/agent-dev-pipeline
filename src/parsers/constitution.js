@@ -11,7 +11,7 @@
 // Levels are accepted in both vocabularies, because Projeto_Agent uses
 // MUST/SHOULD/MAY and the reference engine uses DEVE/RECOMENDADO/PODE.
 
-import { lineOf, blocksBetween, stripCode, fold } from '../util/text.js';
+import { lineOf, blocksBetween, stripNonGrammar, fold } from '../util/text.js';
 
 const RE_PRINCIPLE = /^##\s+(P-\d+)\s*\[([^\]]+)\]\s*(.*)$/gm;
 const RE_VERIFICATION = /^\s*[-*]\s*verifica(?:tion|ção|cao)\((gate|test|teste|forbidden|proibido|required|obrigatorio|obrigat[óo]rio)\)\s*:\s*(.+)$/gim;
@@ -42,12 +42,12 @@ const KINDS = {
 
 export function parseConstitution(content, file) {
   if (content == null) return { kind: 'constitution', file, principles: [], present: false };
-  const scan = stripCode(content);
+  const scan = stripNonGrammar(content);
 
   const principles = blocksBetween(scan, [...scan.matchAll(RE_PRINCIPLE)]).map(
     ({ match, start, end }) => {
       // verifications are read from the ORIGINAL text: their patterns and globs
-      // live inside backticks, which stripCode() blanked out for scanning
+      // live inside backticks, which stripNonGrammar() blanked out for scanning
       const body = content.slice(start, end);
       const rawLevel = fold(match[2]);
       const level = LEVELS[rawLevel] ?? null;

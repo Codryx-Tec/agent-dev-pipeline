@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 6555,
-  "verifiedAt": "2026-08-03T16:18:24.026Z",
-  "gitRev": null,
-  "gitDirty": null,
-  "codeMtime": 1785772400197.8677,
+  "durationMs": 5758,
+  "verifiedAt": "2026-08-04T14:32:54.612Z",
+  "gitRev": "be80f7c8ec04849848045840fb73cc5fdb9bdfe4",
+  "gitDirty": true,
+  "codeMtime": 1785853674468.9326,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -176,6 +176,14 @@
         },
         {
           "title": "confidence is not mapped onto status @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "the grammar shown in an HTML comment is documentation, not an element @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "blanking a comment does not move the lines after it @spec:AC-008",
           "status": "pass"
         }
       ]
@@ -410,6 +418,14 @@
         },
         {
           "title": "an unknown agent is refused with the ones that are known @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "permission to write is withheld unless it is asked for @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "a harness whose write flags are unknown refuses rather than guesses @spec:AC-020",
           "status": "pass"
         }
       ]

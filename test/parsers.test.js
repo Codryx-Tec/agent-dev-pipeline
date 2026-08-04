@@ -243,3 +243,66 @@ test('confidence is not mapped onto status @spec:AC-008', () => {
   // "High confidence" does not mean "confirmed". Missing status stays missing.
   assert.equal(parseRfc(doc, 'RFC.md').assumptions[0].status, null);
 });
+
+// The grammar is documented inside the documents it governs. Every file `adp new`
+// scaffolds opens with an HTML comment showing the shapes, and those examples
+// were parsed as real elements — so a brand-new project failed G2 on a blocking
+// question that existed only in the instructions explaining how to write one.
+// Found by running the tool on a fresh project rather than on .exemplo, whose
+// comments had long since been deleted.
+
+test('the grammar shown in an HTML comment is documentation, not an element @spec:AC-008', () => {
+  const doc = [
+    '# RFC: thing',
+    '',
+    '<!--',
+    'GRAMMAR:',
+    '  - **ASM-001** — text *(status: aberta|confirmada)*',
+    '  - **Q-001** — text *(status: aberta)*  add **blocking** if it gates the path',
+    '-->',
+    '',
+    '## Decisions',
+    '',
+    '### D-001 — A real decision',
+    '',
+    '**Alternatives considered**',
+    '',
+    '1. *One.* costs something',
+    '2. *Two.* costs something else',
+    '',
+    '**Decision: alternative 2 — Two.**',
+    '',
+    '## Assumptions',
+    '',
+    '- **ASM-010** — a real assumption *(status: confirmada)*',
+    '',
+    '## Open questions',
+    '',
+    '- **Q-010** — a real question *(status: respondida)*',
+  ].join('\n');
+
+  const parsed = parseRfc(doc, 'RFC.md');
+  assert.deepEqual(parsed.assumptions.map((a) => a.id), ['ASM-010']);
+  assert.deepEqual(parsed.questions.map((q) => q.id), ['Q-010']);
+  // The one that actually broke G2: `blocking` inside the comment made the
+  // engine believe the path was gated by a question nobody had written.
+  assert.equal(parsed.questions.filter((q) => q.blocking).length, 0);
+});
+
+test('blanking a comment does not move the lines after it @spec:AC-008', () => {
+  // Findings point at file:line. A strip that removed the comment instead of
+  // blanking it would report every element below at the wrong line, which is
+  // worse than not reporting it — it sends you somewhere else in the file.
+  //
+  // Asserted as a difference rather than an absolute, because the absolute
+  // would also encode where this parser chooses to anchor a block, and that is
+  // a separate question from whether stripping moved anything.
+  const tail = ['## Assumptions', '', '- **ASM-020** — real *(status: aberta)*'];
+  const without = parseRfc(['# RFC: thing', '', ...tail].join('\n'), 'RFC.md');
+  const withComment = parseRfc(
+    ['# RFC: thing', '', '<!--', 'two', 'lines', '-->', '', ...tail].join('\n'),
+    'RFC.md'
+  );
+  // Five lines of comment were inserted, so the element moved down by exactly five.
+  assert.equal(withComment.assumptions[0].line - without.assumptions[0].line, 5);
+});

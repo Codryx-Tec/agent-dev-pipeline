@@ -42,6 +42,22 @@ export function stripCode(content) {
     .replace(/`[^`\n]*`/g, (span) => ' '.repeat(span.length));
 }
 
+// Same bug, other syntax. Every scaffolded document opens with an HTML comment
+// showing the grammar — `- **Q-001** — text ... add **blocking**` and friends —
+// and those examples were being parsed as real elements. A project created by
+// `adp new` failed G2 on a blocking question that existed only inside the
+// instructions telling you how to write one.
+export function stripComments(content) {
+  return content.replace(/<!--[\s\S]*?-->/g, (block) => block.replace(/[^\n]/g, ' '));
+}
+
+// What the parsers actually want: the document with everything that merely
+// *describes* the grammar blanked out, and every offset preserved so findings
+// still point at the right line.
+export function stripNonGrammar(content) {
+  return stripComments(stripCode(content));
+}
+
 // Blocks between consecutive anchors: [{ ...match, body }] where body runs from
 // the end of one anchor to the start of the next (or end of file).
 export function blocksBetween(content, matches) {

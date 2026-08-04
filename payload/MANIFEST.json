@@ -1,9 +1,9 @@
 {
   "manifestVersion": 1,
   "algorithm": "sha256",
-  "fileCount": 46,
+  "fileCount": 47,
   "files": {
-    "AGENTS.md": "cefc525f67d8b83341153939faebc626b083fdbeab38fa17d375b568ee9255b3",
+    "AGENTS.md": "46795008e914bf50caf608f9f9a0d714d48552bbea69844c1c955800f9d77ed2",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/architect.md": "66dac301b9385f03a56ccf88d71a0879a0eb9d174b1829c7a7675b832c89e328",
     "claude/agents/backend.md": "4320af5e158579adafcc77bee43ac790460f902eebc84d6802b756a1eaf72122",
@@ -20,6 +20,7 @@
     "claude/skills/adp/SKILL.md": "e658c7dbb80fdb04427a44bfc16881d6374a1fd32cc7e7d94c9cdbeb9e5c4719",
     "claude/skills/create-rfc/.skill-meta.json": "b3368039e2352688f48fc7aea068ac9dd9ff027a5165e645a3adeb79d0050e7e",
     "claude/skills/create-rfc/INTEGRATION.md": "c4e14c0c53ea3b86e879d0947025177cbb93a84ee65583bbe71d34d2448fed15",
+    "claude/skills/create-rfc/LICENSE": "8cd58eae8e643a9d0f900d279f0b6f80a6db3f86f885b122b52e930d6bcd1264",
     "claude/skills/create-rfc/README.md": "15b65c3a408807e652882d3d9bf2f2f6c917829ca80c14c858a22a809361f821",
     "claude/skills/create-rfc/SKILL.md": "8947fde8782d1632a96582e29ae05e43e4267155f56aa81a96312599f8d8bdca",
     "claude/skills/create-rfc/references/section-templates.md": "c4e82731e020e1ffe0195e516425ee2825287d09f3ea913f7ce91b4547866013",

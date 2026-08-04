@@ -67,7 +67,8 @@ that came from a repo. `adp trust` shows the human that exact command and asks.
    passed. Run it before claiming anything.
 6. **Never approve the test command for the human.** `adp trust` is their
    decision; `--yes` is not yours to use. The same goes for `adp run`, which
-   invokes an AI whose work gets committed.
+   invokes an AI whose work gets committed, and for `--allow-edits`, which lets
+   that AI write to the worktree without asking.
 7. **A decision without at least two alternatives is not a decision.** Write
    down what you rejected and why.
 8. **Assumptions and open questions are mandatory.** Filled a gap without
@@ -110,6 +111,12 @@ adp plan          # the lanes — show the human this before running anything
 adp run           # asks for confirmation, then executes
 adp rerun lane-02 # one lane again, leaving merged work untouched
 ```
+
+`adp run` on its own cannot write anything: the workers are invoked in a mode
+that must ask before editing, and a headless process has nobody to ask, so every
+task finishes having changed nothing. Writing is granted by `--allow-edits`, and
+that grant is the human's to make — like `adp trust` and `--yes`, it is not
+yours to add on their behalf.
 
 Tasks whose `Arquivos:` lists overlap share a lane and run in order; disjoint
 tasks run at the same time. **A task with no declared files is never

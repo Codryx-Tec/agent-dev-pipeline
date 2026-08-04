@@ -15,7 +15,7 @@
 //      block for a status token makes the last task inherit any status word
 //      that appears in later prose, because its block runs to end of file.
 
-import { lineOf, blocksBetween, stripCode, fold, splitList } from '../util/text.js';
+import { lineOf, blocksBetween, stripNonGrammar, fold, splitList } from '../util/text.js';
 
 export const TASK_STATUSES = ['pendente', 'em-andamento', 'em-teste', 'concluida'];
 
@@ -30,7 +30,7 @@ const RE_FILES = /^\s*[-*]\s*(?:Arquivos|Files):\s*(.+)$/m;
 const RE_FEATURE = /^>\s*feature:\s*(\S+)/m;
 
 export function parseTdd(content, file) {
-  const scan = stripCode(content);
+  const scan = stripNonGrammar(content);
   const matches = [...scan.matchAll(RE_TASK_LOOSE)];
 
   const tasks = blocksBetween(scan, matches).map(({ match, body }) => {

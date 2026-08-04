@@ -9,7 +9,7 @@
 // the document. A heading shown inside backticks is documentation about the
 // grammar, not an element of it.
 
-import { lineOf, blocksBetween, stripCode } from '../util/text.js';
+import { lineOf, blocksBetween, stripNonGrammar } from '../util/text.js';
 
 // Both languages are accepted: Projeto_Agent's documents already mix them, and
 // rejecting one would make the migration a rewrite.
@@ -33,7 +33,7 @@ export const SPEC_STATUSES = [
 ];
 
 export function parsePrd(content, file) {
-  const scan = stripCode(content);
+  const scan = stripNonGrammar(content);
 
   const storyMatches = [...scan.matchAll(RE_STORY)];
   const acMatches = [...scan.matchAll(RE_AC)];
