@@ -547,8 +547,25 @@ answered before G2 can pass.
   feedback than a job id; background is opt-in for the case where it is not.
   Nothing about the verdict changes — a background run writes the same proof
   record, so the audit cannot tell the difference and neither can a gate.)*
-- **Q-008** — **blocking for M6.** Under which permission mode does the executor
-  invoke the agent? *(status: aberta — surfaced while confirming ASM-001. The
+- **Q-008** — Under which permission mode does the executor invoke the agent?
+  *(status: respondida — behind an explicit `adp run --allow-edits`, and off by
+  default. The other two options were rejected for the same reason: carrying the
+  flag in the default args grants an agent silent write access to a repository,
+  which is precisely what `adp trust` exists to prevent for a mere test command;
+  and pushing it into `agent.args` hides a security decision inside a config
+  field where it is written once and never read again.*
+
+  *A flag is the only one of the three where the grant is stated at the moment it
+  is used, by the person it affects, and appears in the shell history afterwards.
+  The consent screen prints `edits : ALLOWED — the agent may write without asking`
+  when it is on, and when it is off it says plainly that every task will finish
+  having changed nothing — because the failure this replaces looked like a broken
+  agent rather than a missing permission. Harnesses whose write flags nobody has
+  verified refuse the flag instead of guessing at it: a wrong guess is silent and
+  surfaces hours later as work that was never done.)*
+
+  *Original finding, kept because it is the evidence: surfaced while confirming
+  ASM-001. The
   invocation in `resolveAgentCommand` is `claude -p '{{PROMPT}}'`. In the default
   permission mode that run cannot edit a file: it needs an approval, and a
   non-interactive process has nobody to ask. The same prompt with
@@ -556,12 +573,7 @@ answered before G2 can pass.
   configured cannot perform the work D-002 assigns it, and no test caught this
   because the executor has never run.*
 
-  *The fix is one flag and the decision behind it is not. This project's whole
-  argument is that execution requires consent — `adp trust` exists so that a test
-  command cannot run until a human approves it. Handing an agent blanket edit
+  *What made this a decision rather than a patch: handing an agent blanket edit
   rights inside a worktree is defensible, because the worktree is disposable and
-  the diff is reviewed before it merges; handing it those rights by default,
-  silently, is the same mistake `adp trust` was built to prevent. The options are
-  to carry the flag in the default args, to require the operator to put it in
-  `agent.command`/`agent.args` themselves, or to gate it behind an explicit
-  `adp run --allow-edits`. Answer before M6.)*
+  the diff is reviewed before it merges. Handing it those rights by default, and
+  silently, is the same mistake `adp trust` was built to prevent.)*

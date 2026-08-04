@@ -432,6 +432,41 @@ test('an unknown agent is refused with the ones that are known @spec:AC-020', as
   assert.throws(() => resolveAgentCommand({ agent: { name: 'nope' } }), /claude/);
 });
 
+test('permission to write is withheld unless it is asked for @spec:AC-020', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  // The default is the invocation that cannot write. That is the point: an
+  // agent editing a repository unattended is a decision, and a decision nobody
+  // made is not one that should be made by a default.
+  const off = resolveAgentCommand({ agent: { name: 'claude' } });
+  assert.ok(!off.args.includes('--permission-mode'), 'no write permission unless requested');
+
+  const on = resolveAgentCommand({ agent: { name: 'claude' } }, { allowEdits: true });
+  assert.deepEqual(on.args, ['-p', '{{PROMPT}}', '--permission-mode', 'acceptEdits']);
+  // The prompt keeps its own argv slot with the flag appended, or the brief
+  // would be parsed as flags.
+  assert.equal(on.args.filter((a) => a.includes('{{PROMPT}}')).length, 1);
+});
+
+test('a harness whose write flags are unknown refuses rather than guesses @spec:AC-020', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  // Guessing here fails silently and late: the run looks like it worked, every
+  // task reports done, and nothing was written. Refusing costs one error now.
+  assert.throws(
+    () => resolveAgentCommand({ agent: { name: 'codex' } }, { allowEdits: true }),
+    /agent\.editArgs/
+  );
+  assert.throws(
+    () => resolveAgentCommand({ agent: { command: 'my-agent', args: ['{{PROMPT}}'] } }, { allowEdits: true }),
+    /agent\.editArgs/
+  );
+  // ...and accepts them once the operator states what they are.
+  const declared = resolveAgentCommand(
+    { agent: { command: 'my-agent', args: ['{{PROMPT}}'], editArgs: ['--write'] } },
+    { allowEdits: true }
+  );
+  assert.deepEqual(declared.args, ['{{PROMPT}}', '--write']);
+});
+
 test('the summary is the one line the orchestrator reads @spec:AC-021', async () => {
   const { extractSummary } = await import('../src/core/agent.js');
   assert.equal(

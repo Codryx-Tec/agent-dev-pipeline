@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 5694,
-  "verifiedAt": "2026-08-04T13:41:56.704Z",
-  "gitRev": "9cf989d75d128b7b063e8840b9901943b3455964",
+  "durationMs": 5865,
+  "verifiedAt": "2026-08-04T13:53:59.401Z",
+  "gitRev": "6c532ef04512393195d30cd2fdb1c0033e025773",
   "gitDirty": true,
-  "codeMtime": 1785849132393.015,
+  "codeMtime": 1785851415150.9866,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -410,6 +410,14 @@
         },
         {
           "title": "an unknown agent is refused with the ones that are known @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "permission to write is withheld unless it is asked for @spec:AC-020",
+          "status": "pass"
+        },
+        {
+          "title": "a harness whose write flags are unknown refuses rather than guesses @spec:AC-020",
           "status": "pass"
         }
       ]

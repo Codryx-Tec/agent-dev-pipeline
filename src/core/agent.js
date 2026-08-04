@@ -27,29 +27,58 @@ import { spawnSync } from 'child_process';
  * brief is built from documents the tool does not control.
  */
 export const AGENT_COMMANDS = {
-  claude: { command: 'claude', args: ['-p', '{{PROMPT}}'] },
-  codex: { command: 'codex', args: ['exec', '{{PROMPT}}'] },
-  cursor: { command: 'cursor-agent', args: ['-p', '{{PROMPT}}'] },
+  claude: {
+    command: 'claude',
+    args: ['-p', '{{PROMPT}}'],
+    // Verified against Claude Code 2.1.221: without this the run cannot write.
+    editArgs: ['--permission-mode', 'acceptEdits'],
+  },
+  // `null`, not `[]`. An empty array would claim these harnesses need no flag to
+  // edit files, which nobody here has checked. Null means unknown, and asking
+  // for edits with an unknown harness refuses instead of guessing — the wrong
+  // guess is silent, and it fails as "the agent did nothing" hours later.
+  codex: { command: 'codex', args: ['exec', '{{PROMPT}}'], editArgs: null },
+  cursor: { command: 'cursor-agent', args: ['-p', '{{PROMPT}}'], editArgs: null },
 };
 
-export function resolveAgentCommand(config) {
-  if (config.agent?.command) {
-    return { command: config.agent.command, args: config.agent.args ?? ['{{PROMPT}}'] };
-  }
-  const name = config.agent?.name ?? 'claude';
-  const known = AGENT_COMMANDS[name];
-  if (!known) {
+/**
+ * @param {object} config
+ * @param {{allowEdits?: boolean}} [opts] — whether the caller has consented to
+ *   the agent writing to the worktree. Off unless `adp run --allow-edits`.
+ */
+export function resolveAgentCommand(config, { allowEdits = false } = {}) {
+  const custom = config.agent?.command;
+  const base = custom
+    ? {
+        command: custom,
+        args: config.agent.args ?? ['{{PROMPT}}'],
+        editArgs: config.agent.editArgs ?? null,
+      }
+    : AGENT_COMMANDS[config.agent?.name ?? 'claude'];
+
+  if (!base) {
     throw new Error(
-      `no invocation known for agent "${name}" — set agent.command and agent.args in your config, ` +
+      `no invocation known for agent "${config.agent?.name}" — set agent.command and agent.args in your config, ` +
         `or use one of: ${Object.keys(AGENT_COMMANDS).join(', ')}`
     );
   }
-  return known;
+
+  if (!allowEdits) return { command: base.command, args: base.args };
+
+  if (!Array.isArray(base.editArgs)) {
+    throw new Error(
+      `--allow-edits does not know how to grant "${custom ?? config.agent?.name ?? 'claude'}" permission to write. ` +
+        `Set agent.editArgs in your config to the flags that harness needs, ` +
+        `then run it once by hand to confirm they work.`
+    );
+  }
+
+  return { command: base.command, args: [...base.args, ...base.editArgs] };
 }
 
 /** A human-readable rendering of the command, for consent and for the log. */
-export function describeAgentCommand(config) {
-  const { command, args } = resolveAgentCommand(config);
+export function describeAgentCommand(config, opts) {
+  const { command, args } = resolveAgentCommand(config, opts);
   return [command, ...args].join(' ');
 }
 
@@ -119,8 +148,8 @@ export function extractSummary(output) {
  *
  * @returns ({task, cwd}) => {ok, summary, output}
  */
-export function makeAgentRunner(project, config, { timeout } = {}) {
-  const { command, args } = resolveAgentCommand(config);
+export function makeAgentRunner(project, config, { timeout, allowEdits = false } = {}) {
+  const { command, args } = resolveAgentCommand(config, { allowEdits });
   const timeoutMs = timeout ?? config.parallel?.taskTimeoutMs ?? 20 * 60 * 1000;
 
   return function runTask({ task, cwd }) {
