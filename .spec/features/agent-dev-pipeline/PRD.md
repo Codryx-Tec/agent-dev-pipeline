@@ -275,6 +275,16 @@ request myself.
 - **Then** each one shows a human-readable name first with the stable code in
   parentheses, and the code is identical in every locale
 
+#### AC-050 — The agent contract carries what an agent needs to obey it
+
+- **Given** the `adp` skill as it ships, which `init` copies into a project
+- **When** its content is read
+- **Then** it carries the vocabulary table mapping every traceability code to the
+  plain name used with a person, the finding catalogue, the rule that proof comes
+  only from `verify`, an explicit cap on how many times a red gate may be retried
+  before the human is brought in, and the requirement that a manual audit be
+  labelled as weak proof
+
 <!-- US-009, AC-025 and AC-026 retired with the monitor — see RFC D-011. Both
      criteria were about a browser page keeping itself current; with no page
      there is nothing to go stale. The concern they protected — never presenting

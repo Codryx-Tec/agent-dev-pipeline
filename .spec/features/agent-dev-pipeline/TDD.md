@@ -200,9 +200,9 @@ it succeeds, fails, or times out.
 
 ### Milestone M1 — Engine core
 
-## T-001 — Configuration and shared utilities [in-test]
+## T-001 — Configuration and shared utilities [done]
 
-- Refs: US-001
+- Refs: AC-011, AC-030
 - Files: src/config.js, src/util/text.js, src/util/glob.js
 - Notes: `DEFAULT_CONFIG` covers everything so the tool runs with no config file. Port the glob-to-regexp and static-prefix walk logic from the reference engine — it is what lets a glob reach outside the root without doing I/O of its own.
 
@@ -324,9 +324,9 @@ it succeeds, fails, or times out.
 - Files: src/core/init.js, payload/templates/SCOPE.md, payload/templates/PRD.md, payload/templates/RFC.md, payload/templates/TDD.md, payload/templates/CONSTITUTION.md, payload/AGENTS.md
 - Notes: Idempotent by construction — create only what is missing, never overwrite, and report created versus kept. The constitution template starts from `Projeto_Agent`'s existing P-001 and P-002.
 
-## T-027 — Agent skill [in-test]
+## T-027 — Agent skill [done]
 
-- Refs: US-008
+- Refs: AC-050
 - Files: payload/claude/skills/adp/SKILL.md
 - Notes: The agent contract. Must carry a vocabulary table mapping codes to the plain names used with the user, the non-negotiable rules, a translated finding catalogue, an explicit iteration cap so a failing gate escalates to the human instead of looping, and a graceful-degradation clause requiring any manual audit to be labelled as weak proof.
 
@@ -394,7 +394,7 @@ it succeeds, fails, or times out.
 - Depends on: T-037
 - Notes: Implements D-015. `makeLaneTestRunner` reuses the `adp trust` consent rather than asking for a new one, and returns a null runner with a reason instead of throwing — a lane that cannot run tests is still worth running. The executor runs it AFTER the commit so a failing task's work survives on its branch. The CLI change is the one that makes D-014 real at runtime: the run loop iterates stages and merges each before branching the next, since a lane sees the work it depends on only because that work already landed. `linkIntoWorktree` exists because a fresh worktree has no installed dependencies, and it links only what git confirms is ignored.
 
-## T-039 — Report references that can never grant proof [in-test]
+## T-039 — Report references that can never grant proof [done]
 
 - Refs: AC-049
 - Files: src/core/audit.js, src/core/gates.js

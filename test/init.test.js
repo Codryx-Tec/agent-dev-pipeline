@@ -193,3 +193,41 @@ test('an empty folder reaches every gate green once the documents are filled in 
     assert.equal(gates.exitCode, 0, `expected all gates green, first red was ${gates.firstRed}`);
   });
 });
+
+// AC-050 — the agent contract, checked for content rather than for existence.
+//
+// Everything else about this file was already asserted: that it installs, and
+// where. Nothing read it. T-027's own notes enumerate what it must carry, and a
+// requirement written only in a task note is a requirement one careless edit
+// away from being gone — which is the exact failure this tool exists to catch,
+// left standing in the tool's own contract.
+test('the agent contract carries what an agent needs to obey it @spec:AC-050', () => {
+  const skill = readFileSync(
+    path.join(import.meta.dirname, '..', 'payload', 'claude', 'skills', 'adp', 'SKILL.md'),
+    'utf8'
+  );
+
+  // The vocabulary table: every code an agent must translate for a human.
+  for (const code of ['US-xxx', 'AC-xxx', 'T-xxx', 'ASM-xxx', 'Q-xxx', 'D-xxx', 'P-xxx']) {
+    assert.ok(skill.includes(code), `the vocabulary table must map ${code}`);
+  }
+
+  // The finding catalogue, so an agent can act on a code without guessing.
+  for (const code of ['SCOPE_NOT_APPROVED', 'AC_WITHOUT_PROOF', 'TASK_DONE_WITHOUT_PROOF']) {
+    assert.ok(skill.includes(code), `the finding catalogue must carry ${code}`);
+  }
+
+  // The rule the whole product rests on.
+  assert.match(skill, /Proof comes from `verify`/i);
+
+  // The iteration cap. Without it a failing gate becomes a loop that spends the
+  // human's money instead of their attention.
+  assert.match(skill, /three attempts/i, 'a red gate must escalate to the human, not iterate forever');
+  assert.match(skill, /STOP and bring the findings to the person/i);
+
+  // Graceful degradation must never be presented as the mechanical verdict.
+  assert.match(skill, /WEAK PROOF \(manual audit\)/);
+
+  // Consent is the human's to give, in both places it can be asked for.
+  assert.match(skill, /Never approve on the person's behalf/i);
+});
