@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 5758,
-  "verifiedAt": "2026-08-04T13:59:50.078Z",
-  "gitRev": "da989aa0dd6ea399aaa489a330d0a42a29d4e3be",
+  "durationMs": 5731,
+  "verifiedAt": "2026-08-04T14:28:30.811Z",
+  "gitRev": "dd985b5c157a0afbfeeeff523aa32b4dc5c6886b",
   "gitDirty": true,
-  "codeMtime": 1785851415150.9866,
+  "codeMtime": 1785853674468.9326,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -176,6 +176,14 @@
         },
         {
           "title": "confidence is not mapped onto status @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "the grammar shown in an HTML comment is documentation, not an element @spec:AC-008",
+          "status": "pass"
+        },
+        {
+          "title": "blanking a comment does not move the lines after it @spec:AC-008",
           "status": "pass"
         }
       ]
