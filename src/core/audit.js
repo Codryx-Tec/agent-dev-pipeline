@@ -244,6 +244,19 @@ export function auditProject(project, { ci = false } = {}) {
               { feature: f.name, file: t.file, line: t.line });
           }
         }
+
+        // Proof is granted per CRITERION, so a task whose references reach none
+        // of them can never be proven and can never legitimately reach
+        // [concluida]. Its story references resolve, so REF_QUEBRADA stays quiet
+        // and the task looks fine — and the proof check silently drops every one
+        // of them, which is an absence of information read as a guarantee. This
+        // says out loud what that filter discards.
+        if (t.refs.length && !t.refs.some((ref) => knownAc.has(ref))) {
+          emit('REF_SEM_CRITERIO', 'warning',
+            `${t.id} references ${t.refs.join(', ')} — ${t.refs.length > 1 ? 'none of them is' : 'that is not'} ` +
+              'a criterion, so nothing here can grant it proof',
+            { feature: f.name, file: t.file, line: t.line });
+        }
       }
     }
   }

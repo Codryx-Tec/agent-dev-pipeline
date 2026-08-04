@@ -132,6 +132,28 @@ test('a task with real PASS proof is accepted as done @spec:AC-014', () => {
   assert.equal(has(audit, 'TASK_CONCLUIDA_SEM_PROVA'), false);
 });
 
+test('a task whose refs reach no criterion is named @spec:AC-049', () => {
+  // `US-001` resolves, so REF_QUEBRADA stays quiet and the task looks fine. But
+  // proof is granted per criterion, and the proof check filters this reference
+  // out silently — so the task can never be proven and nothing said so.
+  const tdd = TDD_OK.replace('- Refs: AC-001', '- Refs: US-001');
+  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': tdd }));
+
+  assert.equal(has(audit, 'REF_QUEBRADA'), false, 'the reference does resolve');
+  const found = findingsFor(audit, 'REF_SEM_CRITERIO');
+  assert.equal(found.length, 1);
+  assert.match(found[0].message, /T-001 references US-001/);
+  assert.match(found[0].message, /grant it proof/);
+});
+
+test('a task carrying at least one criterion is left alone @spec:AC-049', () => {
+  // Referencing the story for context alongside a criterion is normal, and it
+  // costs nothing — the finding fires only when proof is impossible.
+  const tdd = TDD_OK.replace('- Refs: AC-001', '- Refs: US-001, AC-001');
+  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': tdd }));
+  assert.equal(has(audit, 'REF_SEM_CRITERIO'), false);
+});
+
 test('code changed after the last proof is reported @spec:AC-027', () => {
   const verification = JSON.stringify({
     feature: 'f',

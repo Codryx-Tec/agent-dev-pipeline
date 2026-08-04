@@ -173,6 +173,15 @@ I type, so that a status in a document can never outrun the proof behind it.
 - **Then** the finding `TASK_CONCLUIDA_SEM_PROVA` is reported naming the task and
   the unproven criteria, and gate G5 reports red
 
+#### AC-049 — A task no criterion can prove is named, not silently skipped
+
+- **Given** a task whose `Refs:` resolve but reach no acceptance criterion — a
+  story reference, for example
+- **When** the audit runs
+- **Then** the finding `REF_SEM_CRITERIO` is reported naming the task and the
+  references it does carry, because proof is granted per criterion and a task
+  with none can never reach the completed status
+
 ### US-006 — The captain gets proof from real tests, with no GitHub
 
 As a developer working on an on-premise machine, I want the whole loop to close

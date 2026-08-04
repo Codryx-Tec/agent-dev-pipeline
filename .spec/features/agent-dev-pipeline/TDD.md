@@ -206,49 +206,49 @@ it succeeds, fails, or times out.
 - Arquivos: src/config.js, src/util/text.js, src/util/glob.js
 - Notas: `DEFAULT_CONFIG` covers everything so the tool runs with no config file. Port the glob-to-regexp and static-prefix walk logic from the reference engine — it is what lets a glob reach outside the root without doing I/O of its own.
 
-## T-002 — PRD parser [em-teste]
+## T-002 — PRD parser [concluida]
 
 - Refs: AC-005, AC-006
 - Arquivos: src/parsers/prd.js
 - Notas: Extract stories and criteria with file and line for every element. Accept both English and Portuguese clause keywords, since `Projeto_Agent` documents already use both.
 
-## T-003 — RFC parser [em-teste]
+## T-003 — RFC parser [concluida]
 
 - Refs: AC-007, AC-008
 - Arquivos: src/parsers/rfc.js
 - Notas: Extract decisions with their counted alternatives, plus assumptions and questions with status. A question tagged blocking is a distinct field, not a text convention.
 
-## T-004 — TDD parser [em-teste]
+## T-004 — TDD parser [concluida]
 
 - Refs: AC-011, AC-012
 - Arquivos: src/parsers/tdd.js
 - Notas: Tasks with references, file lists and status, including the new `[em-teste]`. File lists are comma-separated and paths may contain spaces. An unrecognized status token is an error, never silently coerced.
 
-## T-005 — Constitution parser [em-teste]
+## T-005 — Constitution parser [concluida]
 
 - Refs: AC-029
 - Arquivos: src/parsers/constitution.js
 - Notas: Principles with level and declared verifications in all four forms — gate, test, forbidden, required. A level outside MUST/SHOULD/MAY is treated as MUST and reported, never ignored.
 
-## T-006 — Annotation scanner and sandboxed pattern search [em-teste]
+## T-006 — Annotation scanner and sandboxed pattern search [concluida]
 
 - Refs: AC-016, AC-028, AC-030
 - Arquivos: src/parsers/annotations.js
 - Notas: Scan configured globs for `@spec:` and `@principle:` with file and line. The pattern search runs project-supplied regexes in a **disposable subprocess with a hard timeout**, so catastrophic backtracking becomes a `VERIFICACAO_MALFORMADA` finding instead of a hung gate. This is a security boundary, not an optimization.
 
-## T-007 — Project loader and audit engine [em-teste]
+## T-007 — Project loader and audit engine [concluida]
 
 - Refs: AC-005, AC-006, AC-007, AC-008, AC-009, AC-010, AC-011, AC-014, AC-027, AC-028
 - Arquivos: src/core/project.js, src/core/audit.js
 - Notas: Emit findings as `{code, severity, message, file, line, feature}`. Codes are stable and never translated. Severity escalates in CI mode for the codes listed in `gates.js`. Reference resolution is project-global. AC-014 lands here rather than anywhere else: `TASK_CONCLUIDA_SEM_PROVA` is the rule that a status word cannot outrun its proof, and the audit engine is where that rule is enforced.
 
-## T-008 — Gate mapping and evaluation [em-teste]
+## T-008 — Gate mapping and evaluation [concluida]
 
 - Refs: AC-004
 - Arquivos: src/core/gates.js
 - Notas: The table in section 4 as data, plus ordering and the blocked state. Includes the completeness test asserting every emittable code is assigned to exactly one gate.
 
-## T-009 — CLI dispatcher and terminal rendering [em-teste]
+## T-009 — CLI dispatcher and terminal rendering [concluida]
 
 - Refs: AC-024
 - Arquivos: bin/adp.js, src/cli.js, src/core/report.js, src/index.js
@@ -256,7 +256,7 @@ it succeeds, fails, or times out.
 
 ### Milestone M2 — Real proof
 
-## T-010 — Verification runner and reporter adapters [em-teste]
+## T-010 — Verification runner and reporter adapters [concluida]
 
 - Refs: AC-016, AC-017, AC-027
 - Arquivos: src/core/verify.js, src/core/reporters/index.js, src/core/reporters/tap.js, src/core/reporters/vitest.js, src/core/reporters/junit.js, test/verify.test.js
@@ -264,7 +264,7 @@ it succeeds, fails, or times out.
 
 ### Milestone M3 — Executable constitution
 
-## T-011 — Principle verification execution [em-teste]
+## T-011 — Principle verification execution [concluida]
 
 - Refs: AC-029, AC-030
 - Arquivos: src/core/principles.js
@@ -281,31 +281,31 @@ it succeeds, fails, or times out.
 
 ### Milestone M6 — Background execution
 
-## T-020 — Execution planner [em-teste]
+## T-020 — Execution planner [concluida]
 
 - Refs: AC-012, AC-019
 - Arquivos: src/core/plan.js, test/plan.test.js
 - Notas: File-conflict graph, connected components as lanes, waves of at most `maxParallel`. Lane order and task order within a lane are stable and follow document order, so the same document always plans the same way. Overlap is TRANSITIVE — A–B and B–C put A and C in one lane even though they share nothing directly, which a pairwise check gets wrong in a way that looks correct.
 
-## T-021 — Event ledger [em-teste]
+## T-021 — Event ledger [concluida]
 
 - Refs: AC-021
 - Arquivos: src/core/ledger.js
 - Notas: Append-only JSONL under the configurable state root, outside the repository. A corrupt trailing line is skipped, never fatal. Prunes to a retention bound — the policy Q-005 must answer; default thirty runs until it does.
 
-## T-022 — Worker executor [em-teste]
+## T-022 — Worker executor [concluida]
 
 - Refs: AC-020
 - Arquivos: src/core/executor.js, src/core/agent.js
 - Notas: Worktree per lane, headless agent invocation per task, one commit per task naming the task code, `--no-ff` merge back. Pure Node with no shell script and no terminal multiplexer, per D-002 — this is what keeps the container small and the tool portable. A merge conflict stops that lane and asks for a human; it never resolves silently. The agent invocation is INJECTED rather than hard-called: ASM-001 is still open, so pinning the call site would bake in an unverified assumption, and the logic worth testing — worktree lifecycle, one-commit rule, undeclared-file detection — must be testable without a model call. Worktrees live in the STATE directory, never inside the repository: one created in the project shows up as untracked debris in the user's own `git status`.
 
-## T-023 — Lane and task re-run [em-teste]
+## T-023 — Lane and task re-run [concluida]
 
 - Refs: AC-022
 - Arquivos: src/core/rerun.js
 - Notas: Addressable targets — one lane, one sequential task, or the gate alone. Re-running a lane cleans its previous worktree and branch first. Work merged from other lanes is never touched.
 
-## T-024 — Prompt builder for red gates [em-teste]
+## T-024 — Prompt builder for red gates [concluida]
 
 - Refs: AC-023
 - Arquivos: src/core/prompts.js
@@ -318,7 +318,7 @@ it succeeds, fails, or times out.
 
 ### Milestone M8 — Skill, templates and adoption
 
-## T-026 — Init command and templates [em-teste]
+## T-026 — Init command and templates [concluida]
 
 - Refs: AC-001, AC-002
 - Arquivos: src/core/init.js, payload/templates/SCOPE.md, payload/templates/PRD.md, payload/templates/RFC.md, payload/templates/TDD.md, payload/templates/CONSTITUTION.md, payload/AGENTS.md
@@ -330,19 +330,19 @@ it succeeds, fails, or times out.
 - Arquivos: payload/claude/skills/adp/SKILL.md
 - Notas: The agent contract. Must carry a vocabulary table mapping codes to the plain names used with the user, the non-negotiable rules, a translated finding catalogue, an explicit iteration cap so a failing gate escalates to the human instead of looping, and a graceful-degradation clause requiring any manual audit to be labelled as weak proof.
 
-## T-028 — Rewrite AGENTS.md for delivery modes and proof [em-teste]
+## T-028 — Rewrite AGENTS.md for delivery modes and proof [concluida]
 
 - Refs: AC-018
 - Arquivos: payload/AGENTS.md, .exemplo/AGENTS.md
 - Notas: The delivery-mode half was already done — `local-only` is the default and the GitHub flow is mode-conditional per D-008. What was missing was larger: the document never mentioned `verify`, so an agent reading it would see `AC_SEM_PROVA` on every criterion with no command that resolves it, and the natural way out is marking `[concluida]` by hand — the exact lie the tool exists to stop. Adds the proof section, the consent rule (never approve the test command for the human, `--yes` is not the agent's to use), and the parallel-execution commands. `.exemplo/AGENTS.md` is kept in step because the example must show what `init` writes today.
 
-## T-034 — Payload integrity and the write guard [em-teste]
+## T-034 — Payload integrity and the write guard [concluida]
 
 - Refs: AC-039, AC-040
 - Arquivos: src/core/integrity.js, scripts/build-manifest.js, test/supply-chain.test.js
 - Notas: SHA-256 per payload file into `payload/MANIFEST.json`; `init` verifies BEFORE writing, and a mismatch is fatal with no override flag. An extra file counts as a problem, not just an altered one — an undeclared hook has exactly the shape of an injected file. `assertInside` refuses any destination resolving outside the project rather than clamping it. The honest boundary is written into the module: this catches tampering after publication, never a malicious publish, which is what provenance is for.
 
-## T-030 — Consent gate for the project's test command [em-teste]
+## T-030 — Consent gate for the project's test command [concluida]
 
 - Refs: AC-031, AC-032, AC-033
 - Arquivos: src/core/trust.js, test/trust.test.js
@@ -350,43 +350,43 @@ it succeeds, fails, or times out.
 
 ### Milestone M4 — Read-only monitor
 
-## T-031 — State projection for the page [em-teste]
+## T-031 — State projection for the page [concluida]
 
 - Refs: AC-034, AC-037
 - Arquivos: src/server/state.js
 - Notas: project → plain object, plus a cheap mtime/size fingerprint so an unchanged project is reported without reparsing (ASM-006). The fingerprint is deliberately over-sensitive: a false "changed" costs one reparse, a false "unchanged" shows stale state and calls it current.
 
-## T-032 — Read-only HTTP server [em-teste]
+## T-032 — Read-only HTTP server [concluida]
 
 - Refs: AC-035, AC-036, AC-038
 - Arquivos: src/server/server.js
 - Notas: `node:http`, no dependency. Any method other than GET/HEAD is refused **before** the path is examined, so adding a route later cannot open a write path by accident. Non-loopback Host refused (DNS rebinding). EADDRINUSE fails loudly and starts nothing. A structural test asserts the file contains no write call and never reads a request body.
 
-## T-033 — The page [em-teste]
+## T-033 — The page [concluida]
 
 - Refs: AC-034
 - Arquivos: src/ui/index.html, src/ui/app.css, src/ui/app.js
 - Notas: Three readable source files inlined into one self-contained document at request time — self-contained as delivered, editable as source, no bundler. Rendered with `textContent` throughout: the documents are the user's own, but a PRD title is still untrusted input. Polls with the fingerprint and shows an explicit stale indicator after repeated failures rather than presenting old numbers under a green light.
 
-## T-035 — Worktree cleanup [em-teste]
+## T-035 — Worktree cleanup [concluida]
 
 - Refs: AC-043
 - Arquivos: src/core/executor.js
 - Notas: A lane is cleaned as soon as its work is merged — the worktree and branch are then duplicates. An UNMERGED lane is never cleaned without `--force`: its branch is the only place that work exists, and tidiness does not outrank not losing work. Worktrees are enumerated from `git worktree list`, not from a directory scan, because git is the authority and a hand-deleted directory leaves a registration only git knows about. Only worktrees under the state directory or on an `adp/` branch are touched — a worktree the human created is none of this tool's business.
 
-## T-036 — Session resume and checkpoint [em-teste]
+## T-036 — Session resume and checkpoint [concluida]
 
 - Refs: AC-041, AC-042
 - Arquivos: src/core/resume.js
 - Notas: Follows D-001 rather than inventing a store. Gate states, the first red gate, unproven counts, proof staleness and the next action are all DERIVED, so they cannot go stale or disagree with the repository. The single exception is intent — what the last session was in the middle of — which leaves no trace in any document; that note is stored in the state directory and rendered separately, labelled as the only part that can be wrong. Only `em-andamento` counts as in flight: `em-teste` is a resting state and on a mature project is most of the board, so listing it would cost a fresh session the very tokens this briefing exists to save.
 
-## T-037 — Declared ordering and read-only file declarations [em-teste]
+## T-037 — Declared ordering and read-only file declarations [concluida]
 
 - Refs: AC-044, AC-045, AC-046
 - Arquivos: src/parsers/tdd.js, src/core/plan.js
 - Notas: Implements D-014. The parser gains `Lê:` and `Depende:`; the planner stops treating one declaration as the answer to two questions. Lanes are still union-find over WRITTEN files, so safety is unchanged; ordering is a separate directed graph laid over the result. Three refusals rather than a guess: a cycle among tasks, a dependency on an unknown id, and a dependency on a task already excluded — the last one propagated to a fixpoint, because the sequential remainder is printed and not executed, so anything waiting on it waits forever. Mutually dependent LANES are a different case and are merged rather than refused: two lanes can each need to follow the other without any single task being circular, and there is no contradiction to report, only no parallelism to have. Strongly connected components do both jobs — reporting the first, contracting the second.
 
-## T-038 — In-lane verification of each task [em-teste]
+## T-038 — In-lane verification of each task [concluida]
 
 - Refs: AC-047, AC-048
 - Arquivos: src/core/verify.js, src/core/executor.js, src/core/rerun.js, src/cli.js
@@ -394,7 +394,13 @@ it succeeds, fails, or times out.
 - Depende: T-037
 - Notas: Implements D-015. `makeLaneTestRunner` reuses the `adp trust` consent rather than asking for a new one, and returns a null runner with a reason instead of throwing — a lane that cannot run tests is still worth running. The executor runs it AFTER the commit so a failing task's work survives on its branch. The CLI change is the one that makes D-014 real at runtime: the run loop iterates stages and merges each before branching the next, since a lane sees the work it depends on only because that work already landed. `linkIntoWorktree` exists because a fresh worktree has no installed dependencies, and it links only what git confirms is ignored.
 
-## T-029 — Test suite [em-teste]
+## T-039 — Report references that can never grant proof [em-teste]
+
+- Refs: AC-049
+- Arquivos: src/core/audit.js, src/core/gates.js
+- Notas: Found while promoting the proven tasks to `[concluida]`. The proof check computes `task.refs.filter(r => knownAc.has(r))` and every discarded reference vanishes — so T-001 and T-027, which reference only a story, looked healthy in the audit while being permanently unprovable. `REF_QUEBRADA` stays quiet because the references resolve; nothing else was watching. Fires only when a task carries NO criterion at all, because referencing a story alongside a criterion is normal and costs nothing. A warning rather than an error, in G3: the breakdown is still implementable, but the task can never legitimately reach `[concluida]` and the person reading the audit should not have to run a script to find that out.
+
+## T-029 — Test suite [concluida]
 
 - Refs: AC-018
 - Arquivos: test/parsers.test.js, test/audit.test.js, test/gates.test.js, test/plan.test.js, test/offline.e2e.test.js
