@@ -9,3 +9,7 @@ node_modules/
 # Execution telemetry lives outside the repository (RFC D-007). This is a
 # belt-and-braces entry in case a stateDir is ever configured inside a project.
 .adp/
+
+# Proof the example produces when it is verified. Regenerated on every run and
+# stamped with a git revision, so a committed copy would be stale immediately.
+.exemplo/.spec/verification/*.json

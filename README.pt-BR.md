@@ -10,7 +10,7 @@ formatada. Esta é *spec-anchored*: a especificação é auditada mecanicamente
 contra o código, o tempo todo, e **o veredito é um exit code, não uma
 afirmação**.
 
-Zero dependências de runtime. Node ≥ 20 e `git`. Nada a instalar: roda pelo `npx`
+Zero dependências de runtime. Node ≥ 24 e `git`. Nada a instalar: roda pelo `npx`
 e não deixa nada para trás.
 
 ```
