@@ -177,11 +177,11 @@ test('an empty folder reaches every gate green once the documents are filled in 
     );
     writeFileSync(
       path.join(dir, 'RFC.md'),
-      '### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n\n## Assumptions\n\n- **ASM-001** — names exist *(status: confirmada)*\n\n## Open questions\n\n- **Q-001** — anonymous? *(status: respondida)*\n'
+      '### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n\n## Assumptions\n\n- **ASM-001** — names exist *(status: confirmed)*\n\n## Open questions\n\n- **Q-001** — anonymous? *(status: answered)*\n'
     );
     writeFileSync(
       path.join(dir, 'TDD.md'),
-      '## T-001 — greeting [pendente]\n\n- Refs: AC-001\n- Arquivos: src/greet.js\n'
+      '## T-001 — greeting [pending]\n\n- Refs: AC-001\n- Files: src/greet.js\n'
     );
     mkdirSync(path.join(root, 'src'), { recursive: true });
     mkdirSync(path.join(root, 'test'), { recursive: true });

@@ -3,7 +3,7 @@
 > feature: {{FEATURE}}
 > document: PRD — WHAT, for WHOM, WHY
 > owns: US-xxx (user stories) · AC-xxx (acceptance criteria)
-> status: rascunho
+> status: draft
 
 <!--
 GRAMMAR — the engine reads these shapes and nothing else:

@@ -52,7 +52,7 @@ Rules for Makefile evolution (skill `project-docs` has the full templates):
 ### 4. Ship it
 
 1. Branch from `main` (skill `github-flow`); never commit directly to `main`.
-2. Run `node scripts/verify.js` before marking any task `[concluida]` in `tasks.md`.
+2. Run `node scripts/verify.js` before marking any task `[done]` in `tasks.md`.
 3. Run `node scripts/audit.js` (must exit 0) before opening the PR.
 4. Open the PR with `Closes #N`.
 5. Update `CHANGELOG.md` (skill `memory-files`). If a bug was fixed, also update `TROUBLESHOOTING.md`, and `BEST_PRACTICES.md` if it reveals a recurring pattern.

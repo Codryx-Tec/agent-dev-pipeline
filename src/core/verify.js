@@ -22,7 +22,7 @@
 //   4. match    — annotation in the test title → criterion.
 //   5. record   — one JSON file per feature, stamped with the git revision and a
 //                 code mtime so the proof expires when the code moves
-//                 (VERIFY_OBSOLETO).
+//                 (PROOF_STALE).
 
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
@@ -180,7 +180,7 @@ export function runVerification(project, config, { env = process.env, timeout } 
   if (reporter === 'exitcode') {
     // The degraded path, kept because it works with any runner on earth. It
     // grants proof to every annotated criterion when the suite is green, which
-    // is weaker than it looks — the audit reports PROVA_FRACA for exactly this.
+    // is weaker than it looks — the audit reports PROOF_WEAK for exactly this.
     if (proc.status === 0) {
       for (const tag of project.annotations?.specTags ?? []) {
         results[tag.acId] = { status: 'pass', tests: [{ title: tag.text, status: 'pass' }] };

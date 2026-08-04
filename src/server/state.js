@@ -130,7 +130,7 @@ function shapeFeature(f, project) {
   const tasks = (f.tdd?.tasks ?? []).map((t) => ({
     code: t.id,
     title: t.title ?? '',
-    status: t.status ?? 'pendente',
+    status: t.status ?? 'pending',
     statusValid: t.statusValid !== false,
     refs: t.refs ?? [],
     files: t.files ?? [],
@@ -171,7 +171,7 @@ function shapeFeature(f, project) {
       criteria: criteria.length,
       proven: criteria.filter((c) => c.proven).length,
       tasks: tasks.length,
-      done: tasks.filter((t) => t.status === 'concluida').length,
+      done: tasks.filter((t) => t.status === 'done').length,
     },
   };
 }

@@ -104,7 +104,7 @@ function offlineRepo() {
   cpSync(path.join(ROOT, '.exemplo'), root, { recursive: true });
   // Any proof left in the working copy would let this test pass without ever
   // running the suite — the one shortcut that would make it meaningless.
-  rmSync(path.join(root, '.spec', 'verification', 'inscricao-turma.json'), { force: true });
+  rmSync(path.join(root, '.spec', 'verification', 'class-enrolment.json'), { force: true });
 
   git(root, ['init', '-q', '-b', 'main']);
   git(root, ['config', 'user.email', 'offline@example.com']);
@@ -142,7 +142,7 @@ test('the full chain closes with no remote and no network @spec:AC-018', () => {
 
     writeRecords(before, config, verification);
     assert.ok(
-      existsSync(path.join(root, '.spec', 'verification', 'inscricao-turma.json')),
+      existsSync(path.join(root, '.spec', 'verification', 'class-enrolment.json')),
       'proof must be written to disk'
     );
 
@@ -234,20 +234,20 @@ test('proof survives a fresh checkout, where every mtime is new @spec:AC-018', (
   writeRecords(project, config, verification);
 
   const record = JSON.parse(
-    readFileSync(path.join(root, '.spec', 'verification', 'inscricao-turma.json'), 'utf8')
+    readFileSync(path.join(root, '.spec', 'verification', 'class-enrolment.json'), 'utf8')
   );
   assert.ok(record.gitRev, 'the record must carry the revision it was taken at');
   assert.equal(record.gitDirty, false, 'and whether that revision described what was tested');
 
   // Touch everything, as an extraction would.
   const now = Date.now();
-  for (const rel of ['src/inscricao.js', 'test/inscricao.test.js']) {
+  for (const rel of ['src/enrolment.js', 'test/enrolment.test.js']) {
     utimesSync(path.join(root, rel), new Date(now + 60_000), new Date(now + 60_000));
   }
 
   const after = loadProject(loadConfig(root));
   const audit = auditProject(after, { ci: true });
-  const stale = audit.findings.filter((f) => f.code === 'VERIFY_OBSOLETO');
+  const stale = audit.findings.filter((f) => f.code === 'PROOF_STALE');
   assert.deepEqual(
     stale,
     [],

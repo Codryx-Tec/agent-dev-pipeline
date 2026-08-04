@@ -1,9 +1,9 @@
-# PRD: inscricao-turma
+# PRD: class-enrolment
 
-> feature: inscricao-turma
+> feature: class-enrolment
 > document: PRD — WHAT, for WHOM, WHY
 > owns: US-xxx (user stories) · AC-xxx (acceptance criteria)
-> status: implementada
+> status: implemented
 
 ## Context
 

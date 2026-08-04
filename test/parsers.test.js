@@ -12,12 +12,12 @@ import { parseConstitution } from '../src/parsers/constitution.js';
 test('a task heading shown inside a code span is documentation, not a task @spec:AC-011', () => {
   const doc = `# TDD
 
-| task | \`## T-001 — Title [pendente|concluida]\` then Refs |
+| task | \`## T-001 — Title [pending|done]\` then Refs |
 
-## T-005 — The only real task [pendente]
+## T-005 — The only real task [pending]
 
 - Refs: AC-001
-- Arquivos: a.js
+- Files: a.js
 `;
   const { tasks } = parseTdd(doc, 'TDD.md');
   assert.equal(tasks.length, 1, 'the code span must not invent a task');
@@ -25,19 +25,19 @@ test('a task heading shown inside a code span is documentation, not a task @spec
 });
 
 test('task status comes from the heading line, never from later prose @spec:AC-011', () => {
-  const doc = `## T-001 — Last task [pendente]
+  const doc = `## T-001 — Last task [pending]
 
 - Refs: AC-001
-- Arquivos: a.js
+- Files: a.js
 
 ## Migration notes
 
-Tasks marked [concluida] may fall back to TEST until real tests exist.
+Tasks marked [done] may fall back to TEST until real tests exist.
 `;
   const { tasks } = parseTdd(doc, 'TDD.md');
   // The block of the last task runs to end of file. Searching it for a status
   // token would read the migration paragraph as this task's own status.
-  assert.equal(tasks[0].status, 'pendente');
+  assert.equal(tasks[0].status, 'pending');
 });
 
 test('an unrecognised task status is reported, never silently skipped @spec:AC-011', () => {
@@ -47,26 +47,30 @@ test('an unrecognised task status is reported, never silently skipped @spec:AC-0
   assert.equal(tasks[0].rawStatus, 'feito');
 });
 
-test('accented and upper-case statuses fold to the canonical token @spec:AC-011', () => {
-  const { tasks } = parseTdd('## T-001 — x [CONCLUÍDA]\n\n- Refs: AC-001\n', 'TDD.md');
-  assert.equal(tasks[0].status, 'concluida');
-  assert.equal(tasks[0].statusValid, true);
+test('a status written in any case folds to the canonical token @spec:AC-011', () => {
+  for (const written of ['DONE', 'Done', 'done', ' done ']) {
+    const { tasks } = parseTdd(`## T-001 — x [${written}]\n\n- Refs: AC-001\n`, 'TDD.md');
+    assert.equal(tasks[0].status, 'done', `[${written}] must fold`);
+    assert.equal(tasks[0].statusValid, true);
+  }
+  // The multi-word statuses are hyphenated, and the hyphen is part of the token.
+  assert.equal(parseTdd('## T-001 — x [IN-PROGRESS]\n', 'TDD.md').tasks[0].status, 'in-progress');
 });
 
 test('file lists keep spaces inside paths and drop empties @spec:AC-012', () => {
-  const doc = '## T-001 — x [pendente]\n\n- Refs: AC-001\n- Arquivos: a b/c.js, , d.js\n';
+  const doc = '## T-001 — x [pending]\n\n- Refs: AC-001\n- Files: a b/c.js, , d.js\n';
   const { tasks } = parseTdd(doc, 'TDD.md');
   assert.deepEqual(tasks[0].files, ['a b/c.js', 'd.js']);
 });
 
 test('what a task writes, what it reads and what it follows are three claims @spec:AC-045', () => {
   const doc = [
-    '## T-004 — Integration [pendente]',
+    '## T-004 — Integration [pending]',
     '',
     '- Refs: AC-001',
-    '- Arquivos: src/join.js',
-    '- Lê: src/a.js, src/b.js',
-    '- Depende: T-001, T-002',
+    '- Files: src/join.js',
+    '- Reads: src/a.js, src/b.js',
+    '- Depends on: T-001, T-002',
     '',
   ].join('\n');
   const { tasks } = parseTdd(doc, 'TDD.md');
@@ -78,23 +82,23 @@ test('what a task writes, what it reads and what it follows are three claims @sp
 
 test('the English spellings and a lower-case id parse the same @spec:AC-045', () => {
   const doc = [
-    '## T-004 — Integration [pendente]',
+    '## T-004 — Integration [pending]',
     '',
-    '- Arquivos: src/join.js',
+    '- Files: src/join.js',
     '- Reads: src/a.js',
     '- Depends on: t-001',
     '',
   ].join('\n');
   const { tasks } = parseTdd(doc, 'TDD.md');
   assert.deepEqual(tasks[0].reads, ['src/a.js']);
-  // Upper-cased because ids are compared: a `Depende: t-001` matching nothing
+  // Upper-cased because ids are compared: a `Depends on: t-001` matching nothing
   // would drop the constraint, and a dropped constraint is invisible until the
   // run produces the wrong result.
   assert.deepEqual(tasks[0].dependsOn, ['T-001']);
 });
 
 test('a task declaring neither reads nor dependencies gets empty lists @spec:AC-045', () => {
-  const { tasks } = parseTdd('## T-001 — x [pendente]\n\n- Arquivos: a.js\n', 'TDD.md');
+  const { tasks } = parseTdd('## T-001 — x [pending]\n\n- Files: a.js\n', 'TDD.md');
   assert.deepEqual(tasks[0].reads, []);
   assert.deepEqual(tasks[0].dependsOn, []);
 });
@@ -163,17 +167,17 @@ Some steps we followed:
 test('a question marked blocking is a distinct field, not a text convention @spec:AC-008', () => {
   const doc = `## Assumptions
 
-- **ASM-001** — a *(status: aberta)*
+- **ASM-001** — a *(status: open)*
 
 ## Open questions
 
-- **Q-001** — a *(status: aberta — **blocking**)*
-- **Q-002** — b *(status: aberta)*
+- **Q-001** — a *(status: open — **blocking**)*
+- **Q-002** — b *(status: open)*
 `;
   const rfc = parseRfc(doc, 'RFC.md');
   assert.equal(rfc.questions[0].blocking, true);
   assert.equal(rfc.questions[1].blocking, false);
-  assert.equal(rfc.assumptions[0].status, 'aberta');
+  assert.equal(rfc.assumptions[0].status, 'open');
 });
 
 test('principle levels are read in both vocabularies @spec:AC-029', () => {
@@ -215,7 +219,7 @@ const CREATE_RFC = `# RFC: Choose a queue
 
 | # | Assumption | Owner | Confidence | Invalidation Trigger |
 |---|------------|-------|------------|----------------------|
-| ASM-001 | traffic stays under 10k req/s *(status: aberta)* | @ana | High | projections change |
+| ASM-001 | traffic stays under 10k req/s *(status: open)* | @ana | High | projections change |
 | 2 | the team has Q2 capacity | @bob | Medium | roadmap changes |
 
 ## Decision Criteria
@@ -269,7 +273,7 @@ test('assumptions are read from a table as well as from bullets @spec:AC-008', (
   const rfc = parseRfc(CREATE_RFC, 'RFC.md');
   assert.equal(rfc.assumptions.length, 1);
   assert.equal(rfc.assumptions[0].id, 'ASM-001');
-  assert.equal(rfc.assumptions[0].status, 'aberta');
+  assert.equal(rfc.assumptions[0].status, 'open');
 });
 
 test('a numbered assumption row is counted as uncoded, not silently dropped @spec:AC-008', () => {
@@ -279,7 +283,7 @@ test('a numbered assumption row is counted as uncoded, not silently dropped @spe
 });
 
 test('confidence is not mapped onto status @spec:AC-008', () => {
-  const doc = CREATE_RFC.replace(' *(status: aberta)*', '');
+  const doc = CREATE_RFC.replace(' *(status: open)*', '');
   // "High confidence" does not mean "confirmed". Missing status stays missing.
   assert.equal(parseRfc(doc, 'RFC.md').assumptions[0].status, null);
 });
@@ -297,8 +301,8 @@ test('the grammar shown in an HTML comment is documentation, not an element @spe
     '',
     '<!--',
     'GRAMMAR:',
-    '  - **ASM-001** — text *(status: aberta|confirmada)*',
-    '  - **Q-001** — text *(status: aberta)*  add **blocking** if it gates the path',
+    '  - **ASM-001** — text *(status: open|confirmed)*',
+    '  - **Q-001** — text *(status: open)*  add **blocking** if it gates the path',
     '-->',
     '',
     '## Decisions',
@@ -314,11 +318,11 @@ test('the grammar shown in an HTML comment is documentation, not an element @spe
     '',
     '## Assumptions',
     '',
-    '- **ASM-010** — a real assumption *(status: confirmada)*',
+    '- **ASM-010** — a real assumption *(status: confirmed)*',
     '',
     '## Open questions',
     '',
-    '- **Q-010** — a real question *(status: respondida)*',
+    '- **Q-010** — a real question *(status: answered)*',
   ].join('\n');
 
   const parsed = parseRfc(doc, 'RFC.md');
@@ -337,7 +341,7 @@ test('blanking a comment does not move the lines after it @spec:AC-008', () => {
   // Asserted as a difference rather than an absolute, because the absolute
   // would also encode where this parser chooses to anchor a block, and that is
   // a separate question from whether stripping moved anything.
-  const tail = ['## Assumptions', '', '- **ASM-020** — real *(status: aberta)*'];
+  const tail = ['## Assumptions', '', '- **ASM-020** — real *(status: open)*'];
   const without = parseRfc(['# RFC: thing', '', ...tail].join('\n'), 'RFC.md');
   const withComment = parseRfc(
     ['# RFC: thing', '', '<!--', 'two', 'lines', '-->', '', ...tail].join('\n'),

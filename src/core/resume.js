@@ -82,14 +82,14 @@ export function buildResume(project, config, audit) {
     const record = project.verification?.[feature.name] ?? null;
 
     for (const t of feature.tdd?.tasks ?? []) {
-      // Only `em-andamento` is genuinely in flight. `em-teste` is a resting
+      // Only `in-progress` is genuinely in flight. `in-test` is a resting
       // state — implemented, awaiting proof — and on a mature project that is
       // most of the board. Listing all of it would cost a fresh session the
       // tokens this briefing exists to save, and tell it nothing it can act on.
-      if (t.status === 'em-andamento') {
+      if (t.status === 'in-progress') {
         inFlight.push({ id: t.id, title: t.title ?? '', status: t.status, feature: feature.name });
       }
-      if (t.status === 'em-teste') awaitingProof++;
+      if (t.status === 'in-test') awaitingProof++;
     }
     for (const ac of feature.prd?.acs ?? []) {
       if (record?.results?.[ac.id]?.status !== 'pass') {
@@ -101,7 +101,7 @@ export function buildResume(project, config, audit) {
   const openQuestions = [];
   for (const feature of project.features ?? []) {
     for (const q of feature.rfc?.questions ?? []) {
-      if (q.status !== 'respondida') {
+      if (q.status !== 'answered') {
         openQuestions.push({ id: q.id, blocking: Boolean(q.blocking), text: (q.text ?? '').slice(0, 120) });
       }
     }
@@ -181,7 +181,7 @@ export function renderResume(r) {
   if (r.awaitingProof) {
     out.push('');
     out.push(
-      `${r.awaitingProof} task(s) sit at [em-teste] — implemented, awaiting proof. ` +
+      `${r.awaitingProof} task(s) sit at [in-test] — implemented, awaiting proof. ` +
         'That is a resting state, not a queue.'
     );
   }

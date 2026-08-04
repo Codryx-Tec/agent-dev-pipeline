@@ -3,7 +3,7 @@ name: adp
 description: Spec-anchored development driven by six mechanical gates. Guides a project through SCOPE → PRD (what, for whom, why) → RFC (which path, among the possible ones) → TDD (how, in detail) → code → test → audit, with traceability from user story to acceptance criterion to task to test, an executable constitution whose regexes actually run, and a verdict that is an exit code rather than a claim. Use when specifying a feature, deciding an architecture with alternatives recorded, breaking work into parallelizable tasks, proving an implementation against its specification, checking whether documentation has gone stale, or answering "is this done?". Triggers: "specify this feature", "new feature", "write the PRD", "write the RFC", "break this into tasks", "audit against the spec", "is this done", "what has no test", "which gate is red", "the docs are out of date".
 license: MIT
 metadata:
-  version: 0.4.0
+  version: 0.5.0
   engine: agent-dev-pipeline
 ---
 
@@ -95,7 +95,7 @@ adp verify        # runs the tests, writes .spec/verification/<feature>.json
 adp audit         # now G4 can be green
 ```
 
-Until `verify` has run, every criterion reports `AC_SEM_PROVA` — *has a test, but
+Until `verify` has run, every criterion reports `AC_WITHOUT_PROOF` — *has a test, but
 no PASS proof*. That finding is not a bug and not something to work around: it
 means nobody has run the tests through the engine yet.
 
@@ -127,12 +127,12 @@ adp run           # asks for confirmation, then executes
 adp rerun lane-02 # one lane again, leaving merged work untouched
 ```
 
-Tasks whose `Arquivos:` lists overlap land in the same lane and run in order;
+Tasks whose `Files:` lists overlap land in the same lane and run in order;
 disjoint tasks run at the same time. A task that declares no files is never
 parallelized — that is the file list earning its keep.
 
-`Arquivos:` is what a task WRITES. Use `Lê:` for a file it only reads, which costs
-no parallelism, and `Depende: T-001` to say it runs after another task. Ordering
+`Files:` is what a task WRITES. Use `Reads:` for a file it only reads, which costs
+no parallelism, and `Depends on: T-001` to say it runs after another task. Ordering
 cannot be inferred from file overlap, because overlap is symmetric and "after" is
 not — and a lane is branched from HEAD, so a file you only read is the pre-run
 version until you declare the dependency.
@@ -169,7 +169,7 @@ project is at fault.
    declare victory. **A skipped test is not proof**, and the audit says so.
 3. **`adp verify` is what grants proof.** A test that exists is not a test that
    passed. Run verify before you claim anything, and never mark a task
-   `[concluida]` on a criterion the engine has not recorded as proven.
+   `[done]` on a criterion the engine has not recorded as proven.
 4. **Never approve the test command for the person.** `adp trust` shows them what
    will execute; that decision is theirs, and `--yes` is not yours to use.
 5. **The feature closes when `adp audit --ci` exits 0.** Running it and pasting
@@ -206,23 +206,23 @@ and record the answer. Mark a question **blocking** when the path genuinely cann
 be chosen without it.
 
 **G3 — TDD.** Break the work into tasks. Every task declares `Refs:` (the stories
-and criteria it serves) and `Arquivos:` (the files it will WRITE, comma-separated),
-and optionally `Lê:` (files it only reads) and `Depende:` (tasks it runs after).
+and criteria it serves) and `Files:` (the files it will WRITE, comma-separated),
+and optionally `Reads:` (files it only reads) and `Depends on:` (tasks it runs after).
 The file list is not paperwork: it is what lets the planner compute which tasks can
 run at the same time. A task with no file list is never parallelized.
 
 **Implementation.** One task, one atomic commit whose message names the task.
-Update the status in `TDD.md` as you go: `[pendente]` → `[em-andamento]` →
-`[em-teste]` → `[concluida]`.
+Update the status in `TDD.md` as you go: `[pending]` → `[in-progress]` →
+`[in-test]` → `[done]`.
 
-`[em-teste]` is the honest resting place: implemented, proof not yet granted.
-Moving to `[concluida]` without proof is `TASK_CONCLUIDA_SEM_PROVA`, an error, and
+`[in-test]` is the honest resting place: implemented, proof not yet granted.
+Moving to `[done]` without proof is `TASK_DONE_WITHOUT_PROOF`, an error, and
 the audit will catch you. This is the rule the whole product rests on — you do not
 get to declare a task done.
 
 **G4 — proof.** Run `adp verify`. It executes the test command and records which
 criteria actually passed. Skipped, pending and todo all count as **not proven**;
-a skip tells you nothing. Only now can `[concluida]` be honest.
+a skip tells you nothing. Only now can `[done]` be honest.
 
 **G5 — the gate.** Run `adp audit --ci`, paste the output, translate it in one
 sentence. If it did not exit 0, it is not done.
@@ -245,58 +245,59 @@ does.
 
 ## What the audit reports
 
-Use the readable name when you talk. The code in parentheses is for pipelines and
-is **never translated**.
+Use the readable name when you talk. The code in parentheses is for pipelines.
+It is English and it **never changes with the reader's language** — a pipeline
+grepping for it must find the same string on every machine.
 
 | Finding (code) | What it means | What to do |
 |---|---|---|
-| scope document missing (`SCOPE_AUSENTE`) | there is no `.spec/SCOPE.md` | run `adp init`, then fill it in |
-| scope not approved (`SCOPE_NAO_APROVADO`) | work was not agreed | get the approval before coding |
-| required scope field empty (`SCOPE_CAMPO_VAZIO`) | the scope is a template, not an agreement | fill the field it names |
-| PRD / RFC / TDD missing (`PRD_AUSENTE`, `RFC_AUSENTE`, `TDD_AUSENTE`) | a feature is missing one of its three documents | `adp new <feature>` creates all three |
-| PRD has no user story (`SPEC_SEM_US`) | a PRD with nothing in it | write the stories |
-| user story without acceptance criterion (`US_SEM_AC`) | a story nobody can check | write its criteria |
-| incomplete acceptance criterion (`AC_INCOMPLETO`) | missing Given, When or Then | complete the clause it names |
-| criterion outside any story (`AC_FORA_DE_US`) | a criterion serving nothing | move it under its story |
-| traceability code too short (`ID_CURTO`) | `AC-1` instead of `AC-001` | codes are zero-padded to three digits |
-| duplicate traceability code (`ID_DUPLICADO`) | the same code defined twice | codes are unique across the WHOLE project |
-| decision without alternatives (`DECISAO_SEM_ALTERNATIVA`) | a habit, not a decision | record what you rejected |
-| decision without a chosen option (`DECISAO_SEM_ESCOLHA`) | alternatives listed, none picked | say which one, and why |
-| required section missing (`SECAO_AUSENTE`) | no assumptions or no open-questions section | add it; "None." is a valid answer, silence is not |
-| assumption or question without a code (`ASM_SEM_CODIGO`) | written as prose, unreferenceable | code it `ASM-001` / `Q-001` |
-| invalid status (`STATUS_INVALIDO`) | not `aberta` or `respondida` | use the exact word — **and no markdown around it**, `**respondida**` does not parse |
-| blocking question still open (`Q_BLOQUEANTE_ABERTA`) | the path cannot be chosen yet | ask the person |
-| open question (`Q_ABERTA`) | a decision still owed | answer it, or accept a red `--ci` |
-| acceptance criterion covered by no task (`AC_SEM_TASK`) | a requirement nobody will build | add or extend a task |
-| broken reference (`REF_QUEBRADA`) | a task cites something that does not exist | fix the reference |
-| task without declared files (`TASK_SEM_ARQUIVOS`) | cannot be parallelized | declare the files it touches |
-| task maps a file that does not exist (`ARQUIVO_INEXISTENTE`) | declared but unwritten | expected while pending; an error once `[concluida]` |
-| invalid task status (`TASK_STATUS_INVALIDO`) | not one of the four words | `pendente` · `em-andamento` · `em-teste` · `concluida` |
-| acceptance criterion without a test (`AC_SEM_TESTE`) | a requirement with no proof | write the test with `@spec:AC-xxx` in its title |
-| acceptance criterion without proof (`AC_SEM_PROVA`) | the test exists but never passed, or was SKIPPED | run verify; a skip is never proof |
-| proof is out of date (`VERIFY_OBSOLETO`) | code moved after the last proof | `adp verify` again |
-| weak proof (`PROVA_FRACA`) | proven only by the runner's global exit code | configure a per-test reporter — a green suite is not per-criterion proof |
-| orphan test (`TESTE_ORFAO`) | a test points at a criterion that is gone | the spec moved and the test did not — reconcile them |
-| task completed without proof (`TASK_CONCLUIDA_SEM_PROVA`) | `[concluida]` with unproven criteria | verify, or reopen the task |
-| open assumption (`ASM_ABERTA`) | a guess in a feature declared done | confirm or invalidate it with the person |
-| principle without executable verification (`PRINCIPIO_SEM_VERIFICACAO`) | a MUST nothing checks | give it a verification, or lower its level honestly |
-| invalid principle level (`NIVEL_INVALIDO`) | not MUST, SHOULD or MAY | use one of the three |
-| principle violated (`PRINCIPIO_VIOLADO`) | the constitution was broken | fix the code, never the principle |
-| verification matches no file (`GLOB_SEM_ARQUIVOS`) | the check is inert | fix the glob — a check that cannot fail looks like one that passed |
-| malformed verification (`VERIFICACAO_MALFORMADA`) | invalid regex, or one that timed out | simplify the pattern |
-| source file mapped by no task (`ARQUIVO_ORFAO`) | code nothing asked for | map it to a task, or question why it exists |
-| feature name diverges from its directory (`FEATURE_DIVERGENTE`) | the header and the folder disagree | make them match |
-| project could not be read (`PROJETO_INVALIDO`) | a document failed to parse | the message names the file |
-| duplicate traceability code (`ID_DUPLICADO`) | the same code defined twice | codes are unique across the whole project |
+| scope document missing (`SCOPE_MISSING`) | there is no `.spec/SCOPE.md` | run `adp init`, then fill it in |
+| scope not approved (`SCOPE_NOT_APPROVED`) | work was not agreed | get the approval before coding |
+| required scope field empty (`SCOPE_FIELD_EMPTY`) | the scope is a template, not an agreement | fill the field it names |
+| PRD / RFC / TDD missing (`PRD_MISSING`, `RFC_MISSING`, `TDD_MISSING`) | a feature is missing one of its three documents | `adp new <feature>` creates all three |
+| PRD has no user story (`SPEC_WITHOUT_US`) | a PRD with nothing in it | write the stories |
+| user story without acceptance criterion (`US_WITHOUT_AC`) | a story nobody can check | write its criteria |
+| incomplete acceptance criterion (`AC_INCOMPLETE`) | missing Given, When or Then | complete the clause it names |
+| criterion outside any story (`AC_OUTSIDE_US`) | a criterion serving nothing | move it under its story |
+| traceability code too short (`ID_TOO_SHORT`) | `AC-1` instead of `AC-001` | codes are zero-padded to three digits |
+| duplicate traceability code (`ID_DUPLICATE`) | the same code defined twice | codes are unique across the WHOLE project |
+| decision without alternatives (`DECISION_WITHOUT_ALTERNATIVE`) | a habit, not a decision | record what you rejected |
+| decision without a chosen option (`DECISION_WITHOUT_CHOICE`) | alternatives listed, none picked | say which one, and why |
+| required section missing (`SECTION_MISSING`) | no assumptions or no open-questions section | add it; "None." is a valid answer, silence is not |
+| assumption or question without a code (`ASM_WITHOUT_CODE`) | written as prose, unreferenceable | code it `ASM-001` / `Q-001` |
+| invalid status (`STATUS_INVALID`) | not `open` or `answered` | use the exact word — **and no markdown around it**, `**answered**` does not parse |
+| blocking question still open (`Q_BLOCKING_OPEN`) | the path cannot be chosen yet | ask the person |
+| open question (`Q_OPEN`) | a decision still owed | answer it, or accept a red `--ci` |
+| acceptance criterion covered by no task (`AC_WITHOUT_TASK`) | a requirement nobody will build | add or extend a task |
+| broken reference (`REF_BROKEN`) | a task cites something that does not exist | fix the reference |
+| task without declared files (`TASK_WITHOUT_FILES`) | cannot be parallelized | declare the files it touches |
+| task maps a file that does not exist (`FILE_MISSING`) | declared but unwritten | expected while pending; an error once `[done]` |
+| invalid task status (`TASK_STATUS_INVALID`) | not one of the four words | `pending` · `in-progress` · `in-test` · `done` |
+| acceptance criterion without a test (`AC_WITHOUT_TEST`) | a requirement with no proof | write the test with `@spec:AC-xxx` in its title |
+| acceptance criterion without proof (`AC_WITHOUT_PROOF`) | the test exists but never passed, or was SKIPPED | run verify; a skip is never proof |
+| proof is out of date (`PROOF_STALE`) | code moved after the last proof | `adp verify` again |
+| weak proof (`PROOF_WEAK`) | proven only by the runner's global exit code | configure a per-test reporter — a green suite is not per-criterion proof |
+| orphan test (`TEST_ORPHAN`) | a test points at a criterion that is gone | the spec moved and the test did not — reconcile them |
+| task completed without proof (`TASK_DONE_WITHOUT_PROOF`) | `[done]` with unproven criteria | verify, or reopen the task |
+| open assumption (`ASM_OPEN`) | a guess in a feature declared done | confirm or invalidate it with the person |
+| principle without executable verification (`PRINCIPLE_WITHOUT_VERIFICATION`) | a MUST nothing checks | give it a verification, or lower its level honestly |
+| invalid principle level (`LEVEL_INVALID`) | not MUST, SHOULD or MAY | use one of the three |
+| principle violated (`PRINCIPLE_VIOLATED`) | the constitution was broken | fix the code, never the principle |
+| verification matches no file (`GLOB_WITHOUT_FILES`) | the check is inert | fix the glob — a check that cannot fail looks like one that passed |
+| malformed verification (`VERIFICATION_MALFORMED`) | invalid regex, or one that timed out | simplify the pattern |
+| source file mapped by no task (`FILE_ORPHAN`) | code nothing asked for | map it to a task, or question why it exists |
+| feature name diverges from its directory (`FEATURE_MISMATCH`) | the header and the folder disagree | make them match |
+| project could not be read (`PROJECT_INVALID`) | a document failed to parse | the message names the file |
+| duplicate traceability code (`ID_DUPLICATE`) | the same code defined twice | codes are unique across the whole project |
 
 ## Questions the engine answers for you
 
-"Which requirement has no test?" → `adp audit` → `AC_SEM_TESTE`.
-"Which test maps to no requirement?" → `TESTE_ORFAO`.
-"Which code serves no requirement?" → `ARQUIVO_ORFAO`.
-"Which principle is decoration?" → `PRINCIPIO_SEM_VERIFICACAO`.
+"Which requirement has no test?" → `adp audit` → `AC_WITHOUT_TEST`.
+"Which test maps to no requirement?" → `TEST_ORPHAN`.
+"Which code serves no requirement?" → `FILE_ORPHAN`.
+"Which principle is decoration?" → `PRINCIPLE_WITHOUT_VERIFICATION`.
 "Which criteria are actually proven?" → `adp verify` → the proof record.
-"Which proof went stale?" → `VERIFY_OBSOLETO`.
+"Which proof went stale?" → `PROOF_STALE`.
 "What can run in parallel?" → `adp plan`.
 "Where are we?" → `adp status`.
 "What do I send back to fix this?" → `adp prompt`.

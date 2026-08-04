@@ -88,7 +88,7 @@ unique **across the whole project**, not per file.
 |---|---|---|
 | `PRD.md` | **what**, for **whom**, **why** | `US-xxx` stories · `AC-xxx` acceptance criteria |
 | `RFC.md` | **which path**, among the possible ones | `ASM-xxx` assumptions · `Q-xxx` open questions |
-| `TDD.md` | **how**, in detail | `T-xxx` tasks, each declaring `Refs:`, `Arquivos:` and optionally `Lê:` and `Depende:` |
+| `TDD.md` | **how**, in detail | `T-xxx` tasks, each declaring `Refs:`, `Files:` and optionally `Reads:` and `Depends on:` |
 
 They are three documents rather than one because the three questions have
 different audiences and different lifetimes: *what and why* changes when the
@@ -98,7 +98,7 @@ Splitting them lets each be approved on its own gate.
 ### The chain, and why it holds
 
 ```
-US-001 ──owns──▶ AC-001 ◀──Refs──  T-001 ──Arquivos──▶ src/thing.js
+US-001 ──owns──▶ AC-001 ◀──Refs──  T-001 ──Files──▶ src/thing.js
                     ▲                                        │
                     └────── @spec:AC-001 in a test title ─────┘
 ```
@@ -110,8 +110,8 @@ without knowing either.
 
 ### The rule the whole thing rests on
 
-**You cannot declare a task done.** `[concluida]` with an unproven criterion is
-`TASK_CONCLUIDA_SEM_PROVA`, an error. The test runner decides, and **a skipped
+**You cannot declare a task done.** `[done]` with an unproven criterion is
+`TASK_DONE_WITHOUT_PROOF`, an error. The test runner decides, and **a skipped
 test is never proof**. That refusal is the product; everything else is
 scaffolding around it.
 
@@ -132,7 +132,7 @@ scaffolding around it.
 ```
 
 The regexes **execute**. A `[MUST]` with nothing machine-checkable is
-`PRINCIPIO_SEM_VERIFICACAO`. A glob matching no file is `GLOB_SEM_ARQUIVOS`,
+`PRINCIPLE_WITHOUT_VERIFICATION`. A glob matching no file is `GLOB_WITHOUT_FILES`,
 because a check that cannot fail looks exactly like a check that passed — the
 most expensive kind of green light there is.
 
@@ -356,9 +356,9 @@ is already sitting in a terminal. The reasoning, and the alternatives weighed
 against it, are recorded as D-011 rather than deleted, so the next person to
 propose a page finds the argument instead of repeating it.
 
-One consequence you can watch in `.exemplo/`: its three tasks say `[concluida]`,
+One consequence you can watch in `.exemplo/`: its three tasks say `[done]`,
 and that word is worth nothing until `verify` has run. Delete the proof record and
-all three report `TASK_CONCLUIDA_SEM_PROVA` — the status stays exactly where it
+all three report `TASK_DONE_WITHOUT_PROOF` — the status stays exactly where it
 was written, and the engine simply stops believing it.
 
 ---

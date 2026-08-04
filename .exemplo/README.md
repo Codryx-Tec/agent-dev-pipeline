@@ -26,18 +26,18 @@ command and it asks again.
 Then break it, which is the part worth doing:
 
 ```sh
-rm .spec/verification/inscricao-turma.json
+rm .spec/verification/class-enrolment.json
 node ../bin/adp.js audit --ci    # G4 red again, and all three tasks now report
-                                 # TASK_CONCLUIDA_SEM_PROVA
+                                 # TASK_DONE_WITHOUT_PROOF
 ```
 
 Then break it on purpose — that is the part worth doing:
 
 ```sh
-# delete the @spec:AC-002 annotation from a test title  -> G4 goes red: AC_SEM_TESTE
-# change a task's status to [concluida]                 -> G5 goes red: TASK_CONCLUIDA_SEM_PROVA
-# remove one alternative from D-001 in RFC.md           -> G2 goes red: DECISAO_SEM_ALTERNATIVA
-# add a criterion to PRD.md with no task                -> G3 warns: AC_SEM_TASK
+# delete the @spec:AC-002 annotation from a test title  -> G4 goes red: AC_WITHOUT_TEST
+# change a task's status to [done]                 -> G5 goes red: TASK_DONE_WITHOUT_PROOF
+# remove one alternative from D-001 in RFC.md           -> G2 goes red: DECISION_WITHOUT_ALTERNATIVE
+# add a criterion to PRD.md with no task                -> G3 warns: AC_WITHOUT_TASK
 ```
 
 Each time, `node ../bin/adp.js prompt` gives you the exact text to paste
@@ -48,12 +48,12 @@ back to an AI to fix it.
 ```
 .spec/SCOPE.md            approved — this is what opens G0
 .spec/CONSTITUTION.md     four principles; P-004 is executed against a test tag
-.spec/features/inscricao-turma/
+.spec/features/class-enrolment/
     PRD.md                2 stories, 3 acceptance criteria  (owns US-xxx, AC-xxx)
     RFC.md                2 decisions with alternatives     (owns ASM-xxx, Q-xxx)
     TDD.md                3 tasks, each declaring its files (owns T-xxx)
-src/inscricao.js          every rule, in one function
-test/inscricao.test.js    one test per criterion, annotated in the TITLE
+src/enrolment.js          every rule, in one function
+test/enrolment.test.js    one test per criterion, annotated in the TITLE
 adp.config.json       where the tests are and how to run them
 AGENTS.md                 the contract the AI follows here
 ```
@@ -76,18 +76,18 @@ seat count and says why two lost, and what the winner costs. That is the
 difference between a decision and a habit — and the gate counts the alternatives.
 
 **The tasks all touch the same file, so the planner will put them in one lane.**
-That is the correct answer, not a limitation. The `Arquivos:` list exists so the
+That is the correct answer, not a limitation. The `Files:` list exists so the
 machine can tell real serialization from accidental.
 
-**The tasks say `[concluida]`, and that word is worth nothing on its own.** They
+**The tasks say `[done]`, and that word is worth nothing on its own.** They
 only survive an audit once `verify` has run and recorded that each criterion's
 test passed. Delete the proof record and all three become
-`TASK_CONCLUIDA_SEM_PROVA` instantly — the status word stays exactly where it
+`TASK_DONE_WITHOUT_PROOF` instantly — the status word stays exactly where it
 was, and the engine stops believing it. That refusal is the entire product.
 
 ## Two postures, one engine
 
-`AC_SEM_PROVA` is a **warning** while you work and an **error** under
+`AC_WITHOUT_PROOF` is a **warning** while you work and an **error** under
 `audit --ci` — quiet enough to work under, strict enough to be a gate. This
 example is clean under both, which is the bar a real project should hold itself
 to before calling a feature done.

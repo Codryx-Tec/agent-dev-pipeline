@@ -28,7 +28,7 @@ function fakeProject(tasks) {
   };
 }
 
-function task(id, files, status = 'pendente', { reads = [], dependsOn = [] } = {}) {
+function task(id, files, status = 'pending', { reads = [], dependsOn = [] } = {}) {
   return { id, title: `task ${id}`, status, files, refs: [], reads, dependsOn };
 }
 
@@ -115,9 +115,9 @@ test('a task with no declared files is never parallelised @spec:AC-012', () => {
 test('only pending tasks are planned @spec:AC-019', () => {
   const plan = buildPlan(
     fakeProject([
-      task('T-001', ['src/a.js'], 'concluida'),
-      task('T-002', ['src/b.js'], 'em-teste'),
-      task('T-003', ['src/c.js'], 'pendente'),
+      task('T-001', ['src/a.js'], 'done'),
+      task('T-002', ['src/b.js'], 'in-test'),
+      task('T-003', ['src/c.js'], 'pending'),
     ]),
     {},
     { runId: 'r1' }
@@ -148,14 +148,14 @@ test('the same document always plans the same way @spec:AC-019', () => {
 // --------------------------------------------------------- ordering (Q-010)
 
 test('a task declares what it runs after, and keeps its own lane @spec:AC-044', () => {
-  // The failure this replaces: before `Depende:` the only way to run last was to
+  // The failure this replaces: before `Depends on:` the only way to run last was to
   // declare somebody else's files, which put you in their lane. Ordering and
   // parallelism were the same mechanism, so buying one spent the other.
   const plan = buildPlan(
     fakeProject([
       task('T-001', ['src/a.js']),
       task('T-002', ['src/b.js']),
-      task('T-003', ['src/c.js'], 'pendente', { dependsOn: ['T-001'] }),
+      task('T-003', ['src/c.js'], 'pending', { dependsOn: ['T-001'] }),
     ]),
     {},
     { runId: 'r1' }
@@ -179,7 +179,7 @@ test('a dependency orders tasks inside a lane too @spec:AC-044', () => {
   // order, which is the only thing deciding it otherwise.
   const plan = buildPlan(
     fakeProject([
-      task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-002'] }),
+      task('T-001', ['src/a.js'], 'pending', { dependsOn: ['T-002'] }),
       task('T-002', ['src/a.js']),
     ]),
     {},
@@ -196,10 +196,10 @@ test('lanes that depend on each other are merged, not ordered @spec:AC-044', () 
   // one of them against a tree missing the work it asked to follow.
   const plan = buildPlan(
     fakeProject([
-      task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-002'] }),
+      task('T-001', ['src/a.js'], 'pending', { dependsOn: ['T-002'] }),
       task('T-002', ['src/b.js']),
       task('T-003', ['src/a.js']),
-      task('T-004', ['src/b.js'], 'pendente', { dependsOn: ['T-003'] }),
+      task('T-004', ['src/b.js'], 'pending', { dependsOn: ['T-003'] }),
     ]),
     {},
     { runId: 'r1' }
@@ -220,7 +220,7 @@ test('a file a task only reads does not collapse lanes @spec:AC-045', () => {
   const plan = buildPlan(
     fakeProject([
       task('T-001', ['src/a.js']),
-      task('T-002', ['src/b.js'], 'pendente', { reads: ['src/a.js'] }),
+      task('T-002', ['src/b.js'], 'pending', { reads: ['src/a.js'] }),
     ]),
     {},
     { runId: 'r1' }
@@ -243,7 +243,7 @@ test('declaring the order silences the stale-read warning @spec:AC-045', () => {
   const plan = buildPlan(
     fakeProject([
       task('T-001', ['src/a.js']),
-      task('T-002', ['src/b.js'], 'pendente', { reads: ['src/a.js'], dependsOn: ['T-001'] }),
+      task('T-002', ['src/b.js'], 'pending', { reads: ['src/a.js'], dependsOn: ['T-001'] }),
     ]),
     {},
     { runId: 'r1' }
@@ -256,8 +256,8 @@ test('declaring the order silences the stale-read warning @spec:AC-045', () => {
 test('a dependency cycle is reported, never broken arbitrarily @spec:AC-046', () => {
   const plan = buildPlan(
     fakeProject([
-      task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-002'] }),
-      task('T-002', ['src/b.js'], 'pendente', { dependsOn: ['T-001'] }),
+      task('T-001', ['src/a.js'], 'pending', { dependsOn: ['T-002'] }),
+      task('T-002', ['src/b.js'], 'pending', { dependsOn: ['T-001'] }),
     ]),
     {},
     { runId: 'r1' }
@@ -270,7 +270,7 @@ test('a dependency cycle is reported, never broken arbitrarily @spec:AC-046', ()
 
 test('a task depending on itself is a cycle of one @spec:AC-046', () => {
   const plan = buildPlan(
-    fakeProject([task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-001'] })]),
+    fakeProject([task('T-001', ['src/a.js'], 'pending', { dependsOn: ['T-001'] })]),
     {},
     { runId: 'r1' }
   );
@@ -280,7 +280,7 @@ test('a task depending on itself is a cycle of one @spec:AC-046', () => {
 
 test('a dependency on an id no task declares is refused @spec:AC-046', () => {
   const plan = buildPlan(
-    fakeProject([task('T-001', ['src/a.js'], 'pendente', { dependsOn: ['T-999'] })]),
+    fakeProject([task('T-001', ['src/a.js'], 'pending', { dependsOn: ['T-999'] })]),
     {},
     { runId: 'r1' }
   );
@@ -295,8 +295,8 @@ test('waiting on a task that will not run keeps you out of the plan too @spec:AC
   const plan = buildPlan(
     fakeProject([
       task('T-001', []),
-      task('T-002', ['src/b.js'], 'pendente', { dependsOn: ['T-001'] }),
-      task('T-003', ['src/c.js'], 'pendente', { dependsOn: ['T-002'] }),
+      task('T-002', ['src/b.js'], 'pending', { dependsOn: ['T-001'] }),
+      task('T-003', ['src/c.js'], 'pending', { dependsOn: ['T-002'] }),
     ]),
     {},
     { runId: 'r1' }
@@ -311,8 +311,8 @@ test('waiting on a task that will not run keeps you out of the plan too @spec:AC
 test('a dependency already concluded is satisfied, not waited for @spec:AC-044', () => {
   const plan = buildPlan(
     fakeProject([
-      task('T-001', ['src/a.js'], 'concluida'),
-      task('T-002', ['src/b.js'], 'pendente', { dependsOn: ['T-001'] }),
+      task('T-001', ['src/a.js'], 'done'),
+      task('T-002', ['src/b.js'], 'pending', { dependsOn: ['T-001'] }),
     ]),
     {},
     { runId: 'r1' }
@@ -674,16 +674,16 @@ test('a red gate becomes a paste-ready prompt with codes and locations @spec:AC-
     id: 'G3',
     title: 'Breakdown implementable',
     findings: [
-      { code: 'AC_SEM_TASK', message: 'AC-007 is covered by no task', file: 'PRD.md', line: 12 },
-      { code: 'AC_SEM_TASK', message: 'AC-008 is covered by no task', file: 'PRD.md', line: 20 },
-      { code: 'REF_QUEBRADA', message: 'T-003 references AC-999', file: 'TDD.md', line: 40 },
+      { code: 'AC_WITHOUT_TASK', message: 'AC-007 is covered by no task', file: 'PRD.md', line: 12 },
+      { code: 'AC_WITHOUT_TASK', message: 'AC-008 is covered by no task', file: 'PRD.md', line: 20 },
+      { code: 'REF_BROKEN', message: 'T-003 references AC-999', file: 'TDD.md', line: 40 },
     ],
   });
 
   assert.match(prompt, /Gate G3 \(Breakdown implementable\) is red/);
-  assert.match(prompt, /AC_SEM_TASK/);
+  assert.match(prompt, /AC_WITHOUT_TASK/);
   assert.match(prompt, /PRD\.md:12/);
-  assert.match(prompt, /REF_QUEBRADA/);
+  assert.match(prompt, /REF_BROKEN/);
   // The two non-negotiables.
   assert.match(prompt, /Do not weaken, skip or delete a test/);
   assert.match(prompt, /3 attempts/);
@@ -851,11 +851,11 @@ test('the briefing is derived, and only the note is stored @spec:AC-041', async 
       {
         name: 'demo',
         prd: { acs: [{ id: 'AC-001', title: 'one' }, { id: 'AC-002', title: 'two' }] },
-        rfc: { questions: [{ id: 'Q-001', status: 'aberta', blocking: true, text: 'which path?' }] },
+        rfc: { questions: [{ id: 'Q-001', status: 'open', blocking: true, text: 'which path?' }] },
         tdd: { tasks: [
-          { id: 'T-001', title: 'doing', status: 'em-andamento' },
-          { id: 'T-002', title: 'resting', status: 'em-teste' },
-          { id: 'T-003', title: 'also resting', status: 'em-teste' },
+          { id: 'T-001', title: 'doing', status: 'in-progress' },
+          { id: 'T-002', title: 'resting', status: 'in-test' },
+          { id: 'T-003', title: 'also resting', status: 'in-test' },
         ] },
       },
     ],
@@ -865,7 +865,7 @@ test('the briefing is derived, and only the note is stored @spec:AC-041', async 
   assert.equal(r1.checkpoint, null, 'with no note, everything still derives');
   assert.equal(r1.unprovenCount, 1, 'AC-002 has no proof');
   assert.equal(r1.lastVerify.stale, true, 'code moved after the proof');
-  // Only em-andamento is in flight; em-teste is a resting state, counted not listed.
+  // Only in-progress is in flight; in-test is a resting state, counted not listed.
   assert.deepEqual(r1.inFlight.map((t) => t.id), ['T-001']);
   assert.equal(r1.awaitingProof, 2);
   assert.equal(r1.openQuestions.filter((q) => q.blocking).length, 1);
@@ -878,7 +878,7 @@ test('the briefing is derived, and only the note is stored @spec:AC-041', async 
   assert.match(text, /was halfway through the parser/);
   assert.match(text, /STALE/);
   assert.match(text, /Q-001/);
-  assert.match(text, /2 task\(s\) sit at \[em-teste\]/);
+  assert.match(text, /2 task\(s\) sit at \[in-test\]/);
   // The note is labelled as the one thing that can be wrong.
   assert.match(text, /only part not recomputed/);
 

@@ -13,9 +13,14 @@ export function lineOf(content, index) {
 }
 
 // Accent- and case-insensitive fold, used to compare status tokens written by
-// humans (`Concluída`, `concluida`, `CONCLUIDA`) against the canonical form.
-// The canonical token itself is never rewritten — AGENTS.md forbids translating
-// engine tokens, and normalising for comparison is not translating.
+// humans (`Done`, `DONE`, `done`) against the canonical form. The canonical
+// token itself is never rewritten — normalising for comparison is not the same
+// as changing what the document says.
+//
+// Accent stripping outlived the Portuguese tokens it was written for and is kept
+// on purpose: it costs one line and it is the difference between accepting a
+// document somebody typed on a keyboard that autocorrects and rejecting it for a
+// reason nobody can see.
 export function fold(value) {
   return String(value ?? '')
     .normalize('NFD')

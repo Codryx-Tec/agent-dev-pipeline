@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 5975,
-  "verifiedAt": "2026-08-04T17:57:56.528Z",
-  "gitRev": "0267e89290cfa43543b8597f38866893258c0bbb",
+  "durationMs": 6487,
+  "verifiedAt": "2026-08-04T18:20:58.336Z",
+  "gitRev": "f15cb9a991b5b3fdab16d59d259ed4c090f9e862",
   "gitDirty": true,
-  "codeMtime": 1785866241782.938,
+  "codeMtime": 1785867559218.2566,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -230,7 +230,7 @@
           "status": "pass"
         },
         {
-          "title": "accented and upper-case statuses fold to the canonical token @spec:AC-011",
+          "title": "a status written in any case folds to the canonical token @spec:AC-011",
           "status": "pass"
         }
       ]

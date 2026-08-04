@@ -21,14 +21,14 @@ description: Bootstrap a brand-new project before any coding starts — produces
 # Constitution — v1.1.0
 
 <!-- P-xxx = principle. Levels: [MUST] · [SHOULD] · [MAY].
-Every [MUST] needs executable verification or audit flags PRINCIPIO_SEM_VERIFICACAO.
+Every [MUST] needs executable verification or audit flags PRINCIPLE_WITHOUT_VERIFICATION.
 Formats: verification(gate) | verification(test): @principle:P-xxx |
 verification(forbidden|required): `regex` in `glob` -->
 
 ## P-001 [MUST] Every requirement has executable proof
 
 No feature is done without audit in CI mode exiting 0. Verified by the audit
-itself (AC_SEM_TESTE, AC_SEM_PROVA, TASK_CONCLUIDA_SEM_PROVA).
+itself (AC_WITHOUT_TEST, AC_WITHOUT_PROOF, TASK_DONE_WITHOUT_PROOF).
 
 - verification(gate): intrinsic to the audit
 

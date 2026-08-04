@@ -1,9 +1,9 @@
 # AGENTS.md — Rules for AI Agents
 
 > Read before any task. All `.md` output in English. **Never translate engine
-> tokens** — finding codes (`AC_SEM_TESTE`, `AC_SEM_PROVA`,
-> `TASK_CONCLUIDA_SEM_PROVA`, `PRINCIPIO_SEM_VERIFICACAO`) and task statuses
-> (`[pendente]`, `[em-andamento]`, `[em-teste]`, `[concluida]`) are the
+> tokens** — finding codes (`AC_WITHOUT_TEST`, `AC_WITHOUT_PROOF`,
+> `TASK_DONE_WITHOUT_PROOF`, `PRINCIPLE_WITHOUT_VERIFICATION`) and task statuses
+> (`[pending]`, `[in-progress]`, `[in-test]`, `[done]`) are the
 > machine's vocabulary, not prose. Talk to the human in their own language.
 
 ## Core loop
@@ -41,7 +41,7 @@ adp verify        # runs the tests, writes .spec/verification/<feature>.json
 adp audit --ci    # now G4 can be green
 ```
 
-Before verify has run, every criterion reports `AC_SEM_PROVA` — *has a test, but
+Before verify has run, every criterion reports `AC_WITHOUT_PROOF` — *has a test, but
 no PASS proof*. That is not a bug to work around; it means nobody has run the
 tests through the engine yet. A slow suite goes to `adp verify --background`,
 followed by `adp verify --status`.
@@ -60,9 +60,9 @@ that came from a repo. `adp trust` shows the human that exact command and asks.
    concerned.
 3. **You never declare a criterion passed.** The test runner does. A skipped
    test is not proof.
-4. **Never mark `[concluida]` without PASS proof.** `[em-teste]` is the honest
+4. **Never mark `[done]` without PASS proof.** `[in-test]` is the honest
    resting place — implemented, proof not yet granted. The audit checks, and
-   `TASK_CONCLUIDA_SEM_PROVA` is an error.
+   `TASK_DONE_WITHOUT_PROOF` is an error.
 5. **`adp verify` is what grants proof.** A test that exists is not a test that
    passed. Run it before claiming anything.
 6. **Never approve the test command for the human.** `adp trust` is their
@@ -103,7 +103,7 @@ must never be what stops you proving that work is done.
 
 ## Running several tasks at once
 
-When `TDD.md` holds several `[pendente]` tasks, the engine can run them in
+When `TDD.md` holds several `[pending]` tasks, the engine can run them in
 parallel, each in its own git worktree:
 
 ```sh
@@ -118,12 +118,12 @@ task finishes having changed nothing. Writing is granted by `--allow-edits`, and
 that grant is the human's to make — like `adp trust` and `--yes`, it is not
 yours to add on their behalf.
 
-Tasks whose `Arquivos:` lists overlap share a lane and run in order; disjoint
+Tasks whose `Files:` lists overlap share a lane and run in order; disjoint
 tasks run at the same time. **A task with no declared files is never
 parallelised** — that is the file list earning its keep, not paperwork.
 
-`Arquivos:` is what a task WRITES. `Lê:` is what it only reads, and costs no
-parallelism. `Depende: T-001` is how a task says it runs after another one —
+`Files:` is what a task WRITES. `Reads:` is what it only reads, and costs no
+parallelism. `Depends on: T-001` is how a task says it runs after another one —
 overlap cannot say it, because overlap is symmetric and "after" is not. A lane is
 branched from HEAD, so a file you merely read is the version from before the run
 until you declare the dependency; the plan tells you when that gap exists.

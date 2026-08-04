@@ -47,8 +47,8 @@ test('every mapped code has a human-readable label @spec:AC-024', () => {
 
 test('gates after the first red one are blocked, never red @spec:AC-004', () => {
   const findings = [
-    { code: 'US_SEM_AC', severity: 'error', message: 'x' },
-    { code: 'AC_SEM_TASK', severity: 'error', message: 'y' },
+    { code: 'US_WITHOUT_AC', severity: 'error', message: 'x' },
+    { code: 'AC_WITHOUT_TASK', severity: 'error', message: 'y' },
   ];
   const ev = evaluateGates(findings);
   assert.equal(gate(ev, 'G1').state, 'red');
@@ -58,13 +58,13 @@ test('gates after the first red one are blocked, never red @spec:AC-004', () => 
 });
 
 test('warnings alone never turn a gate red @spec:AC-004', () => {
-  const ev = evaluateGates([{ code: 'AC_SEM_TASK', severity: 'warning', message: 'x' }]);
+  const ev = evaluateGates([{ code: 'AC_WITHOUT_TASK', severity: 'warning', message: 'x' }]);
   assert.equal(gate(ev, 'G3').state, 'green');
   assert.equal(ev.exitCode, 0);
 });
 
 test('gateOf resolves a known code and refuses an unknown one @spec:AC-024', () => {
-  assert.equal(gateOf('AC_SEM_TESTE'), 'G4');
+  assert.equal(gateOf('AC_WITHOUT_TEST'), 'G4');
   assert.equal(gateOf('NOT_A_REAL_CODE'), null);
 });
 
@@ -73,19 +73,19 @@ test('a finding renders its readable name before its stable code @spec:AC-024', 
     '.spec/SCOPE.md': APPROVED_SCOPE,
     '.spec/features/f/PRD.md': '### US-001 — lonely\n',
     '.spec/features/f/RFC.md': MINIMAL_RFC,
-    '.spec/features/f/TDD.md': '## T-001 — x [pendente]\n\n- Refs: US-001\n- Arquivos: src/a.js\n',
+    '.spec/features/f/TDD.md': '## T-001 — x [pending]\n\n- Refs: US-001\n- Files: src/a.js\n',
   });
   const text = renderTerminal(audit, gates);
-  assert.match(text, /user story without acceptance criterion \(US_SEM_AC\)/);
+  assert.match(text, /user story without acceptance criterion \(US_WITHOUT_AC\)/);
 });
 
 test('a red gate produces a paste-ready prompt with its findings @spec:AC-023', () => {
   const ev = evaluateGates([
-    { code: 'US_SEM_AC', severity: 'error', message: 'US-001 has no criterion', file: 'PRD.md', line: 3 },
+    { code: 'US_WITHOUT_AC', severity: 'error', message: 'US-001 has no criterion', file: 'PRD.md', line: 3 },
   ]);
   const prompt = renderPrompt(gate(ev, 'G1'));
   assert.match(prompt, /Gate G1/);
-  assert.match(prompt, /US_SEM_AC/);
+  assert.match(prompt, /US_WITHOUT_AC/);
   assert.match(prompt, /PRD\.md:3/);
   // The iteration cap belongs in the prompt itself: without it, an agent will
   // grind at the same finding forever instead of escalating. Asserted against
@@ -100,7 +100,7 @@ test('a clean project exits 0 with no red gate @spec:AC-018', () => {
     '.spec/features/f/PRD.md':
       '### US-001 — x\n\n#### AC-001 — y\n\n- **Given** a\n- **When** b\n- **Then** c\n',
     '.spec/features/f/RFC.md': MINIMAL_RFC,
-    '.spec/features/f/TDD.md': '## T-001 — x [pendente]\n\n- Refs: AC-001\n- Arquivos: src/a.js\n',
+    '.spec/features/f/TDD.md': '## T-001 — x [pending]\n\n- Refs: AC-001\n- Files: src/a.js\n',
     'src/a.js': 'export const a = 1;\n',
     'test/a.test.js': "test('y @spec:AC-001', () => {});\n",
   });

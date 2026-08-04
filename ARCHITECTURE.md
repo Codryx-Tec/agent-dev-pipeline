@@ -9,7 +9,7 @@ Traceability from story to criterion to task to test, with codes unique
 project-wide. Documents that own distinct families of codes: `PRD.md` owns
 US-xxx and AC-xxx, `RFC.md` owns ASM-xxx and Q-xxx, `TDD.md` owns T-xxx. A
 decision recorded without at least two alternatives considered. A criterion
-missing any of its Given/When/Then clauses. A task marked `[concluida]` whose
+missing any of its Given/When/Then clauses. A task marked `[done]` whose
 criteria have no PASS proof. A test annotated with a criterion that no longer
 exists. A source file mapped by no task.
 

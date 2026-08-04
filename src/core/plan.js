@@ -5,21 +5,21 @@
 // Q-010 they were answered by one mechanism.
 //
 // SAFETY is file disjointness: two tasks in different lanes never WRITE the same
-// file. That is decided from the `Arquivos:` each task declares, which makes the
+// file. That is decided from the `Files:` each task declares, which makes the
 // declaration load-bearing rather than documentation.
 //
-// ORDER is declared, not inferred: `Depende: T-001` says this task runs after
+// ORDER is declared, not inferred: `Depends on: T-001` says this task runs after
 // that one. Inferring it from file overlap cannot work, because overlap is
 // symmetric and "after" is not. The experiment that raised Q-010 showed what the
 // absence cost: a task that needed to run last declared three files it only read
 // in order to force the issue, and the connected component swallowed the whole
 // graph into a single lane.
 //
-// `Lê:` is the other half of that fix. A file a task only reads costs nothing in
+// `Reads:` is the other half of that fix. A file a task only reads costs nothing in
 // parallelism, because every lane has its own worktree and two readers do not
 // collide. What reading does NOT get you is the other task's version — the
 // worktree is branched from HEAD, so a reader sees the pre-run file unless it
-// also declares `Depende:`. That gap is reported rather than silently tolerated.
+// also declares `Depends on:`. That gap is reported rather than silently tolerated.
 //
 // THE REFUSALS THAT MATTER. A task is never placed in a lane when the plan
 // cannot be shown to be safe or satisfiable: no declared files (AC-012), a
@@ -37,7 +37,7 @@ import path from 'path';
 // planner pretending it cannot happen.
 
 /** Statuses that still have work left in them. */
-const PLANNABLE = new Set(['pendente']);
+const PLANNABLE = new Set(['pending']);
 
 function normalise(file) {
   return String(file).trim().replace(/^\.\//, '').replace(/\\/g, '/');
@@ -156,7 +156,7 @@ export function buildPlan(project, config = {}, { runId } = {}) {
 
   // AC-012: an undeclared file footprint is never parallelised.
   for (const t of plannable) {
-    if (t.files.length === 0) exclude(t.id, 'unknown file footprint — the task declares no Arquivos:');
+    if (t.files.length === 0) exclude(t.id, 'unknown file footprint — the task declares no Files:');
   }
 
   // A dependency on an id nothing declares is a broken document, and the
@@ -418,7 +418,7 @@ function staleReads(declared, laneOf, lanes) {
           writtenBy: writer,
           message:
             `${t.id} reads ${f}, which ${writer} writes in this run, and does not declare ` +
-            `Depende: ${writer} — it will see the version from before the run.`,
+            `Depends on: ${writer} — it will see the version from before the run.`,
         });
       }
     }

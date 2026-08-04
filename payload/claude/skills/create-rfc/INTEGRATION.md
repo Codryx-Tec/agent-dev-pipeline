@@ -23,16 +23,16 @@ What the engine reads from a create-rfc document:
 ```markdown
 | # | Assumption | Owner | Confidence | Invalidation Trigger |
 |---|------------|-------|------------|----------------------|
-| ASM-001 | traffic stays under 10k req/s *(status: aberta)* | @ana | High | projections change |
+| ASM-001 | traffic stays under 10k req/s *(status: open)* | @ana | High | projections change |
 ```
 
-A bare number is reported as `ASM_SEM_CODIGO`. The reason is not bookkeeping: an
+A bare number is reported as `ASM_WITHOUT_CODE`. The reason is not bookkeeping: an
 uncoded assumption cannot be referenced from another document, cannot be tracked
 across features, and cannot be closed — so it quietly stays true forever.
 
 Note the `*(status: ...)*` alongside the confidence level. **Confidence is not
-status.** "High confidence" says how sure you are; `aberta | confirmada |
-invalidada` says whether anyone has checked. The engine will not map one onto the
+status.** "High confidence" says how sure you are; `open | confirmed |
+invalidated` says whether anyone has checked. The engine will not map one onto the
 other, because a confident guess is still a guess.
 
 **2. Add an open-questions section.** create-rfc has Action Items and Outcome but
@@ -41,7 +41,7 @@ no place for "we could not decide this yet". G2 needs one:
 ```markdown
 ## Open questions
 
-- **Q-001** — do we need multi-region on day one? *(status: aberta — **blocking**)*
+- **Q-001** — do we need multi-region on day one? *(status: open — **blocking**)*
 ```
 
 Mark a question **blocking** when the path genuinely cannot be chosen without the

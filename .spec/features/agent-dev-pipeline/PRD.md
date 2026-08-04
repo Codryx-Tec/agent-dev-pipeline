@@ -3,7 +3,7 @@
 > feature: agent-dev-pipeline
 > document: PRD — WHAT, for WHOM, WHY
 > owns: US-xxx (user stories) · AC-xxx (acceptance criteria)
-> status: rascunho
+> status: draft
 > gate: G1 — this document is approved when every US has at least one AC with a
 > complete Given/When/Then block and no blocking question remains open in `RFC.md`.
 
@@ -86,7 +86,7 @@ starts, so that we never build the wrong thing efficiently.
 
 - **Given** a `PRD.md` containing a user story with no acceptance criterion under it
 - **When** the audit runs
-- **Then** the finding `US_SEM_AC` is reported with the story code, the file and
+- **Then** the finding `US_WITHOUT_AC` is reported with the story code, the file and
   the line number, and gate G1 reports red
 
 #### AC-006 — An incomplete criterion is a finding
@@ -94,7 +94,7 @@ starts, so that we never build the wrong thing efficiently.
 - **Given** a `PRD.md` containing an acceptance criterion missing any one of its
   Given, When or Then clauses
 - **When** the audit runs
-- **Then** the finding `AC_INCOMPLETO` is reported naming which clause is
+- **Then** the finding `AC_INCOMPLETE` is reported naming which clause is
   missing, and gate G1 reports red
 
 ### US-003 — The captain records which path was chosen, and why
@@ -108,23 +108,23 @@ from memory.
 - **Given** an `RFC.md` containing a decision section that records fewer than two
   alternatives considered
 - **When** the audit runs
-- **Then** the finding `DECISAO_SEM_ALTERNATIVA` is reported with the decision
+- **Then** the finding `DECISION_WITHOUT_ALTERNATIVE` is reported with the decision
   heading and the file location, and gate G2 reports red
 
 #### AC-008 — Assumptions and questions are mandatory sections
 
 - **Given** an `RFC.md` with no assumptions section or no open-questions section
 - **When** the audit runs
-- **Then** the finding `SECAO_AUSENTE` is reported naming the missing section,
+- **Then** the finding `SECTION_MISSING` is reported naming the missing section,
   and gate G2 reports red
 
 #### AC-009 — An open assumption blocks completion, not progress
 
-- **Given** a feature whose `RFC.md` holds an assumption with status `aberta`
-- **When** the audit runs while the feature status is below `implementada`
+- **Given** a feature whose `RFC.md` holds an assumption with status `open`
+- **When** the audit runs while the feature status is below `implemented`
 - **Then** the assumption is reported at warning severity and gate G2 may still
   pass; **and when** the same audit runs with the feature status at
-  `implementada` or above, the finding `ASM_ABERTA` is reported as an error and
+  `implemented` or above, the finding `ASM_OPEN` is reported as an error and
   gate G5 reports red
 
 ### US-004 — The captain gets a technical breakdown that a machine can plan
@@ -136,7 +136,7 @@ the planner can compute what is safe to run in parallel instead of guessing.
 
 - **Given** a `PRD.md` acceptance criterion that no task in `TDD.md` references
 - **When** the audit runs
-- **Then** the finding `AC_SEM_TASK` is reported with the criterion code, and
+- **Then** the finding `AC_WITHOUT_TASK` is reported with the criterion code, and
   gate G3 reports red
 
 #### AC-011 — A task referencing a code that does not exist is a finding
@@ -144,7 +144,7 @@ the planner can compute what is safe to run in parallel instead of guessing.
 - **Given** a task in `TDD.md` whose references name a story or criterion absent
   from every document in the project
 - **When** the audit runs
-- **Then** the finding `REF_QUEBRADA` is reported naming the task and the dangling
+- **Then** the finding `REF_BROKEN` is reported naming the task and the dangling
   reference, and gate G3 reports red
 
 #### AC-012 — A task without declared files is never parallelized
@@ -170,7 +170,7 @@ I type, so that a status in a document can never outrun the proof behind it.
 - **Given** a task marked with the completed status whose referenced acceptance
   criteria have no PASS proof recorded
 - **When** the audit runs
-- **Then** the finding `TASK_CONCLUIDA_SEM_PROVA` is reported naming the task and
+- **Then** the finding `TASK_DONE_WITHOUT_PROOF` is reported naming the task and
   the unproven criteria, and gate G5 reports red
 
 #### AC-049 — A task no criterion can prove is named, not silently skipped
@@ -178,7 +178,7 @@ I type, so that a status in a document can never outrun the proof behind it.
 - **Given** a task whose `Refs:` resolve but reach no acceptance criterion — a
   story reference, for example
 - **When** the audit runs
-- **Then** the finding `REF_SEM_CRITERIO` is reported naming the task and the
+- **Then** the finding `REF_WITHOUT_AC` is reported naming the task and the
   references it does carry, because proof is granted per criterion and a task
   with none can never reach the completed status
 
@@ -203,7 +203,7 @@ that the work is done.
   as skipped, pending or todo
 - **When** verification runs
 - **Then** that criterion is recorded with the verdict `skip`, it is not counted
-  as proven, and a subsequent audit reports `AC_SEM_PROVA` for it
+  as proven, and a subsequent audit reports `AC_WITHOUT_PROOF` for it
 
 #### AC-018 — The loop closes with no remote configured
 
@@ -273,7 +273,7 @@ request myself.
 - **Given** an audit producing findings
 - **When** the findings are rendered in the terminal
 - **Then** each one shows a human-readable name first with the stable code in
-  parentheses, and the stable code is never translated
+  parentheses, and the code is identical in every locale
 
 <!-- US-009, AC-025 and AC-026 retired with the monitor — see RFC D-011. Both
      criteria were about a browser page keeping itself current; with no page
@@ -291,7 +291,7 @@ so that stale documentation is reported instead of quietly assumed current.
 - **Given** a feature whose acceptance criteria were all proven, followed by a
   modification to a source or test file covered by the configured globs
 - **When** the audit runs
-- **Then** the finding `VERIFY_OBSOLETO` is reported for that feature and gate G4
+- **Then** the finding `PROOF_STALE` is reported for that feature and gate G4
   reports red until verification runs again
 
 #### AC-028 — A test pointing at a removed criterion is reported
@@ -299,7 +299,7 @@ so that stale documentation is reported instead of quietly assumed current.
 - **Given** a test annotated with an acceptance criterion code that no longer
   exists in any document
 - **When** the audit runs
-- **Then** the finding `TESTE_ORFAO` is reported with the test file and line, and
+- **Then** the finding `TEST_ORPHAN` is reported with the test file and line, and
   gate G5 reports red
 
 #### AC-029 — A declared principle without executable verification is a finding
@@ -307,7 +307,7 @@ so that stale documentation is reported instead of quietly assumed current.
 - **Given** a constitution principle at the `[MUST]` level declaring no executable
   verification
 - **When** the audit runs
-- **Then** the finding `PRINCIPIO_SEM_VERIFICACAO` is reported naming the
+- **Then** the finding `PRINCIPLE_WITHOUT_VERIFICATION` is reported naming the
   principle, and gate G5 reports red
 
 #### AC-030 — A declared verification is executed, not merely declared
@@ -315,7 +315,7 @@ so that stale documentation is reported instead of quietly assumed current.
 - **Given** a constitution principle declaring a forbidden pattern over a file glob,
   and a file matching that glob containing that pattern
 - **When** the audit runs
-- **Then** the finding `PRINCIPIO_VIOLADO` is reported with the offending file and
+- **Then** the finding `PRINCIPLE_VIOLATED` is reported with the offending file and
   line number, and gate G5 reports red
 
 ### US-011 — The captain is not made to run a stranger's code
@@ -453,7 +453,7 @@ having.
 #### AC-044 — A declared order is honoured without collapsing lanes
 
 - **Given** pending tasks writing disjoint files, one of which declares
-  `Depende:` on another
+  `Depends on:` on another
 - **When** the execution plan is built
 - **Then** they remain separate lanes, the dependent lane is scheduled in a later
   stage than the one it follows, and tasks sharing a lane are ordered so that a
@@ -462,11 +462,11 @@ having.
 #### AC-045 — A file a task only reads costs no parallelism, and says so
 
 - **Given** two tasks writing disjoint files, one of which declares the other's
-  file under `Lê:`
+  file under `Reads:`
 - **When** the execution plan is built
 - **Then** they are placed in separate lanes, and the plan reports that the
   reader will see the version from before the run unless it also declares
-  `Depende:` on the writer
+  `Depends on:` on the writer
 
 #### AC-046 — An order that cannot be satisfied is refused, not invented
 

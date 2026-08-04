@@ -2,32 +2,33 @@
 
 > feature: {{FEATURE}}
 > document: TDD — HOW to build it, in detail
-> owns: T-xxx (tasks, each with `Refs:` and `Arquivos:`)
-> status: rascunho
+> owns: T-xxx (tasks, each with `Refs:` and `Files:`)
+> status: draft
 
 <!--
 GRAMMAR:
 
-  ## T-001 — Task title [pendente]
+  ## T-001 — Task title [pending]
   - Refs: US-001, AC-001
-  - Arquivos: src/one.js, src/two.js
-  - Lê: src/three.js
-  - Depende: T-000
+  - Files: src/one.js, src/two.js
+  - Reads: src/three.js
+  - Depends on: T-000
 
-Statuses: pendente · em-andamento · em-teste · concluida. They are engine
-tokens — never translate them.
+Statuses: pending · in-progress · in-test · done. They are engine
+tokens. They are English and they are never localised — one project, one
+spelling.
 
-`Arquivos:` is not paperwork. It is what the task WRITES, and it is what lets the
+`Files:` is not paperwork. It is what the task WRITES, and it is what lets the
 planner compute which tasks can run at the same time: tasks whose written files
 do not intersect become parallel lanes, each in its own git worktree. A task with
 no file list is never parallelized — it runs alone, at the end.
 
-`Lê:` is what the task reads without writing. It costs nothing in parallelism,
+`Reads:` is what the task reads without writing. It costs nothing in parallelism,
 because every lane has its own worktree and two readers never collide. Put a file
-here rather than in `Arquivos:` when you only need to look at it — declaring it as
+here rather than in `Files:` when you only need to look at it — declaring it as
 written forfeits the concurrency of everyone who actually writes it.
 
-`Depende:` is ordering, and it is the only way to say "after". File overlap cannot
+`Depends on:` is ordering, and it is the only way to say "after". File overlap cannot
 express it: overlap is symmetric and "after" is not. You need it whenever your
 task must see another task's OUTPUT, because a lane is branched from HEAD — so a
 file you merely read is the version from before the run until you declare that you
@@ -56,11 +57,11 @@ Schemas, endpoints, message shapes. Whatever crosses a boundary.
 
 ## Tasks
 
-## T-001 — {{first task}} [pendente]
+## T-001 — {{first task}} [pending]
 
 - Refs: AC-001
-- Arquivos: {{src/path/one.js}}
-- Notas: {{anything the implementer needs that is not obvious from the title}}
+- Files: {{src/path/one.js}}
+- Notes: {{anything the implementer needs that is not obvious from the title}}
 
 ## Expected parallelism
 
