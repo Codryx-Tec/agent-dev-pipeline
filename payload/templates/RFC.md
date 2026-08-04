@@ -3,7 +3,7 @@
 > feature: {{FEATURE}}
 > document: RFC — WHICH path, among the possible ones
 > owns: ASM-xxx (assumptions) · Q-xxx (open questions)
-> status: rascunho
+> status: draft
 
 <!--
 GRAMMAR:
@@ -15,8 +15,8 @@ GRAMMAR:
     **Decision: alternative N — name.**
     rationale, then consequences
 
-  - **ASM-001** — text *(status: aberta|confirmada|invalidada)*
-  - **Q-001** — text *(status: aberta|respondida)*  add **blocking** if it gates the path
+  - **ASM-001** — text *(status: open|confirmed|invalidated)*
+  - **Q-001** — text *(status: open|answered)*  add **blocking** if it gates the path
 
 Gate G2 passes when every decision records at least two alternatives AND a
 chosen one, both sections below exist, every item carries a status, and no
@@ -48,14 +48,14 @@ harder later. A decision with no consequences was not a decision.}}
 
 ## Assumptions
 
-Status: `aberta` · `confirmada` · `invalidada`. An assumption still `aberta`
+Status: `open` · `confirmed` · `invalidated`. An assumption still `open`
 when the feature declares itself done turns gate G5 red — on purpose.
 
-- **ASM-001** — {{what you filled in without confirming}} *(status: aberta)*
+- **ASM-001** — {{what you filled in without confirming}} *(status: open)*
 
 ## Open questions
 
-Status: `aberta` · `respondida`. A question marked **blocking** must be answered
+Status: `open` · `answered`. A question marked **blocking** must be answered
 before G2 can pass.
 
-- **Q-001** — {{what you could not decide alone}} *(status: aberta)*
+- **Q-001** — {{what you could not decide alone}} *(status: open)*

@@ -518,14 +518,14 @@ export async function run(argv) {
 
     // Ordering is delivered by merging each stage before the next one starts, so
     // a later lane is branched from a tree that already holds what it depends on.
-    // With --no-merge nothing lands, and a lane that declared `Depende:` would
+    // With --no-merge nothing lands, and a lane that declared `Depends on:` would
     // run against a tree missing that work — announcing an order and not
     // delivering it, which is worse than refusing to start.
     if (flags['no-merge'] && new Set(lanes.map((l) => l.wave)).size > 1) {
       console.error('error: --no-merge cannot deliver this plan.');
       console.error('  It has more than one stage, which only works because each stage merges');
       console.error('  before the next is branched. With --no-merge nothing merges, so a lane');
-      console.error('  that declared Depende: would run without the work it asked to follow.');
+      console.error('  that declared Depends on: would run without the work it asked to follow.');
       console.error('  Drop --no-merge, or narrow the run with --lane.');
       return 2;
     }
@@ -582,7 +582,7 @@ export async function run(argv) {
     let conflicts = 0;
 
     // Settling a lane is part of the loop rather than a pass at the end, because
-    // a later stage is branched from HEAD: a lane that declared `Depende:` only
+    // a later stage is branched from HEAD: a lane that declared `Depends on:` only
     // sees the work it depends on if that work has already merged back.
     const settle = (outcome) => {
       const lane = plan.lanes.find((l) => l.id === outcome.lane);

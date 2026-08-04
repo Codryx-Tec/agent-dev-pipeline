@@ -4,7 +4,7 @@
 P-xxx = principle. Levels: [MUST] · [SHOULD] · [MAY].
 
 Every [MUST] needs an executable verification, or the audit reports
-PRINCIPIO_SEM_VERIFICACAO. Four forms:
+PRINCIPLE_WITHOUT_VERIFICATION. Four forms:
 
   - verification(gate): free text — a human promise. Satisfies "declared",
     proves nothing. The audit says so out loud.
@@ -16,14 +16,14 @@ The backticks are required on both sides — a pattern containing the word "in"
 would otherwise be split at the wrong place.
 
 These regexes ACTUALLY RUN, in a disposable subprocess with a hard timeout. A
-glob that matches no file is reported as inert (GLOB_SEM_ARQUIVOS), because a
+glob that matches no file is reported as inert (GLOB_WITHOUT_FILES), because a
 check that cannot fail looks exactly like a check that passed.
 -->
 
 ## P-001 [MUST] Every requirement has executable proof
 
 No feature is done until `adp audit --ci` exits 0. Verified by the audit
-itself: `AC_SEM_TESTE`, `AC_SEM_PROVA`, `TASK_CONCLUIDA_SEM_PROVA`.
+itself: `AC_WITHOUT_TEST`, `AC_WITHOUT_PROOF`, `TASK_DONE_WITHOUT_PROOF`.
 
 - verification(gate): intrinsic to the audit
 

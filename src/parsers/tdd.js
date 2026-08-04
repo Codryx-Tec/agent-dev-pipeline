@@ -1,21 +1,21 @@
 // TDD parser — owns T-xxx (tasks).
 //
 // Grammar:
-//   ## T-001 — Title [pendente|em-andamento|em-teste|concluida]
+//   ## T-001 — Title [pending|in-progress|in-test|done]
 //   - Refs: US-001, AC-001
-//   - Arquivos: path/one.js, path/two.js
-//   - Lê: path/three.js
-//   - Depende: T-000
+//   - Files: path/one.js, path/two.js
+//   - Reads: path/three.js
+//   - Depends on: T-000
 //
-// `Arquivos:` and `Lê:` are different claims and the planner treats them as
-// such. `Arquivos:` is what the task WRITES, and two tasks writing the same file
-// can never run at the same time. `Lê:` is what it merely reads, which costs
+// `Files:` and `Reads:` are different claims and the planner treats them as
+// such. `Files:` is what the task WRITES, and two tasks writing the same file
+// can never run at the same time. `Reads:` is what it merely reads, which costs
 // nothing in parallelism because every lane has its own worktree — two readers
 // of the same file do not collide. Before the distinction existed there was only
-// `Arquivos:`, so declaring a file you needed to read forfeited the parallelism
+// `Files:`, so declaring a file you needed to read forfeited the parallelism
 // of everyone who wrote it.
 //
-// `Depende:` is ordering, and it exists because reading a file is not the same
+// `Depends on:` is ordering, and it exists because reading a file is not the same
 // as needing another task's version of it. A lane's worktree is branched from
 // HEAD, so a task that reads `src/a.js` sees the pre-run version unless it
 // declares that it runs after whoever writes it.
@@ -32,7 +32,7 @@
 
 import { lineOf, blocksBetween, stripNonGrammar, fold, splitList } from '../util/text.js';
 
-export const TASK_STATUSES = ['pendente', 'em-andamento', 'em-teste', 'concluida'];
+export const TASK_STATUSES = ['pending', 'in-progress', 'in-test', 'done'];
 
 // Any `## T-xxx —` heading, with or without a valid status. Matching the loose
 // form first is what lets a heading with a bad status be REPORTED rather than
@@ -41,9 +41,9 @@ export const TASK_STATUSES = ['pendente', 'em-andamento', 'em-teste', 'concluida
 const RE_TASK_LOOSE = /^##\s+(T-\d+)\s*[—–-]\s*(.*)$/gm;
 const RE_STATUS_TAIL = /\[([^\]]+)\]\s*$/;
 const RE_REFS = /^\s*[-*]\s*Refs?:\s*(.+)$/m;
-const RE_FILES = /^\s*[-*]\s*(?:Arquivos|Files):\s*(.+)$/m;
-const RE_READS = /^\s*[-*]\s*(?:L[êe]|Reads?):\s*(.+)$/im;
-const RE_DEPENDS = /^\s*[-*]\s*(?:Depende(?:\s+de)?|Depends?(?:\s+on)?):\s*(.+)$/im;
+const RE_FILES = /^\s*[-*]\s*Files?:\s*(.+)$/im;
+const RE_READS = /^\s*[-*]\s*Reads?:\s*(.+)$/im;
+const RE_DEPENDS = /^\s*[-*]\s*Depends?(?:\s+on)?:\s*(.+)$/im;
 const RE_FEATURE = /^>\s*feature:\s*(\S+)/m;
 
 export function parseTdd(content, file) {
@@ -59,7 +59,7 @@ export function parseTdd(content, file) {
     const refs = splitList(body.match(RE_REFS)?.[1] ?? '');
     const files = splitList(body.match(RE_FILES)?.[1] ?? '');
     const reads = splitList(body.match(RE_READS)?.[1] ?? '');
-    // Upper-cased because ids are compared, not displayed: a `Depende: t-001`
+    // Upper-cased because ids are compared, not displayed: a `Depends on: t-001`
     // that silently matched nothing would drop an ordering constraint, and a
     // dropped constraint is invisible until the run produces the wrong result.
     const dependsOn = splitList(body.match(RE_DEPENDS)?.[1] ?? '').map((id) => id.toUpperCase());

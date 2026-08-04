@@ -21,7 +21,7 @@ export function checkPrinciples(project, emit) {
     if (!p.levelValid) {
       // An unknown level is treated as MUST and reported — never ignored.
       // Silently downgrading it would let a typo disable a rule.
-      emit('NIVEL_INVALIDO', 'error',
+      emit('LEVEL_INVALID', 'error',
         `${p.id} declares level "${p.rawLevel}" — use [MUST], [SHOULD] or [MAY]; treated as MUST`,
         { file: p.file, line: p.line });
     }
@@ -29,13 +29,13 @@ export function checkPrinciples(project, emit) {
     const enforced = !p.levelValid || p.level === 'MUST';
 
     if (enforced && p.verifications.length === 0) {
-      emit('PRINCIPIO_SEM_VERIFICACAO', 'error',
+      emit('PRINCIPLE_WITHOUT_VERIFICATION', 'error',
         `${p.id} (${p.title}) is a MUST with no verification declared`,
         { file: p.file, line: p.line });
       continue;
     }
     if (enforced && !p.executable) {
-      emit('PRINCIPIO_SEM_VERIFICACAO', 'warning',
+      emit('PRINCIPLE_WITHOUT_VERIFICATION', 'warning',
         `${p.id} (${p.title}) declares only a manual gate — nothing about it is machine-checked`,
         { file: p.file, line: p.line });
     }
@@ -44,7 +44,7 @@ export function checkPrinciples(project, emit) {
       if (v.kind === 'gate') continue;
 
       if (v.malformed) {
-        emit('VERIFICACAO_MALFORMADA', 'error',
+        emit('VERIFICATION_MALFORMED', 'error',
           `${p.id} has a malformed ${v.kind} verification: ${v.raw}`,
           { file: p.file, line: p.line });
         continue;
@@ -52,7 +52,7 @@ export function checkPrinciples(project, emit) {
 
       if (v.kind === 'test') {
         if (!taggedPrinciples.has(v.tag) && enforced) {
-          emit('PRINCIPIO_VIOLADO', 'error',
+          emit('PRINCIPLE_VIOLATED', 'error',
             `${p.id} requires a test tagged @principle:${v.tag} and none exists`,
             { file: p.file, line: p.line });
         }
@@ -64,13 +64,13 @@ export function checkPrinciples(project, emit) {
       );
 
       if (error) {
-        emit('VERIFICACAO_MALFORMADA', 'error', `${p.id}: ${error}`,
+        emit('VERIFICATION_MALFORMED', 'error', `${p.id}: ${error}`,
           { file: p.file, line: p.line });
         continue;
       }
       if (files.length === 0) {
         // An inert check that looks like a passing one is worse than no check.
-        emit('GLOB_SEM_ARQUIVOS', 'warning',
+        emit('GLOB_WITHOUT_FILES', 'warning',
           `${p.id} checks \`${v.glob}\`, which matches no file — the verification is inert`,
           { file: p.file, line: p.line });
         continue;
@@ -78,18 +78,18 @@ export function checkPrinciples(project, emit) {
 
       if (v.kind === 'forbidden' && hits.length) {
         for (const hit of hits.slice(0, 10)) {
-          emit('PRINCIPIO_VIOLADO', enforced ? 'error' : 'warning',
+          emit('PRINCIPLE_VIOLATED', enforced ? 'error' : 'warning',
             `${p.id} (${p.title}): forbidden pattern found — ${hit.text.slice(0, 120)}`,
             { file: hit.file, line: hit.line });
         }
         if (hits.length > 10) {
-          emit('PRINCIPIO_VIOLADO', enforced ? 'error' : 'warning',
+          emit('PRINCIPLE_VIOLATED', enforced ? 'error' : 'warning',
             `${p.id}: ${hits.length - 10} further occurrence(s) not listed`,
             { file: p.file, line: p.line });
         }
       }
       if (v.kind === 'required' && hits.length === 0) {
-        emit('PRINCIPIO_VIOLADO', enforced ? 'error' : 'warning',
+        emit('PRINCIPLE_VIOLATED', enforced ? 'error' : 'warning',
           `${p.id} (${p.title}): required pattern \`${v.pattern}\` appears in no file matching \`${v.glob}\``,
           { file: p.file, line: p.line });
       }

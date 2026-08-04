@@ -1,9 +1,9 @@
-# RFC: inscricao-turma
+# RFC: class-enrolment
 
-> feature: inscricao-turma
+> feature: class-enrolment
 > document: RFC — WHICH path, among the possible ones
 > owns: ASM-xxx (assumptions) · Q-xxx (open questions)
-> status: pronta
+> status: ready
 
 ## Purpose
 
@@ -54,9 +54,9 @@ of a crash. The tests assert on `ok` and on the reason for exactly that reason.
 
 ## Assumptions
 
-- **ASM-001** — age is self-declared and not checked against a document *(status: confirmada)*
-- **ASM-002** — e-mail identifies a person uniquely *(status: confirmada)*
+- **ASM-001** — age is self-declared and not checked against a document *(status: confirmed)*
+- **ASM-002** — e-mail identifies a person uniquely *(status: confirmed)*
 
 ## Open questions
 
-- **Q-001** — is a guardian's e-mail stored separately from the student's? *(status: respondida)*
+- **Q-001** — is a guardian's e-mail stored separately from the student's? *(status: answered)*

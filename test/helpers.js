@@ -28,11 +28,11 @@ export const MINIMAL_RFC = `# RFC: t
 
 ## Assumptions
 
-- **ASM-001** — something assumed *(status: confirmada)*
+- **ASM-001** — something assumed *(status: confirmed)*
 
 ## Open questions
 
-- **Q-001** — something asked *(status: respondida)*
+- **Q-001** — something asked *(status: answered)*
 `;
 
 export function makeProject(files, configOverrides = {}) {

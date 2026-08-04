@@ -25,11 +25,11 @@ const RE_STATUS = /^>\s*status:\s*(\S+)/m;
 const RE_FEATURE = /^>\s*feature:\s*(\S+)/m;
 
 export const SPEC_STATUSES = [
-  'rascunho',
-  'pronta',
-  'em-implementacao',
-  'implementada',
-  'auditada',
+  'draft',
+  'ready',
+  'in-implementation',
+  'implemented',
+  'audited',
 ];
 
 export function parsePrd(content, file) {
@@ -73,7 +73,7 @@ export function parsePrd(content, file) {
   }));
 
   // A criterion that sits before the first story belongs to no story. It is not
-  // an error the parser decides on — audit.js reports it as AC_FORA_DE_US.
+  // an error the parser decides on — audit.js reports it as AC_OUTSIDE_US.
   const firstStoryIndex = storyMatches.length ? storyMatches[0].index : Infinity;
   const orphanAcs = acs.filter((ac) => ac.index < firstStoryIndex);
 

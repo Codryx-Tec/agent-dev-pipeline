@@ -14,7 +14,7 @@
 // pastes.
 //
 // `label()` comes from gates.js, which owns the code→name map. Stable codes are
-// never translated; the readable name sits beside the code, never instead of it.
+// never localised; the readable name sits beside the code, never instead of it.
 
 import { label } from './gates.js';
 

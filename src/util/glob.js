@@ -77,7 +77,7 @@ export function walkFiles(rootDir, { includeGlobs, ignoreGlobs }) {
 }
 
 // Most recent modification time across a set of files, in ms. Used to detect
-// that code moved after the last recorded proof (VERIFY_OBSOLETO).
+// that code moved after the last recorded proof (PROOF_STALE).
 export function latestMtime(rootDir, files) {
   let latest = 0;
   for (const rel of files) {
@@ -86,7 +86,7 @@ export function latestMtime(rootDir, files) {
       if (mtimeMs > latest) latest = mtimeMs;
     } catch {
       // a file that vanished between the walk and the stat is reported
-      // elsewhere as ARQUIVO_INEXISTENTE, not swallowed here
+      // elsewhere as FILE_MISSING, not swallowed here
     }
   }
   return latest;

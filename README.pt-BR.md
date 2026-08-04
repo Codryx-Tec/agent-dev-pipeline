@@ -6,7 +6,7 @@
 
 A maior parte das ferramentas de spec-driven é *spec-first*: a especificação gera
 o código, o código evolui, e em duas semanas a especificação é ficção bem
-formatada. Esta é *spec-anchored*: a especificação é auditada mecanicamente
+formatada. Esta é *spec-anchored*: a especificação é audited mecanicamente
 contra o código, o tempo todo, e **o veredito é um exit code, não uma
 afirmação**.
 
@@ -92,7 +92,7 @@ arquivo.
 |---|---|---|
 | `PRD.md` | **o quê**, para **quem**, **por quê** | histórias `US-xxx` · critérios de aceite `AC-xxx` |
 | `RFC.md` | **qual caminho**, entre os possíveis | premissas `ASM-xxx` · questões em aberto `Q-xxx` |
-| `TDD.md` | **como**, em detalhe | tarefas `T-xxx`, cada uma declarando `Refs:`, `Arquivos:` e opcionalmente `Lê:` e `Depende:` |
+| `TDD.md` | **como**, em detalhe | tarefas `T-xxx`, cada uma declarando `Refs:`, `Files:` e opcionalmente `Reads:` e `Depends on:` |
 
 São três documentos em vez de um porque as três perguntas têm públicos e tempos
 de vida diferentes: *o quê e por quê* muda quando o negócio muda, *qual
@@ -102,7 +102,7 @@ que cada um seja aprovado no seu próprio gate.
 ### A cadeia, e por que ela se sustenta
 
 ```
-US-001 ──dono de──▶ AC-001 ◀──Refs──  T-001 ──Arquivos──▶ src/coisa.js
+US-001 ──dono de──▶ AC-001 ◀──Refs──  T-001 ──Files──▶ src/coisa.js
                        ▲                                        │
                        └───── @spec:AC-001 no título do teste ───┘
 ```
@@ -114,8 +114,8 @@ sobrevive até a saída do reporter de qualquer runner — é isso que permite a
 
 ### A regra sobre a qual tudo se apoia
 
-**Você não pode declarar uma tarefa concluída.** `[concluida]` com um critério
-não provado é `TASK_CONCLUIDA_SEM_PROVA`, um erro. Quem decide é o runner de
+**Você não pode declarar uma tarefa concluída.** `[done]` com um critério
+não provado é `TASK_DONE_WITHOUT_PROOF`, um erro. Quem decide é o runner de
 testes, e **um teste skipado nunca é prova**. Essa recusa é o produto; todo o
 resto é andaime em volta dela.
 
@@ -137,8 +137,8 @@ formas:
 ```
 
 As regexes **executam**. Um `[MUST]` sem nada verificável por máquina é
-`PRINCIPIO_SEM_VERIFICACAO`. Um glob que não casa com arquivo nenhum é
-`GLOB_SEM_ARQUIVOS`, porque uma checagem que não pode falhar é idêntica a uma
+`PRINCIPLE_WITHOUT_VERIFICATION`. Um glob que não casa com arquivo nenhum é
+`GLOB_WITHOUT_FILES`, porque uma checagem que não pode falhar é idêntica a uma
 checagem que passou — o tipo mais caro de luz verde que existe.
 
 Esses padrões vêm do seu projeto, ou seja, são regexes arbitrárias escritas por
@@ -343,7 +343,7 @@ procurar o atalho.
 
 Cada uma dessas defesas é um princípio `P-xxx` em `.spec/CONSTITUTION.md` com
 verificação executável, então a ferramenta audita a própria blindagem e o G5 fica
-vermelho se alguém enfraquecer. Isso não é enfeite: o primeiro rascunho do padrão
+vermelho se alguém enfraquecer. Isso não é enfeite: o primeiro draft do padrão
 proibido do P-008 casou com a palavra `NODE_AUTH_TOKEN` no comentário que
 explicava que esse token não existe, e a auditoria pegou.
 
@@ -369,8 +369,8 @@ pesadas contra ele, ficaram registrados como D-011 em vez de apagados, para que 
 próxima pessoa que propuser uma página encontre o argumento em vez de repeti-lo.
 
 Uma consequência que dá para observar em `.exemplo/`: as três tarefas dele dizem
-`[concluida]`, e essa palavra não vale nada até o `verify` rodar. Apague o registro
-de prova e as três passam a reportar `TASK_CONCLUIDA_SEM_PROVA` — o status
+`[done]`, e essa palavra não vale nada até o `verify` rodar. Apague o registro
+de prova e as três passam a reportar `TASK_DONE_WITHOUT_PROOF` — o status
 continua exatamente onde foi escrito, e o motor simplesmente para de acreditar.
 
 ---

@@ -21,7 +21,7 @@ export const REPORTERS = {
   junit: { parse: parseJUnit, perTest: true },
   // No parsing at all: the runner's exit code is the only signal. Kept because
   // it works with literally any runner, and marked perTest:false so the audit
-  // can report PROVA_FRACA on anything proven this way.
+  // can report PROOF_WEAK on anything proven this way.
   exitcode: { parse: () => ({ tests: [], error: null }), perTest: false },
 };
 

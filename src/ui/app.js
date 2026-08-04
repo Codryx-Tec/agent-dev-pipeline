@@ -129,7 +129,7 @@
       card.appendChild(bars);
 
       // Task status breakdown, in the order work moves through it.
-      var order = ['pendente', 'em-andamento', 'em-teste', 'concluida'];
+      var order = ['pending', 'in-progress', 'in-test', 'done'];
       var counts = {};
       f.tasks.forEach(function (t) { counts[t.status] = (counts[t.status] || 0) + 1; });
       var pills = text('div', 'statuses');

@@ -1,13 +1,13 @@
 // The audit engine.
 //
 // Answers mechanically:
-//   "which requirement has no test?"      -> AC_SEM_TESTE
-//   "which test points at nothing?"       -> TESTE_ORFAO
-//   "which code maps to no task?"         -> ARQUIVO_ORFAO
-//   "which principle is decoration?"      -> PRINCIPIO_SEM_VERIFICACAO
+//   "which requirement has no test?"      -> AC_WITHOUT_TEST
+//   "which test points at nothing?"       -> TEST_ORPHAN
+//   "which code maps to no task?"         -> FILE_ORPHAN
+//   "which principle is decoration?"      -> PRINCIPLE_WITHOUT_VERIFICATION
 //
 // Every finding carries a STABLE CODE. The code is the compatibility surface
-// for CI and for the page, and per AGENTS.md it is never translated.
+// for CI and for the page, and it never varies by locale.
 //
 // Traceability codes are unique PROJECT-WIDE, not per document, so a task in one
 // feature's TDD may legally reference a criterion defined in another feature's
@@ -49,21 +49,21 @@ export function auditProject(project, { ci = false } = {}) {
     findings.push({ code, severity: finalSeverity, message, ...extra });
   };
 
-  for (const err of project.errors) emit('PROJETO_INVALIDO', 'error', err);
+  for (const err of project.errors) emit('PROJECT_INVALID', 'error', err);
 
   // ---------------------------------------------------------------- G0 scope
   if (!scope.present) {
-    emit('SCOPE_AUSENTE', 'error', `${scope.file} not found — the chain starts at the scope`,
+    emit('SCOPE_MISSING', 'error', `${scope.file} not found — the chain starts at the scope`,
       { file: scope.file });
   } else {
     const status = (scope.status || '').toLowerCase();
     if (!status.startsWith('approved') && !status.startsWith('aprovado')) {
-      emit('SCOPE_NAO_APROVADO', 'error',
+      emit('SCOPE_NOT_APPROVED', 'error',
         `scope status is "${scope.status || 'absent'}" — development must not start before it is Approved`,
         { file: scope.file });
     }
     for (const field of scope.placeholders) {
-      emit('SCOPE_CAMPO_VAZIO', 'warning', `scope field "${field}" is still a placeholder`,
+      emit('SCOPE_FIELD_EMPTY', 'warning', `scope field "${field}" is still a placeholder`,
         { file: scope.file });
     }
   }
@@ -77,14 +77,14 @@ export function auditProject(project, { ci = false } = {}) {
   const register = (id, el, feature) => {
     if (seen.has(id)) {
       const first = seen.get(id);
-      emit('ID_DUPLICADO', 'error',
+      emit('ID_DUPLICATE', 'error',
         `${id} is defined in ${first.file}:${first.line} and again here`,
         { file: el.file, line: el.line, feature });
     } else {
       seen.set(id, el);
     }
     if (RE_SHORT_ID.test(id)) {
-      emit('ID_CURTO', 'warning', `${id} uses fewer than 3 digits — the grammar expects US-001, not US-1`,
+      emit('ID_TOO_SHORT', 'warning', `${id} uses fewer than 3 digits — the grammar expects US-001, not US-1`,
         { file: el.file, line: el.line, feature });
     }
   };
@@ -115,48 +115,48 @@ export function auditProject(project, { ci = false } = {}) {
   for (const f of features) {
     // ---- G1 PRD ----
     if (!f.hasPrd) {
-      emit('PRD_AUSENTE', 'error', `${f.name} has no ${config.documents.prd}`, { feature: f.name, file: f.prdPath });
+      emit('PRD_MISSING', 'error', `${f.name} has no ${config.documents.prd}`, { feature: f.name, file: f.prdPath });
     } else {
       if (f.prd.feature && f.prd.feature !== f.name) {
-        emit('FEATURE_DIVERGENTE', 'warning',
+        emit('FEATURE_MISMATCH', 'warning',
           `${f.prdPath} declares feature "${f.prd.feature}" but lives in "${f.name}"`,
           { feature: f.name, file: f.prdPath });
       }
       if (!f.prd.stories.length) {
-        emit('SPEC_SEM_US', 'error', `${f.prdPath} contains no user story`, { feature: f.name, file: f.prdPath });
+        emit('SPEC_WITHOUT_US', 'error', `${f.prdPath} contains no user story`, { feature: f.name, file: f.prdPath });
       }
       for (const s of f.prd.stories) {
         if (!s.acs.length) {
-          emit('US_SEM_AC', 'error', `${s.id} (${s.title}) has no acceptance criterion`,
+          emit('US_WITHOUT_AC', 'error', `${s.id} (${s.title}) has no acceptance criterion`,
             { feature: f.name, file: s.file, line: s.line });
         }
       }
       for (const ac of f.prd.acs) {
         if (!ac.complete) {
-          emit('AC_INCOMPLETO', 'error',
+          emit('AC_INCOMPLETE', 'error',
             `${ac.id} (${ac.title}) is missing its ${ac.missingClauses.join(' and ')} clause`,
             { feature: f.name, file: ac.file, line: ac.line });
         }
       }
       for (const ac of f.prd.orphanAcs) {
-        emit('AC_FORA_DE_US', 'error', `${ac.id} appears before any user story`,
+        emit('AC_OUTSIDE_US', 'error', `${ac.id} appears before any user story`,
           { feature: f.name, file: ac.file, line: ac.line });
       }
     }
 
     // ---- G2 RFC ----
     if (!f.hasRfc) {
-      emit('RFC_AUSENTE', 'error', `${f.name} has no ${config.documents.rfc}`, { feature: f.name, file: f.rfcPath });
+      emit('RFC_MISSING', 'error', `${f.name} has no ${config.documents.rfc}`, { feature: f.name, file: f.rfcPath });
     } else {
       for (const d of f.rfc.decisions) {
         const noun = d.dialect === 'create-rfc' ? 'option' : 'alternative';
         if (d.alternatives < 2) {
-          emit('DECISAO_SEM_ALTERNATIVA', 'error',
+          emit('DECISION_WITHOUT_ALTERNATIVE', 'error',
             `${d.id} (${d.title}) records ${d.alternatives} ${noun}(s) — a decision without alternatives is indistinguishable from a habit`,
             { feature: f.name, file: d.file, line: d.line });
         }
         if (!d.decided) {
-          emit('DECISAO_SEM_ESCOLHA', 'error',
+          emit('DECISION_WITHOUT_CHOICE', 'error',
             d.dialect === 'create-rfc'
               ? `${d.id}: no option is marked recommended and the Outcome still holds the template placeholder — nothing was decided yet`
               : `${d.id} (${d.title}) records no chosen option`,
@@ -166,50 +166,50 @@ export function auditProject(project, { ci = false } = {}) {
       // An assumption written as a bare numbered row is recorded but not
       // trackable: nothing can reference it, and it can never be closed.
       if (f.rfc.uncodedAssumptions) {
-        emit('ASM_SEM_CODIGO', 'warning',
+        emit('ASM_WITHOUT_CODE', 'warning',
           `${f.rfcPath} has ${f.rfc.uncodedAssumptions} assumption row(s) numbered instead of coded — use ASM-001 so they can be referenced and closed`,
           { feature: f.name, file: f.rfcPath });
       }
       if (f.rfc.uncodedQuestions) {
-        emit('ASM_SEM_CODIGO', 'warning',
+        emit('ASM_WITHOUT_CODE', 'warning',
           `${f.rfcPath} has ${f.rfc.uncodedQuestions} question row(s) numbered instead of coded — use Q-001`,
           { feature: f.name, file: f.rfcPath });
       }
       if (!f.rfc.hasAssumptionsSection) {
-        emit('SECAO_AUSENTE', 'error', `${f.rfcPath} has no Assumptions section — if there are none, write "None." and be suspicious`,
+        emit('SECTION_MISSING', 'error', `${f.rfcPath} has no Assumptions section — if there are none, write "None." and be suspicious`,
           { feature: f.name, file: f.rfcPath });
       }
       if (!f.rfc.hasQuestionsSection) {
-        emit('SECAO_AUSENTE', 'error', `${f.rfcPath} has no Open questions section`,
+        emit('SECTION_MISSING', 'error', `${f.rfcPath} has no Open questions section`,
           { feature: f.name, file: f.rfcPath });
       }
       for (const a of f.rfc.assumptions) {
         if (!a.status) {
-          emit('STATUS_INVALIDO', 'error', `${a.id} carries no status — use aberta, confirmada or invalidada`,
+          emit('STATUS_INVALID', 'error', `${a.id} carries no status — use open, confirmed or invalidated`,
             { feature: f.name, file: a.file, line: a.line });
         }
       }
       for (const q of f.rfc.questions) {
         if (!q.status) {
-          emit('STATUS_INVALIDO', 'error', `${q.id} carries no status — use aberta or respondida`,
+          emit('STATUS_INVALID', 'error', `${q.id} carries no status — use open or answered`,
             { feature: f.name, file: q.file, line: q.line });
-        } else if (q.status === 'aberta') {
+        } else if (q.status === 'open') {
           if (q.blocking) {
-            emit('Q_BLOQUEANTE_ABERTA', 'error',
+            emit('Q_BLOCKING_OPEN', 'error',
               `${q.id} is marked blocking and still open — it must be answered before the path is settled`,
               { feature: f.name, file: q.file, line: q.line });
           } else {
-            emit('Q_ABERTA', 'warning', `${q.id} is still open`,
+            emit('Q_OPEN', 'warning', `${q.id} is still open`,
               { feature: f.name, file: q.file, line: q.line });
           }
         }
       }
       // An open assumption is a warning while the work runs and an error once
       // the feature claims to be done — the same fact, two postures.
-      const featureDone = ['implementada', 'auditada'].includes(f.prd?.status);
+      const featureDone = ['implemented', 'audited'].includes(f.prd?.status);
       for (const a of f.rfc.assumptions) {
-        if (a.status === 'aberta') {
-          emit('ASM_ABERTA', featureDone ? 'error' : 'warning',
+        if (a.status === 'open') {
+          emit('ASM_OPEN', featureDone ? 'error' : 'warning',
             `${a.id} is still an open assumption${featureDone ? ' in a feature declared done' : ''}`,
             { feature: f.name, file: a.file, line: a.line });
         }
@@ -218,41 +218,41 @@ export function auditProject(project, { ci = false } = {}) {
 
     // ---- G3 TDD ----
     if (!f.hasTdd) {
-      emit('TDD_AUSENTE', 'error', `${f.name} has no ${config.documents.tdd}`, { feature: f.name, file: f.tddPath });
+      emit('TDD_MISSING', 'error', `${f.name} has no ${config.documents.tdd}`, { feature: f.name, file: f.tddPath });
     } else {
       for (const t of f.tdd.tasks) {
         if (!t.statusValid) {
-          emit('TASK_STATUS_INVALIDO', 'error',
-            `${t.id} has status "${t.rawStatus ?? 'none'}" — use pendente, em-andamento, em-teste or concluida`,
+          emit('TASK_STATUS_INVALID', 'error',
+            `${t.id} has status "${t.rawStatus ?? 'none'}" — use pending, in-progress, in-test or done`,
             { feature: f.name, file: t.file, line: t.line });
         }
         if (!t.files.length) {
-          emit('TASK_SEM_ARQUIVOS', 'warning',
+          emit('TASK_WITHOUT_FILES', 'warning',
             `${t.id} declares no files — it can never be parallelized and will run alone`,
             { feature: f.name, file: t.file, line: t.line });
         }
         for (const rf of t.files) {
           if (!existsSync(path.join(project.rootDir, rf))) {
-            emit('ARQUIVO_INEXISTENTE', t.status === 'concluida' ? 'error' : 'warning',
+            emit('FILE_MISSING', t.status === 'done' ? 'error' : 'warning',
               `${t.id} maps ${rf}, which does not exist`,
               { feature: f.name, file: t.file, line: t.line });
           }
         }
         for (const ref of t.refs) {
           if (!knownAc.has(ref) && !knownUs.has(ref)) {
-            emit('REF_QUEBRADA', 'error', `${t.id} references ${ref}, which no document defines`,
+            emit('REF_BROKEN', 'error', `${t.id} references ${ref}, which no document defines`,
               { feature: f.name, file: t.file, line: t.line });
           }
         }
 
         // Proof is granted per CRITERION, so a task whose references reach none
         // of them can never be proven and can never legitimately reach
-        // [concluida]. Its story references resolve, so REF_QUEBRADA stays quiet
+        // [done]. Its story references resolve, so REF_BROKEN stays quiet
         // and the task looks fine — and the proof check silently drops every one
         // of them, which is an absence of information read as a guarantee. This
         // says out loud what that filter discards.
         if (t.refs.length && !t.refs.some((ref) => knownAc.has(ref))) {
-          emit('REF_SEM_CRITERIO', 'warning',
+          emit('REF_WITHOUT_AC', 'warning',
             `${t.id} references ${t.refs.join(', ')} — ${t.refs.length > 1 ? 'none of them is' : 'that is not'} ` +
               'a criterion, so nothing here can grant it proof',
             { feature: f.name, file: t.file, line: t.line });
@@ -271,7 +271,7 @@ export function auditProject(project, { ci = false } = {}) {
   }
   for (const [id, { ac, feature }] of knownAc) {
     if (!covered.has(id)) {
-      emit('AC_SEM_TASK', 'warning', `${id} (${ac.title}) is covered by no task`,
+      emit('AC_WITHOUT_TASK', 'warning', `${id} (${ac.title}) is covered by no task`,
         { feature: feature.name, file: ac.file, line: ac.line });
     }
   }
@@ -283,14 +283,14 @@ export function auditProject(project, { ci = false } = {}) {
 
   for (const [id, { ac, feature }] of knownAc) {
     if (!taggedAcs.has(id)) {
-      emit('AC_SEM_TESTE', 'error',
+      emit('AC_WITHOUT_TEST', 'error',
         `${id} (${ac.title}) has no test annotated @spec:${id}`,
         { feature: feature.name, file: ac.file, line: ac.line });
     }
   }
   for (const tag of specTags) {
     if (!knownAc.has(tag.acId)) {
-      emit('TESTE_ORFAO', 'error',
+      emit('TEST_ORPHAN', 'error',
         `a test claims @spec:${tag.acId}, which no document defines — the specification moved and the test did not`,
         { file: tag.file, line: tag.line });
     }
@@ -302,21 +302,21 @@ export function auditProject(project, { ci = false } = {}) {
     const record = project.verification[f.name];
     const acs = f.prd ? f.prd.acs : [];
     for (const ac of acs) {
-      if (!taggedAcs.has(ac.id)) continue; // already reported as AC_SEM_TESTE
+      if (!taggedAcs.has(ac.id)) continue; // already reported as AC_WITHOUT_TEST
       const result = record?.results?.[ac.id];
       if (!result || result.status !== 'pass') {
-        emit('AC_SEM_PROVA', 'warning',
+        emit('AC_WITHOUT_PROOF', 'warning',
           `${ac.id} has a test but no PASS proof${result?.status === 'skip' ? ' — the test was SKIPPED, and a skip is never proof' : ''}`,
           { feature: f.name, file: ac.file, line: ac.line });
       }
     }
     if (record?.reporter === 'exitcode') {
-      emit('PROVA_FRACA', 'warning',
+      emit('PROOF_WEAK', 'warning',
         `${f.name} was proven only by the runner's global exit code — prefer a per-test reporter`,
         { feature: f.name, file: f.prdPath });
     }
     if (record && isProofStale(project, record)) {
-      emit('VERIFY_OBSOLETO', 'warning',
+      emit('PROOF_STALE', 'warning',
         `${f.name}: code changed after the last proof — run verify again`,
         { feature: f.name, file: f.prdPath });
     }
@@ -325,13 +325,13 @@ export function auditProject(project, { ci = false } = {}) {
   // A task cannot declare itself done. This is the rule the whole product rests
   // on: "done" is a verdict of the test runner, never a word in a document.
   for (const [id, { task, feature }] of knownTask) {
-    if (task.status !== 'concluida') continue;
+    if (task.status !== 'done') continue;
     const record = project.verification[feature.name];
     const acRefs = task.refs.filter((r) => knownAc.has(r));
     const proven = acRefs.filter((r) => record?.results?.[r]?.status === 'pass');
     if (acRefs.length === 0 || proven.length < acRefs.length) {
-      emit('TASK_CONCLUIDA_SEM_PROVA', 'error',
-        `${id} is [concluida] but ${acRefs.length ? `${acRefs.length - proven.length} of its ${acRefs.length} criteria have` : 'it references no criterion that has'} no PASS proof`,
+      emit('TASK_DONE_WITHOUT_PROOF', 'error',
+        `${id} is [done] but ${acRefs.length ? `${acRefs.length - proven.length} of its ${acRefs.length} criteria have` : 'it references no criterion that has'} no PASS proof`,
         { feature: feature.name, file: task.file, line: task.line });
     }
   }
@@ -341,7 +341,7 @@ export function auditProject(project, { ci = false } = {}) {
   for (const { task } of knownTask.values()) for (const rf of task.files) mappedFiles.add(rf);
   for (const src of project.srcFiles) {
     if (!mappedFiles.has(src)) {
-      emit('ARQUIVO_ORFAO', 'warning', `${src} is mapped by no task`, { file: src });
+      emit('FILE_ORPHAN', 'warning', `${src} is mapped by no task`, { file: src });
     }
   }
 

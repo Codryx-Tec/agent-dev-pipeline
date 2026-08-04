@@ -41,8 +41,8 @@ const RE_RECOMMENDED = /⭐|\*\*(?:Recommended|Recomendado|Recomendada)\*\*\s*:/
 // table rows: | ASM-001 | text | ... |   or   | 1 | text | ... |
 const RE_TABLE_ROW = /^\|\s*((?:ASM|Q)-\d+|\d+)\s*\|([^|]*)\|(.*)$/gm;
 
-export const ASM_STATUSES = ['aberta', 'confirmada', 'invalidada'];
-export const Q_STATUSES = ['aberta', 'respondida'];
+export const ASM_STATUSES = ['open', 'confirmed', 'invalidated'];
+export const Q_STATUSES = ['open', 'answered'];
 
 const SECTIONS = {
   assumptions: /^##\s+(?:Assumptions|Suposi[çc][õo]es|Premissas)\s*$/m,

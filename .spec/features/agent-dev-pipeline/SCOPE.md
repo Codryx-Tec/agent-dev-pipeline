@@ -74,7 +74,7 @@
 - **Milestones (incremental, each testable by the user before moving on):**
   1. **M1 — Engine core:** parsers plus `audit` over the document chain, running from the command line. Testable: point it at a project and read the findings.
   2. **M2 — Real proof:** `verify` executes the project's test command and grants proof per acceptance criterion; `audit --ci` consumes it. Testable: break a test and watch the gate turn red.
-  3. **M3 — Executable constitution:** `verification(forbidden|required|test)` are executed against their globs. Testable: plant a forbidden pattern and watch `PRINCIPIO_VIOLADO` appear.
+  3. **M3 — Executable constitution:** `verification(forbidden|required|test)` are executed against their globs. Testable: plant a forbidden pattern and watch `PRINCIPLE_VIOLATED` appear.
   4. **M4 and M5 — removed.** They were the monitor: a server, a projected kanban and a document editor. See RFC D-011. The milestone numbers are not reused.
   6. **M6 — Background execution:** the execution plan builds file-disjoint lanes and dispatches headless workers into git worktrees, reporting per-task status to the terminal. Testable: run two independent tasks at once and watch both progress.
   7. **M7 — removed.** It was the container. Docker left the plan with D-013: the tool has zero dependencies and runs anywhere Node does, so a container was isolating the page from a project it can no longer touch.

@@ -3,7 +3,7 @@
 > feature: agent-dev-pipeline
 > document: RFC — WHICH path, among the possible ones
 > owns: ASM-xxx (assumptions) · Q-xxx (open questions)
-> status: rascunho
+> status: draft
 > gate: G2 — this document is approved when every decision records at least two
 > alternatives considered, every assumption carries a status, and no question
 > marked blocking remains open.
@@ -332,7 +332,7 @@ browser, and every hour spent on the page is an hour not spent on `verify`, whic
 is the thing that actually makes proof real.
 
 Option 3 is the one to argue against hardest, because it looks free. It is not:
-unbuilt criteria in the documents are what `AC_SEM_TASK` and `TASK_CONCLUIDA_SEM_PROVA`
+unbuilt criteria in the documents are what `AC_WITHOUT_TASK` and `TASK_DONE_WITHOUT_PROOF`
 exist to complain about, so a deferred milestone keeps a gate permanently red or
 teaches the team to ignore a finding. A tool that asks its users to tolerate a
 red light will not be believed when it shows one.
@@ -437,9 +437,9 @@ if editing is ever wanted, this decision is what must be revisited first.
 
 **Alternatives considered**
 
-1. *`Depende:` alone.* Add explicit ordering, and keep uniting lanes on every
+1. *`Depends on:` alone.* Add explicit ordering, and keep uniting lanes on every
    file a task declares. The smallest change to the planner.
-2. *`Lê:` alone.* Distinguish reading from writing so lanes stop collapsing on a
+2. *`Reads:` alone.* Distinguish reading from writing so lanes stop collapsing on a
    shared read, and leave ordering to emerge from write overlap as it does today.
 3. *Both.* Ordering becomes declarable and reading stops implying collision.
 
@@ -448,15 +448,15 @@ failure in place.**
 
 **Rationale.** Option 1 answers the question as asked and leaves the reason it was
 asked. The experiment's fourth task did not want to declare three files; it wanted
-to run last, and declaring files was the only lever available. Give it `Depende:`
-while `Lê:` still costs parallelism and the lever is still there, still cheaper
+to run last, and declaring files was the only lever available. Give it `Depends on:`
+while `Reads:` still costs parallelism and the lever is still there, still cheaper
 than being precise. Option 2 removes the incentive but not the gap: without a way
 to say "after", a task that genuinely needs another's output has nothing to say it
 with, and the honest thing left is to declare a false write. Each option fixes the
 half that makes the other half survivable.
 
-A task says what it runs after with `Depende: T-001`, and what it merely reads
-with `Lê: src/a.js`. Neither existed before, and their absence had a cost that
+A task says what it runs after with `Depends on: T-001`, and what it merely reads
+with `Reads: src/a.js`. Neither existed before, and their absence had a cost that
 only showed up when the executor first ran.
 
 **Why ordering cannot be inferred.** The planner had exactly one mechanism: two
@@ -557,15 +557,63 @@ command, or none approved, the runner is absent and the run proceeds without it 
 the check is optional, and its absence costs the run its attribution, not its
 result. `--no-lane-tests` turns it off for a suite too slow to run per task.
 
+### D-016 — The engine vocabulary is English, in one spelling
+
+**Alternatives considered**
+
+1. *Keep the Portuguese vocabulary.* Statuses, finding codes and field labels
+   stay as they were written; only prose is English. Nothing breaks.
+2. *Accept both spellings, English canonical.* The parser reads `[concluida]`
+   and `[done]`; scaffolds emit English; the Portuguese keeps working forever.
+3. *English only, with a hard cut.* One spelling per token, and every existing
+   document stops parsing until it is rewritten.
+
+**Decision: alternative 3 — English only, and the break is taken now.**
+
+**Rationale.** The vocabulary was bilingual by accident rather than by design:
+prose, gate titles and the readable finding names were already English, while the
+tokens those names described were not. `TASK_CONCLUIDA_SEM_PROVA` rendered as
+"task completed without proof" — the same fact, twice, in two languages, and a
+reader had to hold both. The cost was not translation, it was that neither half
+could be guessed from the other.
+
+Option 1 keeps that. Option 2 removes it for new projects and doubles the
+grammar for everyone: two spellings per token means two things to document, two
+to test, and a permanent question about which one a given document is in. That
+price is worth paying to protect a large installed base and is not worth paying
+to protect a small one — at 0.4.1, with no dependents on record, the installed
+base does not justify carrying a second grammar for the life of the project.
+
+**What this is NOT.** The rule that a finding code never changes with the
+reader's language stands, and this decision does not weaken it — a pipeline that
+greps `AC_WITHOUT_PROOF` must find that exact string on every machine, in every
+locale, forever. What changed is which language the one spelling is in, once.
+That distinction was blurred in the old wording ("never translated"), which read
+as a ban on this change rather than as the runtime guarantee it actually is.
+
+**Consequences.** This is a breaking change for any project already carrying
+`.spec/` documents, so it takes a minor version of its own and the release notes
+have to lead with it rather than mention it. Five token families move: 40 finding
+codes, 4 task statuses, 5 document statuses, the assumption and question
+statuses, and the field labels — `Arquivos:` becomes `Files:`, `Lê:` becomes
+`Reads:`, `Depende:` becomes `Depends on:`, `Notas:` becomes `Notes:`. The three
+English field labels already parsed as aliases before this decision, which is
+what made the inconsistency visible in the first place.
+
+No migration command ships with it. One would be the right answer for a tool with
+users to carry across; writing it now would be building for an installed base
+that has not been observed to exist, and the rewrite is a find-and-replace that
+takes longer to describe than to run.
+
 ---
 
 ## Assumptions
 
-Status values: `aberta` · `confirmada` · `invalidada`.
+Status values: `open` · `confirmed` · `invalidated`.
 
 - **ASM-001** — The configured agent CLI supports a non-interactive invocation
   that accepts a prompt, performs file edits and exits with a meaningful status
-  code. *(status: confirmada — exercised directly against Claude Code 2.1.221 in
+  code. *(status: confirmed — exercised directly against Claude Code 2.1.221 in
   a scratch directory, all three clauses separately. Prompt accepted and answered:
   `claude -p` returned the requested output and exited 0. File edits performed: a
   run asked for a named file with exact contents produced that file, with those
@@ -581,7 +629,7 @@ Status values: `aberta` · `confirmada` · `invalidada`.
   Q-008.)*
 - **ASM-002** — The host project's test runner can emit per-test results in a
   machine-readable form. Their `spec.config.json` runs `pytest` and `vitest`, both
-  of which can, but the exact reporter flags are unconfirmed. *(status: confirmada —
+  of which can, but the exact reporter flags are unconfirmed. *(status: confirmed —
   four adapters shipped: `tap`, `vitest-json`, `junit` and the degraded
   `exitcode`. `junit` is what makes `pytest --junitxml` work. Confirmed against
   this project's own suite, which required `--test-reporter=tap` on the command:
@@ -590,10 +638,10 @@ Status values: `aberta` · `confirmada` · `invalidada`.
   a silent empty pass.)*
 - **ASM-003** — The captain is the only operator, so concurrent writes to the same
   document come only from the captain's editor and an agent, never from two
-  humans. *(status: confirmada — SCOPE §2 states single-tenant, single-operator)*
+  humans. *(status: confirmed — SCOPE §2 states single-tenant, single-operator)*
 - **ASM-004** — Task granularity in `TDD.md` stays small enough that one task is
   one commit and one worker invocation. If tasks routinely need conversation, the
-  worker contract in D-002 is wrong. *(status: confirmada at n=4 — measured, not
+  worker contract in D-002 is wrong. *(status: confirmed at n=4 — measured, not
   assumed, by running the executor against a throwaway project built for the
   purpose. Four tasks of deliberately uneven size: two as small as a task can
   honestly be, one carrying a real edge case, one written underspecified on
@@ -619,10 +667,10 @@ Status values: `aberta` · `confirmada` · `invalidada`.
   routinely incomplete, and the check that notices is not optional.)*
 - **ASM-005** — Declaring a task's file list up front is accurate enough often
   enough to be useful. A worker that touches an undeclared file breaks the
-  disjointness guarantee that makes lanes safe. *(status: confirmada — the mitigation is built: `runLane` compares what the commit actually touched against what the task declared and records an `undeclared-files` event. The declaration is trusted for planning and checked afterwards, which is the only honest combination.)*
+  disjointness guarantee that makes lanes safe. *(status: confirmed — the mitigation is built: `runLane` compares what the commit actually touched against what the task declared and records an `undeclared-files` event. The declaration is trusted for planning and checked afterwards, which is the only honest combination.)*
 - **ASM-006** — Reading and parsing the documents on every board request is fast
   enough at the stated volumes, so no caching layer is needed for MVP. *(status:
-  confirmada — measured against this project's own `.spec/`, the largest real
+  confirmed — measured against this project's own `.spec/`, the largest real
   corpus available: 13 stories, 38 criteria, 27 tasks, 9 principles. A full
   `adp audit`, parsing every document from cold, runs in 323–473 ms wall clock
   including Node's own startup. The modification-time cache in the fallback
@@ -630,7 +678,7 @@ Status values: `aberta` · `confirmada` · `invalidada`.
   threshold where a human notices a delay.)*
 - **ASM-007** — The eight existing role agents in `.claude/agents/` remain the
   right division of labour and the pipeline maps onto them rather than replacing
-  them. *(status: invalidada — the premise no longer holds. Those agents belonged
+  them. *(status: invalidated — the premise no longer holds. Those agents belonged
   to `Projeto_Agent`, and this tool has since been extracted into its own
   repository, which is what SCOPE Q-002 was asking. `.claude/agents/` does not
   exist here and nothing in the package depends on it. What replaced the
@@ -641,24 +689,24 @@ Status values: `aberta` · `confirmada` · `invalidada`.
 
 ## Open questions
 
-Status values: `aberta` · `respondida`. A question marked **blocking** must be
+Status values: `open` · `answered`. A question marked **blocking** must be
 answered before G2 can pass.
 
 - **Q-001** — Which scope does the repository root own: Agent Dev Pipeline or Portal
-  Proauto? *(status: respondida — the repository root owns **Agent Dev
+  Proauto? *(status: answered — the repository root owns **Agent Dev
   Pipeline**, and nothing else. The tool was extracted from `Projeto_Agent` into a
   repository of its own; Portal Proauto stays where it is and becomes one of the
   tool's consumers rather than its host. This is the arrangement the third option
   described, and it is the only one that survives the tool being published: a
   package cannot ship a host product's scope document inside it.)*
 - **Q-002** — Does Agent Dev Pipeline get its own repository, or stay a folder inside
-  `Projeto_Agent`? *(status: respondida — its own: `Codryx-Tec/agent-dev-pipeline`,
+  `Projeto_Agent`? *(status: answered — its own: `Codryx-Tec/agent-dev-pipeline`,
   published to npm as `@codryx/agent-dev-pipeline`. Staying a subfolder was
   incompatible with being installed into other projects, which is the entire
   point of the tool.)*
 - **Q-003** — Is `agent-dev-pipeline` the final name? It appears in the port number
   documentation, the skill name, the config filename and the container image tag,
-  so renaming later is cheap now and expensive after M4. *(status: respondida —
+  so renaming later is cheap now and expensive after M4. *(status: answered —
   the product is `agent-dev-pipeline`, published as `@codryx/agent-dev-pipeline`;
   the command, the config file and the engine's own skill are `adp`. The package
   name stays descriptive so the registry is searchable, while the binary stays
@@ -668,9 +716,9 @@ answered before G2 can pass.
 - **Q-004** — Retired with Docker (D-013). It asked whether the agent CLI would
   run inside the container with mounted credentials or on the host. There is no
   container, so credentials never leave the machine they were installed on.
-  *(status: respondida — the question dissolved with the container)*
+  *(status: answered — the question dissolved with the container)*
 - **Q-005** — What is the retention policy for run events and worker output
-  streams? *(status: respondida — the last **ten** runs' streams, pruned
+  streams? *(status: answered — the last **ten** runs' streams, pruned
   automatically after every run. The reason is token economy, not disk: worker
   transcripts are the bulk of what this tool produces and the least re-read part
   of it, and ten covers "what went wrong in the last few attempts", which is the
@@ -680,9 +728,9 @@ answered before G2 can pass.
   captain edits a document on the page while an agent writes the same file. The
   tool no longer writes documents at all — only `init` and `new` create files, and
   neither overwrites — so the conflict it guarded against cannot arise.
-  *(status: respondida — dissolved with the page in D-011, and kept dissolved by D-013: the page came back with no write path)*
+  *(status: answered — dissolved with the page in D-011, and kept dissolved by D-013: the page came back with no write path)*
 - **Q-007** — Does the tool need to keep working when the host project's test
-  suite takes minutes rather than seconds? *(status: respondida — yes, and the
+  suite takes minutes rather than seconds? *(status: answered — yes, and the
   answer is `adp verify --background`: the run is detached, its progress is
   written to the event ledger, and `adp verify --status` reports it. Synchronous
   stays the DEFAULT, because a fast suite finishing in front of you is better
@@ -690,7 +738,7 @@ answered before G2 can pass.
   Nothing about the verdict changes — a background run writes the same proof
   record, so the audit cannot tell the difference and neither can a gate.)*
 - **Q-008** — Under which permission mode does the executor invoke the agent?
-  *(status: respondida — behind an explicit `adp run --allow-edits`, and off by
+  *(status: answered — behind an explicit `adp run --allow-edits`, and off by
   default. The other two options were rejected for the same reason: carrying the
   flag in the default args grants an agent silent write access to a repository,
   which is precisely what `adp trust` exists to prevent for a mere test command;
@@ -720,7 +768,7 @@ answered before G2 can pass.
   the diff is reviewed before it merges. Handing it those rights by default, and
   silently, is the same mistake `adp trust` was built to prevent.)*
 - **Q-009** — Should a worker be able to run the tests it writes? *(status:
-  respondida — no, and it does not need to. The question assumed the only way to
+  answered — no, and it does not need to. The question assumed the only way to
   get a test result inside a lane was to let the worker produce it. The
   orchestrator can run the tests itself, in the worktree, using consent it
   already holds, and attribute the result to the task that just committed. See
@@ -740,8 +788,8 @@ answered before G2 can pass.
   execution required approval". They happened to be correct. The next four might
   not be, and nothing in the lane would notice.)*
 - **Q-010** — How does a task declare that it runs after another one? *(status:
-  respondida — with `Depende: T-001`, and the companion it turned out to need,
-  `Lê:` for files a task reads without writing. See D-014.*
+  answered — with `Depends on: T-001`, and the companion it turned out to need,
+  `Reads:` for files a task reads without writing. See D-014.*
 
   *The question as asked has a one-line answer, and answering only that would
   have left the hack in place: the fourth task's real problem was that declaring
