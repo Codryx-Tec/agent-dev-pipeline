@@ -22,8 +22,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 20 is the floor declared in engines; 22 is what the container runs.
-        node: ['20', '22']
+        # The active LTS, and the floor declared in engines. One version on
+        # purpose: this package has no dependencies and no native code, so a
+        # matrix bought very little and cost a second way for the build to be
+        # red. `engines` stays a floor rather than a pin, so 26 still installs.
+        node: ['24']
     steps:
       - uses: actions/checkout@v4
 
@@ -37,8 +40,24 @@ jobs:
       - name: Tests
         run: npm test
 
+      # The audit reads proof, it does not produce it. Proof comes from actually
+      # running the example's tests, and what that writes
+      # (.spec/verification/*.json) is generated, not committed — it is stamped
+      # with a git revision, so a committed copy would be stale on the next
+      # commit. A checkout therefore starts with no proof, and auditing it
+      # without verifying first is guaranteed to fail G5. Verify, then audit.
+      #
+      # ADP_TRUST_TEST_COMMAND is the consent gate's documented CI escape hatch:
+      # verify executes a command out of the project's own config, so it refuses
+      # to run until a human approves it. Here the repository is the approval.
+      # It is set on this step alone, never in an npm script, so that nothing a
+      # contributor runs locally can grant itself execution.
       - name: Audit the example project
-        run: npm run example
+        env:
+          ADP_TRUST_TEST_COMMAND: '1'
+        run: |
+          npm run example:verify
+          npm run example
 
       - name: Supply-chain and consent invariants
         run: node --test "test/supply-chain.test.js" "test/trust.test.js"

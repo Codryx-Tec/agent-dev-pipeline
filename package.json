@@ -13,7 +13,7 @@
     "url": "https://github.com/Codryx-Tec/agent-dev-pipeline/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "bin": {
     "adp": "bin/adp.js"
@@ -29,6 +29,7 @@
     "payload/",
     "scripts/",
     ".exemplo/",
+    "!.exemplo/.spec/verification/*.json",
     "README.md",
     "README.pt-BR.md",
     "INSTALL.md",
@@ -41,6 +42,7 @@
     "status": "node bin/adp.js status",
     "prepublishOnly": "npm run manifest && npm run manifest:check && npm test",
     "example": "cd .exemplo && node ../bin/adp.js audit",
+    "example:verify": "cd .exemplo && node ../bin/adp.js verify",
     "manifest": "node scripts/build-manifest.js",
     "manifest:check": "node scripts/build-manifest.js --check",
     "doctor": "node bin/adp.js doctor"

@@ -7,7 +7,7 @@ cd ~/projects/whatever
 npx @codryx/agent-dev-pipeline init --agent claude
 ```
 
-Node ≥ 20 and `git`. **No runtime dependencies** — `npx` fetches one small
+Node ≥ 24 and `git`. **No runtime dependencies** — `npx` fetches one small
 package and runs it. Nothing is added to your project, no `node_modules` appears
 in it, and nothing is left behind except the files `init` deliberately wrote.
 

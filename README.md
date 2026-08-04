@@ -9,7 +9,7 @@ code evolves, and within a fortnight the specification is well-formatted fiction
 This is *spec-anchored*: the specification is audited mechanically against the
 code, all the time, and **the verdict is an exit code rather than a claim**.
 
-Zero runtime dependencies. Node ≥ 20 and `git`. Nothing to install: it runs from
+Zero runtime dependencies. Node ≥ 24 and `git`. Nothing to install: it runs from
 `npx` and leaves nothing behind.
 
 ```
