@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 0,
-  "durationMs": 6419,
-  "verifiedAt": "2026-08-04T17:43:00.137Z",
-  "gitRev": "f5fca8b5b8475d5749fd6f001ea91180bd6a561d",
+  "durationMs": 5975,
+  "verifiedAt": "2026-08-04T17:57:56.528Z",
+  "gitRev": "0267e89290cfa43543b8597f38866893258c0bbb",
   "gitDirty": true,
-  "codeMtime": 1785865041771.4487,
+  "codeMtime": 1785866241782.938,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -261,6 +261,19 @@
         },
         {
           "title": "a task with real PASS proof is accepted as done @spec:AC-014",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-049": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a task whose refs reach no criterion is named @spec:AC-049",
+          "status": "pass"
+        },
+        {
+          "title": "a task carrying at least one criterion is left alone @spec:AC-049",
           "status": "pass"
         }
       ]
