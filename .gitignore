@@ -13,3 +13,7 @@ node_modules/
 # Proof the example produces when it is verified. Regenerated on every run and
 # stamped with a git revision, so a committed copy would be stale immediately.
 .exemplo/.spec/verification/*.json
+
+# Scratch space for specifications handed to an agent mid-session. Consumed and
+# deleted once read, so nothing here is ever meant to outlive the conversation.
+.doc/
