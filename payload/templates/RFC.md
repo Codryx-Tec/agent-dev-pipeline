@@ -1,9 +1,14 @@
-# RFC: {{FEATURE}}
+# RFC-{{NUMBER}}: {{SLUG}}
 
-> feature: {{FEATURE}}
+> rfc: RFC-{{NUMBER}}
 > document: RFC — WHICH path, among the possible ones
 > owns: D-xxx (decisions)
 > status: draft
+
+Flat and global (Q-001): this file is not owned by one feature. Any PRD that
+needs this decision links it by adding `RFC-{{NUMBER}}` to its own `rfcs:`
+line — one RFC can serve several PRDs, and one PRD often needs several, one
+per one-way door.
 
 <!--
 GRAMMAR:
@@ -15,7 +20,8 @@ GRAMMAR:
     **Decision: alternative N — name.**
     rationale, then consequences
 
-Gate G2 passes when every decision records at least two alternatives and a
+Gate G2 passes when every PRD that links here names an id that resolves, and
+every decision in every linked RFC records at least two alternatives and a
 chosen one.
 -->
 

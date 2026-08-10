@@ -3,6 +3,7 @@
 > feature: {{FEATURE}}
 > document: PRD — WHAT, for WHOM, WHY
 > status: draft
+> rfcs:
 
 Prose only. No stories, no criteria, no technology — those belong to
 `SPEC.md` and `RFC.md`. A PRD that names a database, a framework or a data
@@ -11,6 +12,12 @@ do, never how it does it.
 
 Gate G1 passes when this document exists and the `feature:` line above
 matches the directory it lives in.
+
+RFCs are no longer a fixed file next to this one — one can serve several
+PRDs, and one PRD often needs several, one per one-way door. `rfcs:` names
+which decision records apply here, comma-separated: `rfcs: RFC-001, RFC-003`.
+Create one with `adp new --rfc <slug>`; gate G2 fails while this line stays
+empty, or if an id it names does not resolve to a real file.
 
 ## Context
 

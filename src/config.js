@@ -13,6 +13,9 @@ export const DEFAULT_CONFIG = {
   specDir: '.spec',
   featuresDir: '.spec/features',
   verificationDir: '.spec/verification',
+  // RFCs are flat and global, not nested per feature — one RFC can serve
+  // several PRDs, and one PRD often needs several (Q-001, SCOPE-0.6.0.md).
+  rfcDir: '.spec/rfc',
   constitutionFile: '.spec/CONSTITUTION.md',
   scopeFile: '.spec/SCOPE.md',
 

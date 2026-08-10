@@ -29,6 +29,34 @@ function listFeatureDirs(featuresRoot) {
     .sort();
 }
 
+const RE_RFC_FILENAME = /^(RFC-\d+)-(.+)\.md$/i;
+
+// RFCs are flat and global (Q-001): one file can be linked from several
+// PRDs, so they are loaded once, independent of any feature directory, and
+// resolved by id rather than found by a fixed sibling path.
+function loadRfcs(rootDir, config) {
+  const rfcRoot = path.join(rootDir, config.rfcDir);
+  const rfcs = new Map();
+  if (!existsSync(rfcRoot)) return rfcs;
+
+  for (const entry of readdirSync(rfcRoot, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (!entry.isFile()) continue;
+    const m = entry.name.match(RE_RFC_FILENAME);
+    if (!m) continue;
+    const full = path.join(rfcRoot, entry.name);
+    const relPath = rel(rootDir, full);
+    const raw = readIfExists(full);
+    if (raw === null) continue;
+    rfcs.set(m[1].toUpperCase(), {
+      id: m[1].toUpperCase(),
+      slug: m[2],
+      file: relPath,
+      rfc: parseRfc(raw, relPath),
+    });
+  }
+  return rfcs;
+}
+
 /** HEAD, or null outside a git repository. Used to decide whether proof is stale. */
 function currentGitRev(rootDir) {
   const p = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' });
@@ -65,17 +93,14 @@ export function loadProject(config) {
     };
 
     const prdFile = read(config.documents.prd);
-    const rfcFile = read(config.documents.rfc);
     const specFile = read(config.documents.spec);
     const designFile = read(config.documents.design);
 
     let prd = null;
-    let rfc = null;
     let spec = null;
     let design = null;
     try {
       prd = prdFile.raw ? parsePrd(prdFile.raw, prdFile.relPath) : null;
-      rfc = rfcFile.raw ? parseRfc(rfcFile.raw, rfcFile.relPath) : null;
       spec = specFile.raw ? parseSpec(specFile.raw, specFile.relPath) : null;
       design = designFile.raw ? parseDesign(designFile.raw, designFile.relPath) : null;
     } catch (err) {
@@ -86,19 +111,22 @@ export function loadProject(config) {
       name,
       dir: rel(rootDir, dir),
       prd,
-      rfc,
       spec,
       design,
+      // Not a fixed sibling file anymore (Q-001) — the ids a PRD declares
+      // via `rfcs:`, resolved against the project-wide `rfcs` map above.
+      rfcRefs: prd ? prd.rfcs : [],
       prdPath: prdFile.relPath,
-      rfcPath: rfcFile.relPath,
       specPath: specFile.relPath,
       designPath: designFile.relPath,
       hasPrd: prdFile.raw !== null,
-      hasRfc: rfcFile.raw !== null,
       hasSpec: specFile.raw !== null,
       hasDesign: designFile.raw !== null,
     };
   });
+
+  // ---- RFCs: flat and global, not nested under any feature (Q-001) ----
+  const rfcs = loadRfcs(rootDir, config);
 
   // ---- constitution ----
   const constitutionPath = path.join(rootDir, config.constitutionFile);
@@ -140,6 +168,7 @@ export function loadProject(config) {
     rootDir,
     scope,
     features,
+    rfcs,
     constitution,
     testFiles,
     srcFiles,

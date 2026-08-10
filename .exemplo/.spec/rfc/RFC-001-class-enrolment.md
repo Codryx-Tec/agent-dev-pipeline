@@ -1,9 +1,13 @@
-# RFC: class-enrolment
+# RFC-001: class-enrolment
 
-> feature: class-enrolment
+> rfc: RFC-001
 > document: RFC — WHICH path, among the possible ones
 > owns: D-xxx (decisions)
 > status: ready
+
+Flat and global (Q-001): linked from
+[`class-enrolment/PRD.md`](../features/class-enrolment/PRD.md)'s `rfcs:`
+line, not nested under it.
 
 ## Purpose
 

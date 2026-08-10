@@ -135,17 +135,57 @@ test('PRD.md keeps its prose and loses only the extracted story @spec:AC-056', (
   });
 });
 
-test('RFC.md keeps its decision and loses only Assumptions/Open questions @spec:AC-056', () => {
+test('RFC un-nests to the global family, keeping its decision and losing only Assumptions/Open questions @spec:AC-056', () => {
   fresh((root) => {
     const dir = featureDir(root);
     writeLegacyFeature(dir);
     apply(root, { dryRun: false });
 
-    const rfc = readFileSync(path.join(dir, 'RFC.md'), 'utf8');
+    assert.equal(existsSync(path.join(dir, 'RFC.md')), false, 'RFC.md must not stay nested under the feature');
+    const rfc = readFileSync(path.join(root, 'rfc', 'RFC-001-greet.md'), 'utf8');
     assert.match(rfc, /### D-001 — format/, 'the decision must survive untouched');
     assert.match(rfc, /\*\*Decision: alternative 1 — plain\.\*\*/);
     assert.equal(rfc.includes('ASM-001'), false);
     assert.equal(rfc.includes('Q-001'), false);
+  });
+});
+
+test('PRD.md gains an rfcs: link pointing at the relocated RFC @spec:AC-056', () => {
+  fresh((root) => {
+    const dir = featureDir(root);
+    writeLegacyFeature(dir);
+    apply(root, { dryRun: false });
+
+    const prd = readFileSync(path.join(dir, 'PRD.md'), 'utf8');
+    assert.match(prd, /^> rfcs: RFC-001$/m);
+  });
+});
+
+test('RFC numbers are allocated globally across features, in directory order @spec:AC-056', () => {
+  fresh((root) => {
+    featureDir(root, 'alpha');
+    writeLegacyFeature(path.join(root, 'features', 'alpha'));
+    featureDir(root, 'beta');
+    writeLegacyFeature(path.join(root, 'features', 'beta'));
+
+    apply(root, { dryRun: false });
+
+    assert.ok(existsSync(path.join(root, 'rfc', 'RFC-001-alpha.md')));
+    assert.ok(existsSync(path.join(root, 'rfc', 'RFC-002-beta.md')));
+    assert.match(readFileSync(path.join(root, 'features', 'alpha', 'PRD.md'), 'utf8'), /> rfcs: RFC-001/);
+    assert.match(readFileSync(path.join(root, 'features', 'beta', 'PRD.md'), 'utf8'), /> rfcs: RFC-002/);
+  });
+});
+
+test('a fresh number never collides with an RFC that already exists @spec:AC-056', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, 'rfc'), { recursive: true });
+    writeFileSync(path.join(root, 'rfc', 'RFC-001-existing.md'), '### D-001 — x\n');
+    const dir = featureDir(root);
+    writeLegacyFeature(dir);
+
+    apply(root, { dryRun: false });
+    assert.ok(existsSync(path.join(root, 'rfc', 'RFC-002-greet.md')), 'numbering must continue past what already exists');
   });
 });
 
@@ -209,6 +249,7 @@ test('a feature missing PRD or RFC is migrated from whatever exists @spec:AC-056
     const spec = readFileSync(path.join(dir, 'SPEC.md'), 'utf8');
     assert.match(spec, /## T-001 — greeting \[pending\]/);
     assert.equal(spec.includes('## Stories'), false, 'nothing to extract means no empty section either');
+    assert.equal(existsSync(path.join(root, 'rfc')), false, 'nothing to relocate means no rfc/ directory either');
   });
 });
 
@@ -222,10 +263,11 @@ test('dry-run reports the plan without writing or deleting anything @spec:AC-056
     assert.ok(existsSync(path.join(dir, 'TDD.md')), 'dry-run must not delete TDD.md');
     assert.equal(existsSync(path.join(dir, 'SPEC.md')), false, 'dry-run must not create SPEC.md');
     assert.match(readFileSync(path.join(dir, 'PRD.md'), 'utf8'), /US-001/, 'dry-run must not touch PRD.md');
+    assert.equal(existsSync(path.join(root, 'rfc')), false, 'dry-run must not create the rfc/ directory either');
   });
 });
 
-test('check() is true only once every feature directory has lost its TDD.md @spec:AC-056', () => {
+test('check() is true only once every feature directory has lost its TDD.md and its nested RFC.md @spec:AC-056', () => {
   fresh((root) => {
     featureDir(root, 'a');
     writeLegacyFeature(path.join(root, 'features', 'a'));

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { initProject, newFeature, detectAgent, AGENT_SKILL_DIRS, LOCKFILE_NAME } from '../src/core/init.js';
+import { initProject, newFeature, newRfc, detectAgent, AGENT_SKILL_DIRS, LOCKFILE_NAME } from '../src/core/init.js';
 import { createHash } from 'crypto';
 import { loadConfig } from '../src/config.js';
 import { loadProject } from '../src/core/project.js';
@@ -191,16 +191,37 @@ test('new refuses a feature name the grammar cannot carry @spec:AC-002', () => {
   });
 });
 
-test('new creates the four documents and does not renumber over existing codes @spec:AC-002', () => {
+test('new creates the three feature documents and does not renumber over existing codes @spec:AC-002', () => {
   fresh((root) => {
     initProject(root);
     const first = newFeature(root, 'alpha');
-    assert.equal(first.created.length, 4);
+    assert.equal(first.created.length, 3, 'RFC.md is no longer part of feature scaffolding (Q-001)');
     // The first feature must not be told its own placeholders are already taken.
     assert.equal(first.notes.length, 0);
 
     const second = newFeature(root, 'beta');
     assert.match(second.notes.join(' '), /codes are unique project-wide/);
+  });
+});
+
+test('newRfc creates a numbered, global decision record, decoupled from any feature @spec:AC-007', () => {
+  fresh((root) => {
+    initProject(root);
+    const first = newRfc(root, 'queue-provider');
+    assert.equal(first.id, 'RFC-001');
+    assert.deepEqual(first.created, ['.spec/rfc/RFC-001-queue-provider.md']);
+    assert.match(first.notes.join(' '), /rfcs: RFC-001/);
+
+    const second = newRfc(root, 'auth-strategy');
+    assert.equal(second.id, 'RFC-002', 'numbering is global, not per feature');
+    assert.deepEqual(second.created, ['.spec/rfc/RFC-002-auth-strategy.md']);
+  });
+});
+
+test('newRfc refuses a slug the grammar cannot carry @spec:AC-007', () => {
+  fresh((root) => {
+    initProject(root);
+    assert.throws(() => newRfc(root, 'Bad Slug'), /lower-case/);
   });
 });
 
@@ -211,12 +232,14 @@ test('an empty folder reaches every gate green once the documents are filled in 
     newFeature(root, 'greet');
 
     const dir = path.join(root, '.spec', 'features', 'greet');
-    // newFeature() already scaffolded all four documents from the payload
-    // templates; overwrite each with real content rather than leaving the
-    // placeholder text, which would pass the gates for the wrong reason.
-    writeFileSync(path.join(dir, 'PRD.md'), '# PRD\n\n> feature: greet\n> status: draft\n');
+    // newFeature() already scaffolded the three feature documents from the
+    // payload templates; overwrite each with real content rather than
+    // leaving the placeholder text, which would pass the gates for the wrong
+    // reason. The RFC is scaffolded separately (Q-001: no longer nested).
+    writeFileSync(path.join(dir, 'PRD.md'), '# PRD\n\n> feature: greet\n> status: draft\n> rfcs: RFC-001\n');
+    mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
     writeFileSync(
-      path.join(dir, 'RFC.md'),
+      path.join(root, '.spec', 'rfc', 'RFC-001-greet.md'),
       '### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n'
     );
     writeFileSync(path.join(dir, 'DESIGN.md'), '# DESIGN\n\n## 1. Shape of the solution\n');

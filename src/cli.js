@@ -12,7 +12,7 @@ import { loadProject } from './core/project.js';
 import { auditProject } from './core/audit.js';
 import { evaluateGates, GATES, allMappedCodes } from './core/gates.js';
 import { renderTerminal, renderJson, renderGates, renderPrompt } from './core/report.js';
-import { initProject, newFeature, renderReport, AGENT_SKILL_DIRS, PAYLOAD_DIR } from './core/init.js';
+import { initProject, newFeature, newRfc, renderReport, AGENT_SKILL_DIRS, PAYLOAD_DIR } from './core/init.js';
 import { verifyPayload, renderIntegrity } from './core/integrity.js';
 import { checkTrust, grantTrust, revokeTrust, renderRefusal, storePath, TRUST_ENV } from './core/trust.js';
 import { startMonitor } from './server/server.js';
@@ -39,10 +39,11 @@ const HELP = `agent-dev-pipeline — the specification that stays true
 usage: adp <command> [options]
 
   init [--agent <name>]     scaffold .spec/ here and install the agent skill
-  new <feature>             create PRD.md, RFC.md and TDD.md for a feature
+  new <feature>             create PRD.md, SPEC.md and DESIGN.md for a feature
+  new --rfc <slug>          create a new decision record at .spec/rfc/RFC-NNN-<slug>.md
   status                    what exists and where the work stands
   audit [--ci] [--json]     evaluate every gate and report the findings
-  gates [--list] [--json]   the six gates and their state, without the findings
+  gates [--list] [--json]   the seven gates and their state, without the findings
   prompt [<gate>]           the paste-ready text for a red gate
   verify [--background]     run the project's tests and record what they prove
   verify --status           how the last background verification is doing
@@ -72,6 +73,7 @@ options:
   --no-docs       skip docs/ (init)
   --no-memory     skip the .spec memory files (init)
   --no-agents-md  skip AGENTS.md (init)
+  --rfc           create a decision record instead of a feature (new)
   --apply         write what upgrade would otherwise only report (upgrade)
   --only-migrations  run pending .spec/** migrations without touching payload files (upgrade)
   --ci            escalate the softer findings to errors (use this in a pipeline)
@@ -88,7 +90,7 @@ options:
   --no-merge      leave lanes on their branches instead of merging back (run)
   --revoke        withdraw a previously granted approval (trust)
 
-exit code: 0 when every gate is clean, otherwise 1..6 for G0..G5 — the number
+exit code: 0 when every gate is clean, otherwise 1..7 for G0..G6 — the number
 IS the first gate that failed.
 
 init and new never overwrite: they create only what is missing and tell you
@@ -232,12 +234,23 @@ export async function run(argv) {
   }
 
   if (command === 'new') {
-    const name = positional[1];
     try {
-      const report = newFeature(rootDir, name, { featuresDir: config.featuresDir });
+      // `--rfc <slug>` parses like `--project <s>`/`--owner <s>`: the next
+      // token IS the flag's value, so the slug never reaches `positional[1]`.
+      if (flags.rfc !== undefined) {
+        if (typeof flags.rfc !== 'string') {
+          console.error('error: --rfc needs a slug: adp new --rfc <slug>');
+          return 2;
+        }
+        const report = newRfc(rootDir, flags.rfc, { rfcDir: config.rfcDir });
+        console.log(renderReport(report, { title: `${report.id} scaffolded` }));
+        return 0;
+      }
+      const name = positional[1];
+      const report = newFeature(rootDir, name, { featuresDir: config.featuresDir, rfcDir: config.rfcDir });
       console.log(renderReport(report, { title: `feature "${name}" scaffolded` }));
       console.log('');
-      console.log('next: write the stories and criteria in PRD.md, then run `adp status`');
+      console.log('next: write the stories and criteria in SPEC.md, then run `adp status`');
       return 0;
     } catch (err) {
       console.error(`error: ${err.message}`);

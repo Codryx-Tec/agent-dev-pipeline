@@ -165,6 +165,18 @@ test('PRD.md reports its own feature and status, and owns no stories or criteria
   assert.equal('acs' in prd, false, 'PRD.md no longer owns acceptance criteria');
 });
 
+test('PRD.md declares which RFCs it links, comma-separated @spec:AC-007', () => {
+  const doc = '> feature: greet\n> status: draft\n> rfcs: RFC-001, rfc-002\n';
+  assert.deepEqual(parsePrd(doc, 'PRD.md').rfcs, ['RFC-001', 'RFC-002']);
+});
+
+test('an empty "rfcs:" field never swallows the prose on a later line @spec:AC-007', () => {
+  // A regex anchored with \s* instead of [ \t]* would cross the blank line
+  // after an empty field and capture the next paragraph as if it were an id.
+  const doc = '> feature: greet\n> status: draft\n> rfcs:\n\nThis is prose, not an RFC id.\n';
+  assert.deepEqual(parsePrd(doc, 'PRD.md').rfcs, []);
+});
+
 test('DESIGN.md reports its feature and status, with no structure beyond that @spec:AC-001', () => {
   const doc = '> feature: greet\n> status: draft\n\n## 1. Shape of the solution\n';
   const design = parseDesign(doc, 'DESIGN.md');

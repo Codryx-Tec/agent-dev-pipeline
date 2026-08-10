@@ -161,11 +161,15 @@ when something behaves impossibly, before blaming the project.
 Pipeline: business-analyst → architect → techlead → designer/backend/frontend
 (security reviews) → tester → techlead.
 
-Writing an `RFC.md`? The `create-rfc` skill produces the decision-record shape —
-options with pros and cons, decision criteria with weights, RACI, outcome. The
-engine reads that shape natively. Assumptions and open questions belong in
-`SPEC.md`, not here: give each one an `ASM-xxx`/`Q-xxx` code instead of a bare
-row number. Without codes an assumption cannot be referenced, tracked or closed.
+Writing an `RFC.md`? It is flat and global, at `.spec/rfc/RFC-<NNN>-<slug>.md`
+— `adp new --rfc <slug>` creates one — and the PRD that needs it links it by
+adding the id to its own `rfcs:` line. One RFC can serve several PRDs, and one
+PRD often needs several, one per one-way door. The `create-rfc` skill produces
+the decision-record shape — options with pros and cons, decision criteria with
+weights, RACI, outcome. The engine reads that shape natively. Assumptions and
+open questions belong in `SPEC.md`, not here: give each one an `ASM-xxx`/
+`Q-xxx` code instead of a bare row number. Without codes an assumption cannot
+be referenced, tracked or closed.
 
 ## Feature or issue
 

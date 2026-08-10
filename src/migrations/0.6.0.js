@@ -1,9 +1,13 @@
-// The 0.5 -> 0.6 codemod: splits PRD/RFC/TDD into PRD/RFC/SPEC/DESIGN.
+// The 0.5 -> 0.6 codemod: splits PRD/RFC/TDD into PRD/RFC/SPEC/DESIGN, and
+// un-nests RFC into a flat, globally-numbered family.
 //
 // 0.6.0 moved US-xxx/AC-xxx out of PRD.md, ASM-xxx/Q-xxx out of RFC.md and
 // T-xxx out of TDD.md, all three into a new SPEC.md — "the layer the machine
 // confers" (Q-003 in .spec/SCOPE-0.6.0.md). TDD.md keeps its remaining prose
-// and is renamed DESIGN.md.
+// and is renamed DESIGN.md. RFC.md stops being a fixed sibling file (Q-001:
+// one RFC can serve several PRDs, one PRD often needs several) and moves to
+// `<specDir>/rfc/RFC-<NNN>-<feature>.md`, with the feature's PRD.md gaining
+// an `rfcs:` line pointing at it.
 //
 // This is a structural rewrite, not a text substitution — content crosses
 // file boundaries — so the shape of this migration differs from 0.5.0.js's
@@ -11,11 +15,11 @@
 //
 //   1. It operates per FEATURE DIRECTORY (`<specDir>/features/*/`), not per
 //      file, because it has to read up to three source documents to write
-//      two of the destination ones.
-//   2. Idempotency is keyed on TDD.md's EXISTENCE, not on a content scan.
-//      The transformation crosses file boundaries, so "already migrated" is
-//      a structural fact (no TDD.md left) rather than a text-similarity
-//      guess a regex could make.
+//      two (now three) of the destination ones.
+//   2. Idempotency is keyed on TDD.md's and the nested RFC.md's EXISTENCE,
+//      not on a content scan. The transformation crosses file boundaries, so
+//      "already migrated" is a structural fact (neither file left) rather
+//      than a text-similarity guess a regex could make.
 //   3. It never overwrites a SPEC.md section that already exists. A human
 //      may have started SPEC.md by hand, or a previous partial run may have
 //      left one — either way, clobbering it is worse than leaving a note
@@ -26,12 +30,12 @@
 // not imported, because importing a moving target from a migration is the
 // coupling 0.5.0.js's self-contained-regex precedent already avoids.
 
-import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from 'fs';
 import path from 'path';
 import { stripNonGrammar } from '../util/text.js';
 
 export const version = '0.6.0';
-export const description = 'split PRD/RFC/TDD into PRD/RFC/SPEC/DESIGN, moving US/AC/ASM/Q/T ownership (0.5.0 -> 0.6.0)';
+export const description = 'split PRD/RFC/TDD into PRD/RFC/SPEC/DESIGN and un-nest RFC into a global family (0.5.0 -> 0.6.0)';
 
 const RE_STORY = /^###\s+US-\d+\s*[—–-].*$/gm;
 const RE_TASK = /^##\s+T-\d+\s*[—–-].*$/gm;
@@ -97,35 +101,65 @@ function listFeatureDirs(featuresRoot) {
   if (!existsSync(featuresRoot)) return [];
   return readdirSync(featuresRoot, { withFileTypes: true })
     .filter((e) => e.isDirectory())
-    .map((e) => e.name);
+    .map((e) => e.name)
+    .sort();
 }
 
-function migrateFeature(dir) {
+// Self-contained, same as init.js's — a migration should not depend on
+// application code that is free to change shape independently of it.
+function highestRfcNumber(rfcDir) {
+  if (!existsSync(rfcDir)) return 0;
+  let highest = 0;
+  for (const entry of readdirSync(rfcDir, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const m = entry.name.match(/^RFC-(\d+)-/i);
+    if (m) highest = Math.max(highest, Number(m[1]));
+  }
+  return highest;
+}
+
+// Inserted right after the last `> field:` header line, so it stays grouped
+// with `feature:`/`document:`/`status:` instead of landing at a random spot.
+function addRfcsLine(content, rfcId) {
+  const headerBlock = content.match(/^(>.*\n)+/m);
+  if (!headerBlock) return `> rfcs: ${rfcId}\n\n${content}`;
+  const insertAt = headerBlock.index + headerBlock[0].length;
+  return `${content.slice(0, insertAt)}> rfcs: ${rfcId}\n${content.slice(insertAt)}`;
+}
+
+function migrateFeature(dir, { rfcDir, allocateRfc }) {
+  const featureName = path.basename(dir);
   const prdPath = path.join(dir, 'PRD.md');
   const rfcPath = path.join(dir, 'RFC.md');
   const tddPath = path.join(dir, 'TDD.md');
   const designPath = path.join(dir, 'DESIGN.md');
   const specPath = path.join(dir, 'SPEC.md');
 
-  if (!existsSync(tddPath)) return null; // already migrated — see check()
+  const hasTdd = existsSync(tddPath);
+  const hasNestedRfc = existsSync(rfcPath);
+  if (!hasTdd && !hasNestedRfc) return null; // already migrated — see check()
 
   const prd = existsSync(prdPath) ? readFileSync(prdPath, 'utf8') : null;
-  const rfc = existsSync(rfcPath) ? readFileSync(rfcPath, 'utf8') : null;
-  const tdd = readFileSync(tddPath, 'utf8');
+  const rfc = hasNestedRfc ? readFileSync(rfcPath, 'utf8') : null;
 
   const sections = {}; // heading -> body text to merge into SPEC.md
   const notes = [];
   const writes = [];
+  const deletes = [];
 
+  let prdContent = prd;
   if (prd !== null) {
     const scan = stripNonGrammar(prd);
     const storySpans = spansBoundedByHeading(prd, scan, [...scan.matchAll(RE_STORY)], 3);
     if (storySpans.length) {
       sections['Stories'] = storySpans.map((s) => trimBlank(s.text)).join('\n\n');
-      writes.push({ path: prdPath, content: removeSpans(prd, storySpans) });
+      prdContent = removeSpans(prd, storySpans);
     }
   }
 
+  // RFC un-nests (Q-001): its trimmed content moves to the flat, globally
+  // numbered family instead of back into this feature directory, and the
+  // PRD gains a link to it instead of relying on a fixed sibling path.
   if (rfc !== null) {
     const scan = stripNonGrammar(rfc);
     const asm = namedSection(rfc, scan, RE_ASSUMPTIONS_SECTION);
@@ -139,15 +173,27 @@ function migrateFeature(dir) {
       sections['Open questions'] = trimBlank(q.body);
       removedFromRfc.push(q);
     }
-    if (removedFromRfc.length) writes.push({ path: rfcPath, content: removeSpans(rfc, removedFromRfc) });
+    const rfcContent = removedFromRfc.length ? removeSpans(rfc, removedFromRfc) : rfc;
+
+    const rfcId = allocateRfc();
+    writes.push({ path: path.join(rfcDir, `${rfcId}-${featureName}.md`), content: rfcContent });
+    deletes.push(rfcPath);
+
+    if (prdContent !== null) prdContent = addRfcsLine(prdContent, rfcId);
   }
 
-  const tddScan = stripNonGrammar(tdd);
-  const taskSpans = spansBoundedByHeading(tdd, tddScan, [...tddScan.matchAll(RE_TASK)], 2);
-  if (taskSpans.length) {
-    sections['Tasks'] = taskSpans.map((s) => trimBlank(s.text)).join('\n\n');
+  if (prdContent !== null && prdContent !== prd) writes.push({ path: prdPath, content: prdContent });
+
+  if (hasTdd) {
+    const tdd = readFileSync(tddPath, 'utf8');
+    const tddScan = stripNonGrammar(tdd);
+    const taskSpans = spansBoundedByHeading(tdd, tddScan, [...tddScan.matchAll(RE_TASK)], 2);
+    if (taskSpans.length) {
+      sections['Tasks'] = taskSpans.map((s) => trimBlank(s.text)).join('\n\n');
+    }
+    writes.push({ path: designPath, content: removeSpans(tdd, taskSpans) });
+    deletes.push(tddPath);
   }
-  writes.push({ path: designPath, content: removeSpans(tdd, taskSpans) });
 
   // Merge into SPEC.md — order fixed as Stories, Assumptions, Open questions,
   // Tasks, matching payload/templates/SPEC.md. Never overwrite a section
@@ -170,22 +216,31 @@ function migrateFeature(dir) {
     writes.push({ path: specPath, content: merged + toAppend.join('\n\n') + '\n' });
   }
 
-  return { writes, deletes: [tddPath], notes };
+  return { writes, deletes, notes };
 }
 
 export function check(specDir) {
   const featuresRoot = path.join(specDir, 'features');
-  return listFeatureDirs(featuresRoot).every((name) => !existsSync(path.join(featuresRoot, name, 'TDD.md')));
+  return listFeatureDirs(featuresRoot).every((name) => {
+    const dir = path.join(featuresRoot, name);
+    return !existsSync(path.join(dir, 'TDD.md')) && !existsSync(path.join(dir, 'RFC.md'));
+  });
 }
 
 export function apply(specDir, { dryRun = true } = {}) {
   const featuresRoot = path.join(specDir, 'features');
+  const rfcDir = path.join(specDir, 'rfc');
   const changed = [];
   const notes = [];
 
+  // Allocated across the WHOLE run, in feature-directory order, so the
+  // numbering is deterministic and never collides with what already exists.
+  let nextRfcNumber = highestRfcNumber(rfcDir) + 1;
+  const allocateRfc = () => `RFC-${String(nextRfcNumber++).padStart(3, '0')}`;
+
   for (const name of listFeatureDirs(featuresRoot)) {
     const dir = path.join(featuresRoot, name);
-    const result = migrateFeature(dir);
+    const result = migrateFeature(dir, { rfcDir, allocateRfc });
     if (!result) continue;
 
     for (const { path: p } of result.writes) changed.push({ file: path.relative(specDir, p).split(path.sep).join('/') });
@@ -193,7 +248,13 @@ export function apply(specDir, { dryRun = true } = {}) {
     for (const n of result.notes) notes.push({ feature: name, note: n });
 
     if (!dryRun) {
-      for (const { path: p, content } of result.writes) writeFileSync(p, content);
+      // Created lazily, only when a write actually lands under it — a
+      // feature with nothing to relocate must not leave a stray empty rfc/
+      // directory behind.
+      for (const { path: p, content } of result.writes) {
+        mkdirSync(path.dirname(p), { recursive: true });
+        writeFileSync(p, content);
+      }
       for (const p of result.deletes) unlinkSync(p);
     }
   }

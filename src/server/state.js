@@ -155,7 +155,10 @@ function shapeFeature(f, project) {
     name: f.name,
     dir: f.dir,
     hasPrd: f.hasPrd,
-    hasRfc: f.hasRfc,
+    // RFC is no longer a fixed sibling file (Q-001) — "has one" means the PRD
+    // links at least one, whether or not that link resolves (the audit
+    // already reports RFC_MISSING for a broken one).
+    hasRfc: f.rfcRefs.length > 0,
     hasSpec: f.hasSpec,
     hasDesign: f.hasDesign,
     stories: (f.spec?.stories ?? []).map((s) => ({

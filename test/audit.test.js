@@ -4,6 +4,8 @@ import { auditOf, has, findingsFor, gate, APPROVED_SCOPE, MINIMAL_RFC } from './
 
 const PRD_OK = `# PRD
 
+> rfcs: RFC-001
+
 Prose only: what, for whom, why.
 `;
 
@@ -39,7 +41,7 @@ const DESIGN_OK = `# DESIGN
 const base = (over = {}) => ({
   '.spec/SCOPE.md': APPROVED_SCOPE,
   '.spec/features/f/PRD.md': PRD_OK,
-  '.spec/features/f/RFC.md': MINIMAL_RFC,
+  '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
   '.spec/features/f/SPEC.md': SPEC_OK,
   '.spec/features/f/DESIGN.md': DESIGN_OK,
   'src/a.js': 'export const a = 1;\n',
@@ -71,9 +73,37 @@ test('an incomplete criterion names the missing clause @spec:AC-006', () => {
 
 test('a decision with fewer than two alternatives is a finding @spec:AC-007', () => {
   const rfc = MINIMAL_RFC.replace('2. *Two.* second\n', '');
-  const { audit, gates } = auditOf(base({ '.spec/features/f/RFC.md': rfc }));
+  const { audit, gates } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
   assert.ok(has(audit, 'DECISION_WITHOUT_ALTERNATIVE'));
   assert.equal(gate(gates, 'G2').state, 'red');
+});
+
+test('a PRD declaring no RFC is a finding @spec:AC-007', () => {
+  const prd = '# PRD\n\nProse only.\n';
+  const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd }));
+  assert.match(findingsFor(audit, 'RFC_MISSING')[0].message, /declares no RFC/);
+});
+
+test('a PRD referencing an RFC that does not exist is a finding @spec:AC-007', () => {
+  const prd = '# PRD\n\n> rfcs: RFC-404\n\nProse only.\n';
+  const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd }));
+  assert.match(findingsFor(audit, 'RFC_MISSING')[0].message, /RFC-404, which does not exist/);
+});
+
+test('one RFC shared by two PRDs is checked once, not once per PRD @spec:AC-007', () => {
+  // Feature g deliberately has no SPEC.md/DESIGN.md — irrelevant findings
+  // about it (SPEC_MISSING etc.) don't affect what this test asserts.
+  const { audit } = auditOf(
+    base({
+      '.spec/rfc/RFC-001-t.md': MINIMAL_RFC.replace('2. *Two.* second\n', ''), // broken: only 1 alternative
+      '.spec/features/g/PRD.md': PRD_OK,
+    })
+  );
+  assert.equal(
+    findingsFor(audit, 'DECISION_WITHOUT_ALTERNATIVE').length,
+    1,
+    'the RFC is one file; both PRDs pointing at it must not double the finding'
+  );
 });
 
 test('a missing assumptions or questions section is a finding @spec:AC-008', () => {

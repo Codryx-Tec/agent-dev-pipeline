@@ -91,10 +91,15 @@ arquivo.
 
 | Documento | Responde | É dono de |
 |---|---|---|
-| `PRD.md` | **o quê**, para **quem**, **por quê** | só prosa — nenhum código próprio |
+| `PRD.md` | **o quê**, para **quem**, **por quê** | nada próprio — uma linha `rfcs:` no cabeçalho liga o(s) arquivo(s) `RFC-xxx` de que depende |
 | `RFC.md` | **qual caminho**, entre os possíveis | decisões `D-xxx`, cada uma com alternativas e uma escolha |
 | `DESIGN.md` | **como**, em detalhe — o projeto que um humano lê | só prosa — nenhum código próprio |
 | `SPEC.md` | **o que a máquina confere** | histórias `US-xxx` · critérios `AC-xxx` · premissas `ASM-xxx` · questões em aberto `Q-xxx` · tarefas `T-xxx`, cada uma declarando `Refs:`, `Files:` e opcionalmente `Reads:` e `Depends on:` |
+
+`RFC.md` é plano e global, em `.spec/rfc/RFC-<NNN>-<slug>.md` — não aninhado
+sob uma feature. Uma RFC pode servir várias PRDs, e uma PRD costuma precisar
+de várias, uma por porta de mão única (Q-001); um arquivo fixo ao lado não
+conseguiria expressar isso. Crie uma com `adp new --rfc <slug>`.
 
 Quatro documentos em vez de um porque as perguntas que eles respondem têm
 públicos e tempos de vida diferentes: *o quê e por quê* muda quando o negócio
@@ -243,7 +248,8 @@ você lê serem o mesmo veredito, em vez de duas implementações que concordam 
 
 ```sh
 adp init [--agent <nome>] [--minimal]   monta o projeto
-adp new <feature>                       cria PRD.md, RFC.md, DESIGN.md, SPEC.md
+adp new <feature>                       cria PRD.md, SPEC.md, DESIGN.md
+adp new --rfc <slug>                    cria um novo registro de decisão
 adp status                              sete luzes
 adp audit [--ci] [--json]               achados por trás do primeiro gate vermelho
 adp gates [--list]                      os gates e seus estados

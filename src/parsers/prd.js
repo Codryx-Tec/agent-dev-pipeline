@@ -6,9 +6,19 @@
 // exists to fix (.spec/SCOPE-0.6.0.md §2.1). What is left here is exactly
 // what a product owner needs to read and nothing an engine cross-references
 // against tasks or tests.
+//
+// `rfcs:` is the one exception — a link, not a code family this document
+// owns. RFC.md is no longer a fixed sibling file (Q-001: one RFC can serve
+// several PRDs, one PRD often needs several), so a PRD names which decision
+// records apply instead of the engine assuming a 1:1 nesting.
+
+import { splitList } from '../util/text.js';
 
 const RE_STATUS = /^>\s*status:\s*(\S+)/m;
 const RE_FEATURE = /^>\s*feature:\s*(\S+)/m;
+// [ \t]*, not \s* — an empty "rfcs:" field must not let the match cross the
+// newline and swallow the next line's prose as if it were the value.
+const RE_RFCS = /^>\s*rfcs?:[ \t]*(.+)$/m;
 
 export const SPEC_STATUSES = [
   'draft',
@@ -24,5 +34,6 @@ export function parsePrd(content, file) {
     file,
     feature: content.match(RE_FEATURE)?.[1] ?? null,
     status: content.match(RE_STATUS)?.[1] ?? null,
+    rfcs: splitList(content.match(RE_RFCS)?.[1] ?? '').map((id) => id.toUpperCase()),
   };
 }

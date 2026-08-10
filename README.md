@@ -87,10 +87,15 @@ unique **across the whole project**, not per file.
 
 | Document | Answers | Owns |
 |---|---|---|
-| `PRD.md` | **what**, for **whom**, **why** | prose only — no code of its own |
+| `PRD.md` | **what**, for **whom**, **why** | nothing of its own — an `rfcs:` header line links the `RFC-xxx` file(s) it depends on |
 | `RFC.md` | **which path**, among the possible ones | `D-xxx` decisions, each with alternatives and a choice |
 | `DESIGN.md` | **how**, in detail — the blueprint a human reads | prose only — no code of its own |
 | `SPEC.md` | **what the machine confers** | `US-xxx` stories · `AC-xxx` criteria · `ASM-xxx` assumptions · `Q-xxx` open questions · `T-xxx` tasks, each declaring `Refs:`, `Files:` and optionally `Reads:` and `Depends on:` |
+
+`RFC.md` is flat and global, at `.spec/rfc/RFC-<NNN>-<slug>.md` — not nested
+under a feature. One RFC can serve several PRDs, and one PRD often needs
+several, one per one-way door (Q-001); a fixed sibling file couldn't express
+that. Create one with `adp new --rfc <slug>`.
 
 Four documents rather than one because the questions they answer have
 different audiences and different lifetimes: *what and why* changes when the
@@ -236,7 +241,8 @@ verdict, rather than two implementations that agree today.
 
 ```sh
 adp init [--agent <name>] [--minimal]   scaffold a project
-adp new <feature>                       create PRD.md, RFC.md, DESIGN.md, SPEC.md
+adp new <feature>                       create PRD.md, SPEC.md, DESIGN.md
+adp new --rfc <slug>                    create a new decision record
 adp status                              seven lights
 adp audit [--ci] [--json]               findings behind the first red gate
 adp gates [--list]                      gates and their state

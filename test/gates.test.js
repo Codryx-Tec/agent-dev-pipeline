@@ -71,8 +71,8 @@ test('gateOf resolves a known code and refuses an unknown one @spec:AC-024', () 
 test('a finding renders its readable name before its stable code @spec:AC-024', () => {
   const { audit, gates } = auditOf({
     '.spec/SCOPE.md': APPROVED_SCOPE,
-    '.spec/features/f/PRD.md': '# PRD\n',
-    '.spec/features/f/RFC.md': MINIMAL_RFC,
+    '.spec/features/f/PRD.md': '# PRD\n\n> rfcs: RFC-001\n',
+    '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
     '.spec/features/f/DESIGN.md': '# DESIGN\n',
     '.spec/features/f/SPEC.md': '### US-001 — lonely\n\n## T-001 — x [pending]\n\n- Refs: US-001\n- Files: src/a.js\n',
   });
@@ -98,8 +98,8 @@ test('a red gate produces a paste-ready prompt with its findings @spec:AC-023', 
 test('a clean project exits 0 with no red gate @spec:AC-018', () => {
   const { gates } = auditOf({
     '.spec/SCOPE.md': APPROVED_SCOPE,
-    '.spec/features/f/PRD.md': '# PRD\n',
-    '.spec/features/f/RFC.md': MINIMAL_RFC,
+    '.spec/features/f/PRD.md': '# PRD\n\n> rfcs: RFC-001\n',
+    '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
     '.spec/features/f/DESIGN.md': '# DESIGN\n',
     '.spec/features/f/SPEC.md':
       '### US-001 — x\n\n#### AC-001 — y\n\n- **Given** a\n- **When** b\n- **Then** c\n\n' +

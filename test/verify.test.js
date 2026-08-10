@@ -147,8 +147,12 @@ function project(files, config = {}) {
   mkdirSync(path.join(root, 'test'), { recursive: true });
   writeFileSync(path.join(root, '.spec', 'SCOPE.md'), '# S\n\n**Scope status:** Approved\n');
   writeFileSync(path.join(root, '.spec', 'CONSTITUTION.md'), '# C\n');
-  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'PRD.md'), '# PRD\n');
-  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'RFC.md'), '# RFC\n');
+  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'PRD.md'), '# PRD\n\n> rfcs: RFC-001\n');
+  mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
+  writeFileSync(
+    path.join(root, '.spec', 'rfc', 'RFC-001-demo.md'),
+    '### D-001 — x\n\n**Alternatives considered**\n\n1. *A.* a\n2. *B.* b\n\n**Decision: alternative 1 — a.**\n'
+  );
   writeFileSync(path.join(root, '.spec', 'features', 'demo', 'DESIGN.md'), '# DESIGN\n');
   writeFileSync(
     path.join(root, '.spec', 'features', 'demo', 'SPEC.md'),

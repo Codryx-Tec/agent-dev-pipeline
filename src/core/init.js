@@ -155,6 +155,7 @@ export function initProject(rootDir, opts = {}) {
   // layout survive a clone. Not payload content, so not part of the install map.
   writeIfMissing(path.join(rootDir, '.spec', 'features', '.gitkeep'), '', report);
   writeIfMissing(path.join(rootDir, '.spec', 'verification', '.gitkeep'), '', report);
+  writeIfMissing(path.join(rootDir, '.spec', 'rfc', '.gitkeep'), '', report);
 
   // ---- everything else the payload ships: one plan, one loop ----
   // detectAgent() runs before the plan because the skills subtree's
@@ -232,16 +233,19 @@ export function newFeature(rootDir, name, opts = {}) {
     throw new Error('feature name must be lower-case letters, digits and hyphens, e.g. student-enrolment');
   }
   const featuresDir = opts.featuresDir ?? '.spec/features';
+  const rfcDir = opts.rfcDir ?? '.spec/rfc';
   const dir = path.join(rootDir, featuresDir, name);
   const report = { created: [], kept: [], notes: [], relTo: rootDir };
 
   // Codes are unique across the whole project, so a new feature must not
   // restart at 001. Read the highest code in use BEFORE writing anything: the
   // templates carry example codes, and scanning afterwards would report the
-  // feature's own placeholders back as if they were somebody else's.
-  const used = highestCodes(path.join(rootDir, featuresDir));
+  // feature's own placeholders back as if they were somebody else's. RFCs are
+  // no longer nested under featuresDir (Q-001), so their D-xxx codes are only
+  // visible if rfcDir is scanned too.
+  const used = highestCodes([path.join(rootDir, featuresDir), path.join(rootDir, rfcDir)]);
 
-  for (const doc of ['PRD.md', 'RFC.md', 'SPEC.md', 'DESIGN.md']) {
+  for (const doc of ['PRD.md', 'SPEC.md', 'DESIGN.md']) {
     writeIfMissing(path.join(dir, doc), fill(template(doc), { FEATURE: name }), report);
   }
 
@@ -253,10 +257,45 @@ export function newFeature(rootDir, name, opts = {}) {
   return report;
 }
 
-function highestCodes(featuresRoot) {
-  if (!existsSync(featuresRoot)) return [];
+/**
+ * A new decision record, at `<rfcDir>/RFC-<NNN>-<slug>.md`. Decoupled from
+ * feature creation (Q-001: one RFC can serve several PRDs, one PRD often
+ * needs several) — a flag on `new` rather than a second top-level command,
+ * per the same "if it doesn't earn a distinct verb, don't add one" discipline
+ * that cut `adp ceremony`/`adp metrics show` from the approved scope.
+ */
+export function newRfc(rootDir, slug, opts = {}) {
+  if (!slug || !/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
+    throw new Error('RFC slug must be lower-case letters, digits and hyphens, e.g. queue-provider');
+  }
+  const rfcDir = opts.rfcDir ?? '.spec/rfc';
+  const dir = path.join(rootDir, rfcDir);
+  const report = { created: [], kept: [], notes: [], relTo: rootDir };
+
+  const number = highestRfcNumber(dir) + 1;
+  const padded = String(number).padStart(3, '0');
+  const id = `RFC-${padded}`;
+
+  writeIfMissing(path.join(dir, `${id}-${slug}.md`), fill(template('RFC.md'), { NUMBER: padded, SLUG: slug }), report);
+  report.notes.push(`add "> rfcs: ${id}" to the PRD.md of any feature this decision applies to`);
+  return { ...report, id };
+}
+
+function highestRfcNumber(rfcDir) {
+  if (!existsSync(rfcDir)) return 0;
+  let highest = 0;
+  for (const entry of readdirSync(rfcDir, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const m = entry.name.match(/^RFC-(\d+)-/i);
+    if (m) highest = Math.max(highest, Number(m[1]));
+  }
+  return highest;
+}
+
+function highestCodes(roots) {
   const highest = {};
   const walk = (dir) => {
+    if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
@@ -269,7 +308,7 @@ function highestCodes(featuresRoot) {
       }
     }
   };
-  walk(featuresRoot);
+  for (const root of Array.isArray(roots) ? roots : [roots]) walk(root);
   return Object.entries(highest)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([prefix, n]) => `${prefix}-${String(n).padStart(3, '0')}`);

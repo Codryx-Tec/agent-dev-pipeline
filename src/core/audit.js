@@ -18,7 +18,7 @@ import path from 'path';
 import { CI_ESCALATES } from './gates.js';
 import { checkPrinciples } from './principles.js';
 
-const RE_SHORT_ID = /^(US|AC|T|ASM|Q|P)-\d{1,2}$/;
+const RE_SHORT_ID = /^(US|AC|T|ASM|Q|P|RFC)-\d{1,2}$/;
 
 /**
  * Has the code moved since proof was taken?
@@ -41,7 +41,7 @@ export function isProofStale(project, record) {
 
 export function auditProject(project, { ci = false } = {}) {
   const findings = [];
-  const { config, features, scope } = project;
+  const { config, features, scope, rfcs } = project;
 
   const emit = (code, severity, message, extra = {}) => {
     const finalSeverity =
@@ -110,6 +110,30 @@ export function auditProject(project, { ci = false } = {}) {
     }
   }
 
+  // ---------------------------------------------------- RFCs (global, once)
+  // An RFC's own validity does not depend on who references it — checking it
+  // once here (rather than once per feature that links it) is the actual
+  // point of un-nesting it (Q-001): two PRDs sharing one incomplete RFC get
+  // one finding, not two duplicates pointing at the same file.
+  for (const [id, entry] of rfcs) {
+    register(id, { file: entry.file, line: 1 }, null);
+    for (const d of entry.rfc.decisions) {
+      const noun = d.dialect === 'create-rfc' ? 'option' : 'alternative';
+      if (d.alternatives < 2) {
+        emit('DECISION_WITHOUT_ALTERNATIVE', 'error',
+          `${d.id} (${d.title}) records ${d.alternatives} ${noun}(s) — a decision without alternatives is indistinguishable from a habit`,
+          { file: d.file, line: d.line });
+      }
+      if (!d.decided) {
+        emit('DECISION_WITHOUT_CHOICE', 'error',
+          d.dialect === 'create-rfc'
+            ? `${d.id}: no option is marked recommended and the Outcome still holds the template placeholder — nothing was decided yet`
+            : `${d.id} (${d.title}) records no chosen option`,
+          { file: d.file, line: d.line });
+      }
+    }
+  }
+
   // -------------------------------------------------------------- per feature
   for (const f of features) {
     // ---- G1 PRD — prose only: what, for whom, why ----
@@ -121,23 +145,15 @@ export function auditProject(project, { ci = false } = {}) {
         { feature: f.name, file: f.prdPath });
     }
 
-    // ---- G2 RFC — D-xxx decisions only ----
-    if (!f.hasRfc) {
-      emit('RFC_MISSING', 'error', `${f.name} has no ${config.documents.rfc}`, { feature: f.name, file: f.rfcPath });
+    // ---- G2 RFC — linked by id, not a fixed sibling file (Q-001) ----
+    if (!f.rfcRefs.length) {
+      emit('RFC_MISSING', 'error', `${f.prdPath} declares no RFC — add an "rfcs:" line naming at least one`,
+        { feature: f.name, file: f.prdPath });
     } else {
-      for (const d of f.rfc.decisions) {
-        const noun = d.dialect === 'create-rfc' ? 'option' : 'alternative';
-        if (d.alternatives < 2) {
-          emit('DECISION_WITHOUT_ALTERNATIVE', 'error',
-            `${d.id} (${d.title}) records ${d.alternatives} ${noun}(s) — a decision without alternatives is indistinguishable from a habit`,
-            { feature: f.name, file: d.file, line: d.line });
-        }
-        if (!d.decided) {
-          emit('DECISION_WITHOUT_CHOICE', 'error',
-            d.dialect === 'create-rfc'
-              ? `${d.id}: no option is marked recommended and the Outcome still holds the template placeholder — nothing was decided yet`
-              : `${d.id} (${d.title}) records no chosen option`,
-            { feature: f.name, file: d.file, line: d.line });
+      for (const ref of f.rfcRefs) {
+        if (!rfcs.has(ref)) {
+          emit('RFC_MISSING', 'error', `${f.prdPath} references ${ref}, which does not exist`,
+            { feature: f.name, file: f.prdPath });
         }
       }
     }
