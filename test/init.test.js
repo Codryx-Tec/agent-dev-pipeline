@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { initProject, newFeature, detectAgent, AGENT_SKILL_DIRS } from '../src/core/init.js';
+import { initProject, newFeature, detectAgent, AGENT_SKILL_DIRS, LOCKFILE_NAME } from '../src/core/init.js';
+import { createHash } from 'crypto';
 import { loadConfig } from '../src/config.js';
 import { loadProject } from '../src/core/project.js';
 import { auditProject } from '../src/core/audit.js';
@@ -132,6 +133,45 @@ test('a stale singular .claude/skill directory is called out @spec:AC-002', () =
     mkdirSync(path.join(root, '.claude', 'skill', 'legacy'), { recursive: true });
     const report = initProject(root);
     assert.match(report.notes.join(' '), /only reads `\.claude\/skills\/`/);
+  });
+});
+
+test('init writes a lockfile whose hashes match the payload it just installed @spec:AC-051', () => {
+  fresh((root) => {
+    initProject(root, { project: 'Demo', owner: 'TI' });
+    const lockPath = path.join(root, '.spec', LOCKFILE_NAME);
+    assert.ok(existsSync(lockPath), 'the lockfile must exist after init');
+
+    const lockfile = JSON.parse(readFileSync(lockPath, 'utf-8'));
+    assert.equal(lockfile.algorithm, 'sha256');
+    assert.equal(lockfile.fileCount, Object.keys(lockfile.files).length);
+    assert.ok(lockfile.fileCount > 0);
+
+    for (const [projectRel, expected] of Object.entries(lockfile.files)) {
+      const actual = createHash('sha256').update(readFileSync(path.join(root, projectRel))).digest('hex');
+      assert.equal(actual, expected, `${projectRel} hash must match what was just written`);
+    }
+  });
+});
+
+test('re-running init never touches an existing lockfile @spec:AC-051', () => {
+  fresh((root) => {
+    initProject(root);
+    const lockPath = path.join(root, '.spec', LOCKFILE_NAME);
+    const before = readFileSync(lockPath, 'utf-8');
+
+    const second = initProject(root);
+
+    assert.equal(readFileSync(lockPath, 'utf-8'), before);
+    assert.ok(second.kept.includes(`.spec/${LOCKFILE_NAME}`));
+  });
+});
+
+test('the lockfile excludes SCOPE.md, since its content is per-project @spec:AC-051', () => {
+  fresh((root) => {
+    initProject(root, { project: 'Demo', owner: 'TI' });
+    const lockfile = JSON.parse(readFileSync(path.join(root, '.spec', LOCKFILE_NAME), 'utf-8'));
+    assert.equal(Object.prototype.hasOwnProperty.call(lockfile.files, '.spec/SCOPE.md'), false);
   });
 });
 

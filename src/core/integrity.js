@@ -19,7 +19,10 @@ import path from 'path';
 
 export const MANIFEST_NAME = 'MANIFEST.json';
 
-function sha256(buf) {
+// Exported: the install lockfile (src/core/upgrade.js) and the payload/project
+// mapping (src/core/install-map.js via init.js) hash files the same way this
+// module does, and reimplementing hashing a second time is how the two drift.
+export function sha256(buf) {
   return createHash('sha256').update(buf).digest('hex');
 }
 
@@ -77,7 +80,10 @@ export function verifyPayload(payloadDir) {
   return { status: problems.length ? 'failed' : 'ok', problems, checked };
 }
 
-function walkRelative(dir, base = dir, out = []) {
+// Exported for init.js: when no MANIFEST.json ships (a working tree before
+// scripts/build-manifest.js has run), there is no files map to drive an
+// install plan from, so init falls back to walking the payload directly.
+export function walkRelative(dir, base = dir, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir).sort()) {
     const full = path.join(dir, entry);

@@ -23,18 +23,16 @@ import { rerunLane } from './core/rerun.js';
 import { makeAgentRunner, describeAgentCommand } from './core/agent.js';
 import { progress, prune, append, read } from './core/ledger.js';
 import { buildResume, renderResume, saveCheckpoint, clearCheckpoint } from './core/resume.js';
-
-// Read from package.json rather than hard-coding. A version literal in the
-// source is a second truth: it drifts from the manifest the moment someone
-// bumps one and forgets the other, which is the exact failure this tool exists
-// to catch. Refusing to hold it twice is cheaper than auditing it.
-import { readFileSync } from 'fs';
+import { VERSION } from './version.js';
+import {
+  planUpgrade,
+  applyUpgrade,
+  renderUpgrade,
+  renderApplied,
+  loadLockfile,
+  describeVersionDrift,
+} from './core/upgrade.js';
 import { fileURLToPath } from 'url';
-import path from 'path';
-
-const VERSION = JSON.parse(
-  readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')
-).version;
 
 const HELP = `agent-dev-pipeline — the specification that stays true
 
@@ -58,6 +56,9 @@ usage: adp <command> [options]
   checkpoint --note "<s>"   record what you were doing, for the next session
   monitor [--port <n>]      serve the read-only page for this project
   doctor                    verify this copy of the tool against its manifest
+  upgrade [--apply] [--only-migrations] [--json]
+                            compare .spec/.adp-install.json against the current
+                            payload; dry-run unless --apply is passed
   trust [--revoke] [--yes]  approve this project's test command for execution
   version | help
 
@@ -71,6 +72,8 @@ options:
   --no-docs       skip docs/ (init)
   --no-memory     skip the .spec memory files (init)
   --no-agents-md  skip AGENTS.md (init)
+  --apply         write what upgrade would otherwise only report (upgrade)
+  --only-migrations  run pending .spec/** migrations without touching payload files (upgrade)
   --ci            escalate the softer findings to errors (use this in a pipeline)
   --json          machine-readable output
   --port <n>      port for the monitor (default 7788)
@@ -133,11 +136,16 @@ export async function run(argv) {
     return 0;
   }
 
-  // Ring 1: needs no config and no project. `doctor` checks the TOOL, not the
-  // project it is standing in — deliberately. Files installed into a project are
-  // meant to be edited (that is why init never overwrites), so comparing them to
-  // the manifest would report a user's own work as tampering, and a check that
-  // cries wolf is one people learn to skip.
+  // ---- ring 2 ----
+  const config = loadConfig(rootDir);
+
+  // `doctor` checks the TOOL, not the project it is standing in — deliberately.
+  // Files installed into a project are meant to be edited (that is why init
+  // never overwrites), so comparing them to the manifest would report a user's
+  // own work as tampering, and a check that cries wolf is one people learn to
+  // skip. It needs `config` (ring 2, not ring 1) only to find the project's own
+  // lockfile for the version-drift warning below — still far short of a full
+  // project load.
   if (command === 'doctor') {
     const result = verifyPayload(PAYLOAD_DIR);
     console.log(`agent-dev-pipeline ${VERSION}`);
@@ -149,11 +157,55 @@ export async function run(argv) {
       console.log('To check that the package itself came from its stated source:');
       console.log('  npm audit signatures');
     }
+    // Silent when there is no lockfile at all: a 0.4.x project pre-dating this
+    // feature is not "drifted," it is simply unmeasured, and `adp upgrade`
+    // itself already handles that case — doctor should not nag about
+    // something it cannot quantify.
+    const drift = describeVersionDrift(loadLockfile(rootDir, config), VERSION);
+    if (drift) {
+      console.log('');
+      console.log(`WARNING: this project was installed by agent-dev-pipeline ${drift.from}; this copy is ${drift.to}.`);
+      console.log('  adp upgrade            (dry-run — shows what would change)');
+      console.log('  adp upgrade --apply    (writes it)');
+    }
     return result.status === 'failed' ? 2 : 0;
   }
 
-  // ---- ring 2 ----
-  const config = loadConfig(rootDir);
+  if (command === 'upgrade') {
+    const payload = verifyPayload(PAYLOAD_DIR);
+    const plan = planUpgrade(rootDir, config);
+    if (plan.status === 'no-manifest') {
+      console.error('error: no MANIFEST.json in this copy of the tool — nothing to compare against.');
+      console.error('  expected when running from a working tree before `node scripts/build-manifest.js` has run.');
+      return 2;
+    }
+    if (payload.status === 'failed') {
+      // Same refusal as init: an upgrade would install content nothing
+      // verified, which is worse than doing nothing.
+      console.error(renderIntegrity(payload, { payloadDir: PAYLOAD_DIR }));
+      console.error('\nupgrade refused to write anything.');
+      return 2;
+    }
+
+    if (flags.json) {
+      console.log(JSON.stringify(plan, null, 2));
+    } else {
+      console.log(renderUpgrade(plan));
+    }
+
+    if (!flags.apply) {
+      console.log('');
+      console.log('DRY RUN — nothing was written. Re-run with --apply to write.');
+      return 0;
+    }
+
+    const applied = applyUpgrade(rootDir, config, plan, { onlyMigrations: Boolean(flags['only-migrations']) });
+    if (!flags.json) {
+      console.log('');
+      console.log(renderApplied(applied));
+    }
+    return 0;
+  }
 
   // init and new deliberately run BEFORE the project is loaded: a folder with
   // no .spec/ is exactly the case they exist for, and paying for a full walk of

@@ -400,6 +400,40 @@ it succeeds, fails, or times out.
 - Files: src/core/audit.js, src/core/gates.js
 - Notes: Found while promoting the proven tasks to `[done]`. The proof check computes `task.refs.filter(r => knownAc.has(r))` and every discarded reference vanishes — so T-001 and T-027, which reference only a story, looked healthy in the audit while being permanently unprovable. `REF_BROKEN` stays quiet because the references resolve; nothing else was watching. Fires only when a task carries NO criterion at all, because referencing a story alongside a criterion is normal and costs nothing. A warning rather than an error, in G3: the breakdown is still implementable, but the task can never legitimately reach `[done]` and the person reading the audit should not have to run a script to find that out.
 
+## T-040 — Shared payload/project install map [done]
+
+- Refs: AC-051
+- Files: src/core/paths.js, src/core/install-map.js
+- Notes: `initProject()` used to decide where each payload file lands with several near-duplicate conditionals, one per subtree (skills directory depends on agent, `minimal` narrows to just the `adp` skill, and so on). `adp upgrade` needs to recompute the exact same mapping to classify a file correctly, and a second implementation that could silently drift from the first is worse than the shortcut it would save. `buildInstallPlan()` is the one place that knows the answer; both `init.js` and `upgrade.js` call it. `templates/SCOPE.md` and the three per-feature scaffolds are excluded permanently — SCOPE.md is filled in per project, and PRD.md/RFC.md/TDD.md belong to `newFeature()`, never to `initProject()`.
+
+## T-041 — Install lockfile [done]
+
+- Refs: AC-051
+- Files: src/core/init.js, src/core/integrity.js
+- Depends on: T-040
+- Reads: src/core/install-map.js
+- Notes: `initProject()` now drives every payload write off one loop over `buildInstallPlan()`'s output instead of several separate `copyTreeIfMissing` calls, collapsing near-duplicate code as a side effect. Each real write is recorded into `report.installed` with its SHA-256 (via `integrity.js`'s now-exported `sha256`), and `.spec/.adp-install.json` is written last, through the same `writeIfMissing()` every other file goes through — so re-running `init` never touches an existing lockfile, the same guarantee every other file in this installer already has. Written only when the payload was manifest-verified; an unverified payload produces no lockfile rather than one built on hashes nothing checked.
+
+## T-042 — The 0.5.0 migration and the registry [done]
+
+- Refs: AC-056
+- Files: src/migrations/0.5.0.js, src/migrations/index.js
+- Notes: 0.5.0 renamed every Portuguese engine token to English and shipped with no migration — CHANGELOG.md's documented fix was "find-and-replace by hand." This is that migration, written after the fact. Scope is `.spec/**/*.md` only; a finding code inside a `.mjs` script is the user's code, not a document, and this repository's own `check-preflight.mjs` is the concrete case that rules it out. Idempotent by construction rather than by a separate flag: every regex matches only the OLD spelling, so a document already in English matches nothing and a second run is a byte-for-byte no-op — `check()` and `apply()` both rely on exactly that. The registry (`pendingMigrations`) does a plain numeric per-segment version compare, no semver dependency, consistent with this being a zero-dependency package.
+
+## T-043 — `adp upgrade` [done]
+
+- Refs: AC-052, AC-053, AC-054, AC-055
+- Files: src/core/upgrade.js
+- Depends on: T-040, T-041, T-042
+- Notes: Classifies every payload-tracked file into intact/edited/new/removed/deleted by comparing the lockfile against the current manifest. A fifth bucket beyond the PRD's four was necessary: a file the lockfile knows about that is simply absent from disk fits neither "intact" (nothing to hash) nor "edited" (nothing to sidecar), so `deleted` is its own reported, never-recreated bucket. A project with no lockfile at all (bootstrap mode — the actual shape of a 0.4.x install, which predates this feature) cannot tell "untouched" from "edited" per file, so every existing file is treated as edited rather than guessed at; nothing already on disk is ever overwritten by `--apply` as a result. Migrations run before the file classification is written. `--only-migrations` (Q-008 in the 0.6.0 scope: no separate `adp migrate` command) skips the payload-file half entirely, including the lockfile rewrite, because a migrations-only run must not claim the whole upgrade happened.
+
+## T-044 — CLI wiring: `upgrade` command and doctor drift warning [done]
+
+- Refs: AC-057
+- Files: src/cli.js, src/version.js
+- Depends on: T-043
+- Notes: `doctor` moves from ring 1 to ring 2 — it now needs `config.specDir` to find the project's own lockfile, still far short of a full project load — and prints a version-drift warning naming the exact `adp upgrade` command when the project's lockfile is behind the running tool. Silent when there is no lockfile at all: a pre-lockfile project is not "drifted," it is unmeasured, and `adp upgrade` itself already handles that case. `src/version.js` replaces the version-reading block that was inline in this file, so the tool holds its own version exactly once.
+
 ## T-029 — Test suite [done]
 
 - Refs: AC-018

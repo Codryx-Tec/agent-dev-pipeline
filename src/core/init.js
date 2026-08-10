@@ -16,32 +16,29 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { verifyPayload, renderIntegrity, assertInside } from './integrity.js';
+import { verifyPayload, renderIntegrity, assertInside, sha256, loadManifest, walkRelative } from './integrity.js';
+import { buildInstallPlan } from './install-map.js';
+import { PACKAGE_DIR, PAYLOAD_DIR, TEMPLATES_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME } from './paths.js';
+import { VERSION } from '../version.js';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const PACKAGE_DIR = path.resolve(HERE, '..', '..');
-export const PAYLOAD_DIR = path.join(PACKAGE_DIR, 'payload');
-const TEMPLATES = path.join(PAYLOAD_DIR, 'templates');
-
-// Where each agent harness looks for skills.
-//
-// Note the plural. Claude Code reads `.claude/skills/`, never `.claude/skill/` —
-// a singular directory looks right, is easy to create by hand, and is silently
-// never loaded. The installer always writes the plural form.
-export const AGENT_SKILL_DIRS = {
-  claude: '.claude/skills',
-  codex: '.agents/skills',
-  antigravity: '.agents/skills',
-  cursor: '.cursor/skills',
-};
-
-// The role agents and the hooks are Claude Code features with no equivalent
-// elsewhere, so they install only for that harness.
-const CLAUDE_ONLY = ['agents', 'hooks', 'settings'];
+export { PACKAGE_DIR, PAYLOAD_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME };
 
 function template(name) {
-  return readFileSync(path.join(TEMPLATES, name), 'utf-8');
+  return readFileSync(path.join(TEMPLATES_DIR, name), 'utf-8');
+}
+
+// The list of payload-relative paths to install from, with a flag saying
+// whether it came from a trusted, hashed manifest. Working from a tree before
+// `node scripts/build-manifest.js` has run is a normal state (the payload
+// integrity check already treats it as a warning, not a refusal) and install
+// still has to work — it just cannot produce a lockfile, because a lockfile
+// with no verified hash behind it would be worse than no lockfile at all.
+function payloadFileList(payloadDir) {
+  const manifest = loadManifest(payloadDir);
+  if (manifest) return { files: manifest.files, verified: true };
+  const files = {};
+  for (const rel of walkRelative(payloadDir)) files[rel] = null;
+  return { files, verified: false };
 }
 
 function fill(text, vars) {
@@ -54,7 +51,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function writeIfMissing(fullPath, content, report, mode) {
+function writeIfMissing(fullPath, content, report, opts = {}) {
   // Every write goes through here, which makes it the one place worth guarding.
   // A destination that resolves outside the project is refused rather than
   // clamped: silently rewriting a path an attacker chose is how you end up
@@ -67,26 +64,13 @@ function writeIfMissing(fullPath, content, report, mode) {
     return false;
   }
   mkdirSync(path.dirname(fullPath), { recursive: true });
-  writeFileSync(fullPath, content, mode ? { mode } : undefined);
+  writeFileSync(fullPath, content, opts.mode ? { mode: opts.mode } : undefined);
   report.created.push(rel);
+  // Only a write backed by a verified manifest hash is worth remembering for
+  // the lockfile — see payloadFileList() above for why an unverified payload
+  // never reaches here with opts.payloadRel set.
+  if (opts.payloadRel) report.installed.push({ projectRel: rel, payloadRel: opts.payloadRel, hash: sha256(content) });
   return true;
-}
-
-// Copy a directory file by file, so "never overwrite" survives into the
-// subtree. A bulk cpSync would happily clobber a skill the user had edited.
-function copyTreeIfMissing(srcDir, destDir, report) {
-  if (!existsSync(srcDir)) return;
-  for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
-    const from = path.join(srcDir, entry.name);
-    const to = path.join(destDir, entry.name);
-    if (entry.isDirectory()) {
-      copyTreeIfMissing(from, to, report);
-    } else if (entry.isFile()) {
-      // shell hooks are useless without the executable bit
-      const mode = entry.name.endsWith('.sh') ? 0o755 : undefined;
-      writeIfMissing(to, readFileSync(from), report, mode);
-    }
-  }
 }
 
 // Which agent this project uses, guessed from what is already on disk. Guessing
@@ -120,7 +104,7 @@ export function listPayloadSkills() {
 }
 
 export function initProject(rootDir, opts = {}) {
-  const report = { created: [], kept: [], notes: [], relTo: rootDir };
+  const report = { created: [], kept: [], notes: [], relTo: rootDir, installed: [] };
 
   // Verify the payload BEFORE writing anything. `payload/` carries shell hooks
   // the harness executes and skills an AI reads as instructions, so a tampered
@@ -151,88 +135,78 @@ export function initProject(rootDir, opts = {}) {
   // handed a second set.
   const minimal = Boolean(opts.minimal);
   const want = (part) => !minimal && opts[`no${part}`] !== true;
+  const installOpts = {
+    minimal,
+    noSkills: Boolean(opts.noSkills),
+    noRoles: Boolean(opts.noRoles),
+    noDocs: Boolean(opts.noDocs),
+    noMemory: Boolean(opts.noMemory),
+    noAgents: Boolean(opts.noAgents),
+  };
 
-  // ---- the specification directory: always ----
+  // ---- SCOPE.md: always, personalized per project, so never payload-tracked
+  // (there is no single payload hash a filled-in SCOPE.md could ever match) ----
   writeIfMissing(
     path.join(rootDir, '.spec', 'SCOPE.md'),
     fill(template('SCOPE.md'), { PROJECT: project, DATE: today(), OWNER: owner }),
     report
   );
-  writeIfMissing(path.join(rootDir, '.spec', 'CONSTITUTION.md'), template('CONSTITUTION.md'), report);
-  writeIfMissing(path.join(rootDir, 'adp.config.json'), template('adp.config.json'), report);
   // git does not track empty directories; the placeholders are what make the
-  // layout survive a clone
+  // layout survive a clone. Not payload content, so not part of the install map.
   writeIfMissing(path.join(rootDir, '.spec', 'features', '.gitkeep'), '', report);
   writeIfMissing(path.join(rootDir, '.spec', 'verification', '.gitkeep'), '', report);
 
-  // ---- process memory: the files agents write back to as they learn ----
-  if (want('Memory')) {
-    copyTreeIfMissing(path.join(PAYLOAD_DIR, 'spec'), path.join(rootDir, '.spec'), report);
+  // ---- everything else the payload ships: one plan, one loop ----
+  // detectAgent() runs before the plan because the skills subtree's
+  // destination depends on it.
+  const detected = detectAgent(rootDir, opts.agent);
+  const { files: manifestFiles, verified } = payloadFileList(PAYLOAD_DIR);
+  const plan = buildInstallPlan(manifestFiles, { ...installOpts, agent: detected.agent });
+  for (const { payloadRel, projectRel } of plan) {
+    const content = readFileSync(path.join(PAYLOAD_DIR, payloadRel));
+    const mode = payloadRel.endsWith('.sh') ? 0o755 : undefined;
+    writeIfMissing(path.join(rootDir, projectRel), content, report, {
+      mode,
+      // Only a manifest-verified read is trustworthy enough to remember —
+      // see payloadFileList() for why an unverified payload skips this.
+      payloadRel: verified ? payloadRel : undefined,
+    });
   }
 
-  // ---- the agent contract ----
-  if (want('Agents')) {
-    writeIfMissing(
-      path.join(rootDir, 'AGENTS.md'),
-      readFileSync(path.join(PAYLOAD_DIR, 'AGENTS.md'), 'utf-8'),
-      report
+  if (detected.agent !== 'none' && detected.agent !== 'claude' && want('Roles')) {
+    report.notes.push(
+      `role agents and hooks are Claude Code features and were not installed for "${detected.agent}" — the skills were`
     );
   }
-
-  // ---- product documentation, for humans rather than agents ----
-  if (want('Docs')) {
-    copyTreeIfMissing(path.join(PAYLOAD_DIR, 'docs'), path.join(rootDir, 'docs'), report);
+  if (detected.ambiguous) {
+    report.notes.push(
+      `more than one agent directory exists here (${detected.candidates.join(', ')}) — installed for "${detected.agent}"; re-run with --agent <name> to choose`
+    );
+  }
+  if (detected.defaulted) {
+    report.notes.push('no agent directory found — assumed "claude"; re-run with --agent <name> to change');
   }
 
-  // ---- skills, role agents and hooks ----
-  const detected = detectAgent(rootDir, opts.agent);
-  if (detected.agent !== 'none') {
-    const skillsRoot = path.join(rootDir, AGENT_SKILL_DIRS[detected.agent]);
-    const payloadSkills = path.join(PAYLOAD_DIR, 'claude', 'skills');
-
-    if (minimal || opts.noSkills === true) {
-      // the engine's own contract is not optional: without it the agent does
-      // not know the gates exist
-      copyTreeIfMissing(
-        path.join(payloadSkills, 'adp'),
-        path.join(skillsRoot, 'adp'),
-        report
-      );
-    } else {
-      copyTreeIfMissing(payloadSkills, skillsRoot, report);
-    }
-
-    if (detected.agent === 'claude' && want('Roles')) {
-      copyTreeIfMissing(
-        path.join(PAYLOAD_DIR, 'claude', 'agents'),
-        path.join(rootDir, '.claude', 'agents'),
-        report
-      );
-      copyTreeIfMissing(
-        path.join(PAYLOAD_DIR, 'claude', 'hooks'),
-        path.join(rootDir, '.claude', 'hooks'),
-        report
-      );
-      for (const f of ['CLAUDE.md', 'settings.json']) {
-        const from = path.join(PAYLOAD_DIR, 'claude', f);
-        if (existsSync(from)) {
-          writeIfMissing(path.join(rootDir, '.claude', f), readFileSync(from), report);
-        }
-      }
-    } else if (detected.agent !== 'claude' && want('Roles')) {
-      report.notes.push(
-        `role agents and hooks are Claude Code features and were not installed for "${detected.agent}" — the skills were`
-      );
-    }
-
-    if (detected.ambiguous) {
-      report.notes.push(
-        `more than one agent directory exists here (${detected.candidates.join(', ')}) — installed for "${detected.agent}"; re-run with --agent <name> to choose`
-      );
-    }
-    if (detected.defaulted) {
-      report.notes.push('no agent directory found — assumed "claude"; re-run with --agent <name> to change');
-    }
+  // ---- the install lockfile: what makes `adp upgrade` possible later ----
+  // Goes through writeIfMissing like everything else, so re-running init never
+  // touches an existing lockfile. Written only when the payload was verified —
+  // a lockfile built from unverified hashes would let a later `adp upgrade`
+  // trust content nothing ever checked.
+  if (verified) {
+    const lockfile = {
+      lockfileVersion: 1,
+      algorithm: 'sha256',
+      installedVersion: VERSION,
+      installedAt: today(),
+      agent: detected.agent,
+      options: installOpts,
+      fileCount: report.installed.length,
+      files: Object.fromEntries(report.installed.map((f) => [f.projectRel, f.hash])),
+      bootstrapped: false,
+    };
+    writeIfMissing(path.join(rootDir, '.spec', LOCKFILE_NAME), JSON.stringify(lockfile, null, 2) + '\n', report);
+  } else {
+    report.notes.push('no MANIFEST.json — skipped writing the install lockfile (adp upgrade needs one)');
   }
 
   // A stale singular directory is worse than none: it looks like the skills are

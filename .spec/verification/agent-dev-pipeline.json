@@ -2,12 +2,12 @@
   "feature": "agent-dev-pipeline",
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
-  "exitCode": 0,
-  "durationMs": 6234,
-  "verifiedAt": "2026-08-04T18:55:54.661Z",
-  "gitRev": "525e80b32017154d77d721919005b9689604c920",
+  "exitCode": 1,
+  "durationMs": 5776,
+  "verifiedAt": "2026-08-10T11:49:17.698Z",
+  "gitRev": "8c404b6ed4af6866eea1f375bab9de04c2a54a69",
   "gitDirty": true,
-  "codeMtime": 1785869716418.07,
+  "codeMtime": 1786352882143.4668,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -838,6 +838,117 @@
       "tests": [
         {
           "title": "lane tests need no grant beyond the one already given @spec:AC-048",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-051": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "init writes a lockfile whose hashes match the payload it just installed @spec:AC-051",
+          "status": "pass"
+        },
+        {
+          "title": "re-running init never touches an existing lockfile @spec:AC-051",
+          "status": "pass"
+        },
+        {
+          "title": "the lockfile excludes SCOPE.md, since its content is per-project @spec:AC-051",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-052": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an intact file is updated silently by --apply @spec:AC-052",
+          "status": "pass"
+        },
+        {
+          "title": "a file new in the current manifest but absent from the lockfile is created under --apply @spec:AC-052",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-053": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "dry-run performs zero filesystem writes @spec:AC-053",
+          "status": "pass"
+        },
+        {
+          "title": "an edited file is left untouched and gets a <file>.new sidecar under --apply @spec:AC-053",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-054": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a project with no lockfile at all still upgrades cleanly, treating every existing file as edited @spec:AC-054",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-055": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a file in the lockfile but gone from the current manifest is reported as removed and never deleted @spec:AC-055",
+          "status": "pass"
+        },
+        {
+          "title": "a file recorded in the lockfile but missing from disk is reported as deleted and not recreated @spec:AC-055",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-056": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the 0.5.0 migration rewrites every renamed family and leaves already-English documents untouched @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "the 0.5.0 migration is idempotent: applying it twice changes nothing the second time @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "the 0.5.0 migration never touches non-.md files, even ones containing an old finding code @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "dry-run reports what would change without writing anything @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "this migration identifies itself as 0.5.0 @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "compareVersions orders plain x.y.z triples numerically, not lexically @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "pendingMigrations chains strictly between two versions, in order @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "--only-migrations runs pending migrations without touching payload files or the lockfile @spec:AC-056",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-057": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "describeVersionDrift warns only when the lockfile is genuinely behind @spec:AC-057",
           "status": "pass"
         }
       ]

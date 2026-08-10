@@ -510,6 +510,77 @@ belongs to something instead of surfacing after the merge belonging to nobody.
   why the tests were not run, and no permission is requested from or granted to
   the agent
 
+### US-017 — The captain upgrades a project across tool versions without losing edits
+
+As a captain who installed this tool on an older version, I want `init` to
+record what it wrote and `upgrade` to compare that record against the current
+release, so that I can move to a new version in one command without a
+hand-edited file being silently overwritten or a rename shipped as a table
+someone has to apply by hand.
+
+#### AC-051 — Init records what it installed, with a hash per file
+
+- **Given** a project where `init` has just run
+- **When** the install lockfile is inspected
+- **Then** it contains the tool version and a SHA-256 hash for every
+  payload-mapped file it wrote, excluding `SCOPE.md`, whose content is
+  personalised per project and matches no single payload hash
+
+#### AC-052 — An untouched or newly-shipped file is installed without asking
+
+- **Given** a file recorded in the lockfile whose content on disk still
+  matches the hash recorded at install, and separately a file the current
+  payload ships that the lockfile does not yet know about
+- **When** `adp upgrade --apply` runs
+- **Then** the first is refreshed silently and the second is created, and
+  both are recorded in the lockfile afterward
+
+#### AC-053 — An edited file is never overwritten by upgrade
+
+- **Given** a file recorded in the lockfile whose content on disk no longer
+  matches the hash recorded at install
+- **When** `adp upgrade --apply` runs
+- **Then** the file on disk is left untouched, a `<file>.new` sidecar
+  carrying the current payload's version is written beside it, and nothing
+  is written at all when `--apply` is omitted
+
+#### AC-054 — A project with no lockfile still upgrades without loss
+
+- **Given** a project with payload-mapped files already on disk but no
+  install lockfile — the state of every project installed before this
+  feature existed
+- **When** `adp upgrade` runs
+- **Then** every existing file is classified as edited rather than intact, so
+  `--apply` overwrites nothing that was already there, and a fresh lockfile
+  marked as bootstrapped is written once it does run
+
+#### AC-055 — A missing or discontinued file is reported, never silently recreated or deleted
+
+- **Given** a file the lockfile records that is absent from disk, and
+  separately a file the lockfile records that the current payload no longer
+  ships
+- **When** `adp upgrade` runs
+- **Then** the first is reported as deleted and the second as removed, and
+  `--apply` neither recreates the first nor deletes the second
+
+#### AC-056 — A grammar rename ships as a migration, not a manual instruction
+
+- **Given** a `.spec/**` document written in a grammar an earlier release
+  replaced, and a registry entry for that rename
+- **When** `adp upgrade` runs the pending migration
+- **Then** every renamed status word, field label and finding code in that
+  document is rewritten to its current form, a second run changes nothing
+  further, and no file outside `.spec/**/*.md` is touched
+
+#### AC-057 — doctor names the exact command when a project has fallen behind
+
+- **Given** a project whose lockfile records an older tool version than the
+  one currently running
+- **When** `adp doctor` runs
+- **Then** it prints a warning naming both versions and the exact `adp
+  upgrade` command to resolve it, and prints nothing when there is no
+  lockfile at all or when the versions already match
+
 ## Out of scope for this PRD
 
 - The GitHub delivery mode, its issue and pull-request mapping, and any rate-limit
