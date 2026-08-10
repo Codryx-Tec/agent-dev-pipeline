@@ -14,11 +14,11 @@ Zero dependências de runtime. Node ≥ 24 e `git`. Nada a instalar: roda pelo `
 e não deixa nada para trás.
 
 ```
-SCOPE ──▶ PRD ──▶ RFC ──▶ TDD ──▶ código ──▶ teste ──▶ auditoria
-  G0      G1      G2      G3                  G4         G5
-o que    o quê,  qual    como, em            está     ainda
-foi      pra     caminho detalhe             provado  concordam
-acordado quem,
+SCOPE ──▶ PRD ──▶ RFC ──▶ DESIGN ──▶ SPEC ──▶ código ──▶ teste ──▶ auditoria
+  G0      G1      G2       G3         G4                  G5         G6
+o que    o quê,  qual     como, em    a camada            está     ainda
+foi      pra     caminho  detalhe     que a máquina       provado  concordam
+acordado quem,                       confere
          por quê
 ```
 
@@ -38,7 +38,7 @@ Depois crie um alias, porque você vai digitar isso o dia inteiro:
 alias adp='npx @codryx/agent-dev-pipeline'
 
 adp new matricula-aluno
-adp status              # seis luzes
+adp status              # sete luzes
 adp monitor             # a página somente leitura
 ```
 
@@ -55,7 +55,7 @@ quatro maneiras de quebrá-lo, para você ver cada gate disparar.
 
 ---
 
-## Os seis gates
+## Os sete gates
 
 Um gate é **verde** quando nada sob sua responsabilidade falhou, **vermelho**
 quando algo falhou, e **bloqueado** quando um gate anterior está vermelho.
@@ -66,13 +66,14 @@ corrigirem consequências em vez de causas.
 | Gate | Pergunta | Passa quando |
 |---|---|---|
 | **G0** | O escopo está acordado? | `.spec/SCOPE.md` diz `Approved` |
-| **G1** | O quê, para quem, por quê? | toda história tem um critério; todo critério tem Given/When/Then |
-| **G2** | Qual caminho? | toda decisão registra ≥2 alternativas e uma escolhida; nenhuma questão bloqueante em aberto |
-| **G3** | Como, em detalhe? | todo critério é coberto por uma tarefa; toda referência resolve |
-| **G4** | Está provado? | todo critério tem um teste que PASSOU |
-| **G5** | Ainda concordam? | sem testes órfãos, sem "concluída" não provada, sem princípio violado |
+| **G1** | O quê, para quem, por quê? | o PRD existe e sua linha `feature:` bate com o diretório |
+| **G2** | Qual caminho? | toda decisão registra ≥2 alternativas e uma escolhida |
+| **G3** | Como, em detalhe? | o documento de design existe |
+| **G4** | É implementável? | toda história tem um critério, todo critério tem Given/When/Then, todo critério é coberto por uma tarefa, toda referência resolve, nenhuma questão bloqueante em aberto |
+| **G5** | Está provado? | todo critério tem um teste que PASSOU |
+| **G6** | Ainda concordam? | sem testes órfãos, sem "concluída" não provada, sem princípio violado |
 
-**O exit code é o gate que falhou.** `0` limpo, `1`–`6` para G0–G5. Um pipeline
+**O exit code é o gate que falhou.** `0` limpo, `1`–`7` para G0–G6. Um pipeline
 descobre *onde* quebrou só pelo status, sem nada para parsear.
 
 Apenas os achados do primeiro gate vermelho são impressos. Num projeto cujo PRD
@@ -81,7 +82,7 @@ dezenas de consequências dela mesma.
 
 ---
 
-## Os três documentos
+## Os quatro documentos
 
 Cada um é dono de uma família distinta de códigos de rastreabilidade, então todo
 código tem exatamente um lugar de definição e a detecção de duplicatas
@@ -90,14 +91,17 @@ arquivo.
 
 | Documento | Responde | É dono de |
 |---|---|---|
-| `PRD.md` | **o quê**, para **quem**, **por quê** | histórias `US-xxx` · critérios de aceite `AC-xxx` |
-| `RFC.md` | **qual caminho**, entre os possíveis | premissas `ASM-xxx` · questões em aberto `Q-xxx` |
-| `TDD.md` | **como**, em detalhe | tarefas `T-xxx`, cada uma declarando `Refs:`, `Files:` e opcionalmente `Reads:` e `Depends on:` |
+| `PRD.md` | **o quê**, para **quem**, **por quê** | só prosa — nenhum código próprio |
+| `RFC.md` | **qual caminho**, entre os possíveis | decisões `D-xxx`, cada uma com alternativas e uma escolha |
+| `DESIGN.md` | **como**, em detalhe — o projeto que um humano lê | só prosa — nenhum código próprio |
+| `SPEC.md` | **o que a máquina confere** | histórias `US-xxx` · critérios `AC-xxx` · premissas `ASM-xxx` · questões em aberto `Q-xxx` · tarefas `T-xxx`, cada uma declarando `Refs:`, `Files:` e opcionalmente `Reads:` e `Depends on:` |
 
-São três documentos em vez de um porque as três perguntas têm públicos e tempos
-de vida diferentes: *o quê e por quê* muda quando o negócio muda, *qual
-caminho* quando as restrições mudam, *como* o tempo todo. Separá-los permite
-que cada um seja aprovado no seu próprio gate.
+Quatro documentos em vez de um porque as perguntas que eles respondem têm
+públicos e tempos de vida diferentes: *o quê e por quê* muda quando o negócio
+muda, *qual caminho* quando as restrições mudam, *como* raramente, e *o que a
+máquina confere* toda vez que uma tarefa é escrita ou um teste é acrescentado.
+PRD e RFC continuam prosa que um dono de produto e um revisor leem sem
+tropeçar em código; SPEC é a camada que existe só para ser conferida.
 
 ### A cadeia, e por que ela se sustenta
 
@@ -191,14 +195,14 @@ loop eterno.
 opções com prós e contras de verdade, critérios de decisão ponderados, RACI,
 desfecho. **O motor lê a saída dela nativamente**, sem passo de conversão:
 títulos `### Option 1:` são as alternativas, e um marcador `⭐` ou uma linha de
-decisão em `## Outcome` é a escolha. Duas adições a tornam totalmente
-rastreável — codifique as premissas como `ASM-001` em vez de `1`, e adicione uma
-seção `## Open questions`. Veja
+decisão em `## Outcome` é a escolha. Premissas e questões em aberto pertencem
+ao `SPEC.md`, não aqui — codifique-as como `ASM-001` em vez de um `1` solto.
+Veja
 [`payload/claude/skills/create-rfc/INTEGRATION.md`](payload/claude/skills/create-rfc/INTEGRATION.md).
 
-As outras treze cobrem TDD, implementação incremental, debugging, trabalho de
-front-end, documentação, arquivos de memória, limpeza de worktree, fluxo no
-GitHub e kickoff de projeto.
+As outras treze cobrem desenvolvimento orientado a testes, implementação
+incremental, debugging, trabalho de front-end, documentação, arquivos de
+memória, limpeza de worktree, fluxo no GitHub e kickoff de projeto.
 
 ---
 
@@ -208,7 +212,7 @@ GitHub e kickoff de projeto.
 src/                 O MOTOR — este é o projeto
   cli.js               despacho de comandos, em três anéis de custo
   config.js            tudo com default; roda sem arquivo de config
-  parsers/             prd · rfc · tdd · constitution · annotations
+  parsers/             prd · rfc · spec · design · constitution · annotations
   core/                project · audit · principles · gates · init · report
   util/                text · glob
 bin/adp.js           o comando
@@ -216,7 +220,7 @@ bin/adp.js           o comando
   ui/                  index.html · app.css · app.js, inlinados na resposta
 scripts/             build-manifest.js — o manifesto SHA-256 do payload
 .github/workflows/   ci, e publicação com provenance via OIDC
-test/                139 testes, node:test, sem framework
+test/                197 testes, node:test, sem framework
 payload/             O QUE É INSTALADO — templates, AGENTS.md, skills, agentes, hooks, docs
 .exemplo/            um projeto pronto, verde e executável para ler e quebrar
 ARCHITECTURE.md      por que o motor é como é — leia antes de mudá-lo
@@ -239,8 +243,8 @@ você lê serem o mesmo veredito, em vez de duas implementações que concordam 
 
 ```sh
 adp init [--agent <nome>] [--minimal]   monta o projeto
-adp new <feature>                       cria PRD.md, RFC.md, TDD.md
-adp status                              seis luzes
+adp new <feature>                       cria PRD.md, RFC.md, DESIGN.md, SPEC.md
+adp status                              sete luzes
 adp audit [--ci] [--json]               achados por trás do primeiro gate vermelho
 adp gates [--list]                      os gates e seus estados
 adp prompt [<gate>]                     texto pronto para colar na sua IA
@@ -280,7 +284,7 @@ para uma ferramenta cujo trabalho é produzir evidência.
 adp monitor          # http://127.0.0.1:7788
 ```
 
-Uma página com os seis gates, os achados por trás do primeiro vermelho e o
+Uma página com os sete gates, os achados por trás do primeiro vermelho e o
 progresso de cada feature. Ela é **somente leitura por construção** — não por
 política.
 
@@ -342,7 +346,7 @@ fatal, sem flag de override. Manifesto ausente é só aviso — rodar a partir d
 procurar o atalho.
 
 Cada uma dessas defesas é um princípio `P-xxx` em `.spec/CONSTITUTION.md` com
-verificação executável, então a ferramenta audita a própria blindagem e o G5 fica
+verificação executável, então a ferramenta audita a própria blindagem e o G6 fica
 vermelho se alguém enfraquecer. Isso não é enfeite: o primeiro draft do padrão
 proibido do P-008 casou com a palavra `NODE_AUTH_TOKEN` no comentário que
 explicava que esse token não existe, e a auditoria pegou.
@@ -351,16 +355,18 @@ explicava que esse token não existe, e a auditoria pegou.
 
 ## Em que ponto isto está
 
-Construído e testado: o motor, os seis gates, a constituição executável, o
+Construído e testado: o motor, os sete gates, a constituição executável, o
 instalador, os templates, as skills, o monitor somente leitura e o exemplo completo.
-**139 testes**, cada um carregando sua anotação `@spec:AC-xxx` ou `@principle:P-xxx` — a
+**197 testes**, cada um carregando sua anotação `@spec:AC-xxx` ou `@principle:P-xxx` — a
 ferramenta se prova com o próprio mecanismo.
 
-Especificado mas não construído, em `.spec/features/agent-dev-pipeline/`: o
-`verify` rodando o comando de teste real e concedendo prova por critério (M2), e
-execução em background em worktrees git isoladas (M6). Esses documentos são eles
-próprios escritos na cadeia PRD/RFC/TDD e auditados por este motor, que é a única
-forma honesta de especificar uma ferramenta assim.
+A especificação deste próprio repositório, em
+`.spec/features/agent-dev-pipeline/`, ainda está escrita na gramática 0.5.0
+(PRD/RFC/TDD) e é auditada pela versão 0.5.0 fixada — a ferramenta faz o
+bootstrap da própria versão seguinte na gramática que a versão atual lê, e
+troca de chave quando o novo parser passa nos próprios testes. Veja
+`.spec/SCOPE-0.6.0.md` para a versão que introduziu a cadeia PRD/RFC/DESIGN/SPEC
+descrita acima.
 
 Especificado e depois **removido**: o monitor no navegador — um servidor, um
 kanban projetado, um editor de documentos. Eram oito tarefas de interface para um

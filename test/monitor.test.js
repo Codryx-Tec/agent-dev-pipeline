@@ -42,13 +42,14 @@ function fixture() {
     '# Scope\n\n> status: Approved\n\nA scope.\n'
   );
   writeFileSync(path.join(root, '.spec', 'CONSTITUTION.md'), '# Constitution\n');
+  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'PRD.md'), '# PRD\n');
+  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'RFC.md'), '# RFC\n');
+  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'DESIGN.md'), '# DESIGN\n');
   writeFileSync(
-    path.join(root, '.spec', 'features', 'demo', 'PRD.md'),
-    '# PRD\n\n### US-001 — A story\n\n#### AC-001 — A criterion\n\n' +
+    path.join(root, '.spec', 'features', 'demo', 'SPEC.md'),
+    '# SPEC\n\n### US-001 — A story\n\n#### AC-001 — A criterion\n\n' +
       '- **Given** a thing\n- **When** something\n- **Then** a result\n'
   );
-  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'RFC.md'), '# RFC\n');
-  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'TDD.md'), '# TDD\n');
   return root;
 }
 
@@ -113,7 +114,7 @@ test('the state reports gates and features @spec:AC-034', async () => {
   const res = await fetch(base + '/api/state');
   assert.equal(res.status, 200);
   const state = await res.json();
-  assert.equal(state.gates.length, 6);
+  assert.equal(state.gates.length, 7);
   assert.ok(state.gates.every((g) => ['green', 'red', 'blocked'].includes(g.state)));
   assert.equal(state.features.length, 1);
   assert.equal(state.features[0].name, 'demo');

@@ -3,7 +3,7 @@ name: frontend
 description: Frontend Developer - implements React components, integrates backend APIs via TanStack Query, manages state and forms with React Hook Form + Zod. Use for any task that touches frontend/src/.
 tools: Read, Edit, Write, Bash
 model: sonnet
-skills: frontend-ui-engineering, tdd, incremental-implementation
+skills: frontend-ui-engineering, test-driven-development, incremental-implementation
 permissionMode: auto
 ---
 

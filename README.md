@@ -13,11 +13,11 @@ Zero runtime dependencies. Node ≥ 24 and `git`. Nothing to install: it runs fr
 `npx` and leaves nothing behind.
 
 ```
-SCOPE ──▶ PRD ──▶ RFC ──▶ TDD ──▶ code ──▶ test ──▶ audit
-  G0      G1      G2      G3               G4       G5
-what we   what,   which   how,             is it    do they
-agreed    whom,   path    in detail        proven   still agree
-          why
+SCOPE ──▶ PRD ──▶ RFC ──▶ DESIGN ──▶ SPEC ──▶ code ──▶ test ──▶ audit
+  G0      G1      G2       G3         G4                G5       G6
+what we   what,   which    how,       the layer          is it    do they
+agreed    whom,   path     in detail  the machine        proven   still agree
+          why                        confers
 ```
 
 ---
@@ -36,7 +36,7 @@ Then alias it once, because you will type it all day:
 alias adp='npx @codryx/agent-dev-pipeline'
 
 adp new student-enrolment
-adp status              # six lights
+adp status              # seven lights
 adp monitor             # the read-only page
 ```
 
@@ -53,7 +53,7 @@ README lists four ways to break it so you can watch each gate fire.
 
 ---
 
-## The six gates
+## The seven gates
 
 A gate is **green** when nothing it owns failed, **red** when something did, and
 **blocked** when an earlier gate is red. Blocked is a third state on purpose:
@@ -63,13 +63,14 @@ them alike sends people to fix consequences instead of causes.
 | Gate | Question | Passes when |
 |---|---|---|
 | **G0** | Is the scope agreed? | `.spec/SCOPE.md` says `Approved` |
-| **G1** | What, for whom, why? | every story owns a criterion; every criterion has Given/When/Then |
-| **G2** | Which path? | every decision records ≥2 alternatives and a chosen one; no blocking question open |
-| **G3** | How, in detail? | every criterion is covered by a task; every reference resolves |
-| **G4** | Is it proven? | every criterion has a test that PASSED |
-| **G5** | Do they still agree? | no orphan tests, no unproven "done", no violated principle |
+| **G1** | What, for whom, why? | the PRD exists and its `feature:` line matches its directory |
+| **G2** | Which path? | every decision records ≥2 alternatives and a chosen one |
+| **G3** | How, in detail? | the design document exists |
+| **G4** | Is it implementable? | every story owns a criterion, every criterion has Given/When/Then, every criterion is covered by a task, every reference resolves, no blocking question open |
+| **G5** | Is it proven? | every criterion has a test that PASSED |
+| **G6** | Do they still agree? | no orphan tests, no unproven "done", no violated principle |
 
-**The exit code is the failing gate.** `0` clean, `1`–`6` for G0–G5. A pipeline
+**The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. A pipeline
 learns *where* it broke from the status alone, with nothing to parse.
 
 Only the first red gate's findings are printed. For a project whose PRD is not
@@ -78,7 +79,7 @@ its own consequences.
 
 ---
 
-## The three documents
+## The four documents
 
 Each one owns a distinct family of traceability codes, so every code has exactly
 one definition site and duplicate detection actually means something. Codes are
@@ -86,14 +87,17 @@ unique **across the whole project**, not per file.
 
 | Document | Answers | Owns |
 |---|---|---|
-| `PRD.md` | **what**, for **whom**, **why** | `US-xxx` stories · `AC-xxx` acceptance criteria |
-| `RFC.md` | **which path**, among the possible ones | `ASM-xxx` assumptions · `Q-xxx` open questions |
-| `TDD.md` | **how**, in detail | `T-xxx` tasks, each declaring `Refs:`, `Files:` and optionally `Reads:` and `Depends on:` |
+| `PRD.md` | **what**, for **whom**, **why** | prose only — no code of its own |
+| `RFC.md` | **which path**, among the possible ones | `D-xxx` decisions, each with alternatives and a choice |
+| `DESIGN.md` | **how**, in detail — the blueprint a human reads | prose only — no code of its own |
+| `SPEC.md` | **what the machine confers** | `US-xxx` stories · `AC-xxx` criteria · `ASM-xxx` assumptions · `Q-xxx` open questions · `T-xxx` tasks, each declaring `Refs:`, `Files:` and optionally `Reads:` and `Depends on:` |
 
-They are three documents rather than one because the three questions have
+Four documents rather than one because the questions they answer have
 different audiences and different lifetimes: *what and why* changes when the
-business changes, *which path* when the constraints change, *how* constantly.
-Splitting them lets each be approved on its own gate.
+business changes, *which path* when the constraints change, *how* rarely, and
+*what the machine confers* every time a task is written or a test is added.
+PRD and RFC stay prose a product owner and a reviewer can read without
+tripping over code; SPEC is the layer that exists purely to be checked.
 
 ### The chain, and why it holds
 
@@ -185,13 +189,13 @@ forever.
 with genuine pros and cons, weighted decision criteria, RACI, outcome. **The
 engine reads its output natively**, with no conversion step: `### Option 1:`
 headings are the alternatives, and a `⭐` marker or an `## Outcome` decision line
-is the choice. Two additions make it fully traceable — code the assumptions
-`ASM-001` instead of `1`, and add an `## Open questions` section. See
+is the choice. Assumptions and open questions belong in `SPEC.md`, not here —
+code them `ASM-001` instead of a bare `1`. See
 [`payload/claude/skills/create-rfc/INTEGRATION.md`](payload/claude/skills/create-rfc/INTEGRATION.md).
 
-The other thirteen cover TDD, incremental implementation, debugging, front-end
-work, documentation, memory files, worktree cleanup, GitHub flow and project
-kickoff.
+The other thirteen cover test-driven development, incremental implementation,
+debugging, front-end work, documentation, memory files, worktree cleanup,
+GitHub flow and project kickoff.
 
 ---
 
@@ -201,7 +205,7 @@ kickoff.
 src/                 THE ENGINE — this is the project
   cli.js               command dispatch, in three cost rings
   config.js            everything defaulted; runs with no config file
-  parsers/             prd · rfc · tdd · constitution · annotations
+  parsers/             prd · rfc · spec · design · constitution · annotations
   core/                project · audit · principles · gates · init · report
   util/                text · glob
 bin/adp.js           the command
@@ -209,7 +213,7 @@ bin/adp.js           the command
   ui/                  index.html · app.css · app.js, inlined at request time
 scripts/             build-manifest.js — the payload's SHA-256 manifest
 .github/workflows/   ci, and publish with provenance from OIDC
-test/                139 tests, node:test, no framework
+test/                197 tests, node:test, no framework
 payload/             WHAT GETS INSTALLED — templates, AGENTS.md, skills, agents, hooks, docs
 .exemplo/            a finished, green, runnable project to read and break
 ARCHITECTURE.md      why the engine looks like it does — read before changing it
@@ -232,8 +236,8 @@ verdict, rather than two implementations that agree today.
 
 ```sh
 adp init [--agent <name>] [--minimal]   scaffold a project
-adp new <feature>                       create PRD.md, RFC.md, TDD.md
-adp status                              six lights
+adp new <feature>                       create PRD.md, RFC.md, DESIGN.md, SPEC.md
+adp status                              seven lights
 adp audit [--ci] [--json]               findings behind the first red gate
 adp gates [--list]                      gates and their state
 adp prompt [<gate>]                     paste-ready text for your AI
@@ -271,7 +275,7 @@ commit — awkward for a tool whose job is producing evidence.
 adp monitor          # http://127.0.0.1:7788
 ```
 
-A page showing the six gates, the findings behind the first red one, and each
+A page showing the seven gates, the findings behind the first red one, and each
 feature's progress. It is **read-only, structurally** — not by policy.
 
 Any method other than `GET` or `HEAD` is refused with 405 **before the path is
@@ -330,7 +334,7 @@ from a working tree is a normal state, and refusing there would only teach peopl
 to reach for the bypass.
 
 Every one of these is a `P-xxx` principle in `.spec/CONSTITUTION.md` with an
-executable verification, so the tool audits its own hardening and G5 turns red if
+executable verification, so the tool audits its own hardening and G6 turns red if
 someone weakens it. That is not decoration: the first draft of P-008's forbidden
 pattern matched the word `NODE_AUTH_TOKEN` in the comment explaining that no such
 token exists, and the audit caught it.
@@ -339,16 +343,17 @@ token exists, and the audit caught it.
 
 ## Where this is
 
-Built and tested: the engine, the six gates, the executable constitution, the
+Built and tested: the engine, the seven gates, the executable constitution, the
 installer, the templates, the skills, the read-only monitor, and the worked example.
-**139 tests**, each carrying its own `@spec:AC-xxx` or `@principle:P-xxx` annotation — the tool proves
+**197 tests**, each carrying its own `@spec:AC-xxx` or `@principle:P-xxx` annotation — the tool proves
 itself with its own mechanism.
 
-Specified but not built, in `.spec/features/agent-dev-pipeline/`: `verify` running
-the real test command and granting proof per criterion (M2), and background
-execution in isolated git worktrees (M6). Those documents are themselves written
-in the PRD/RFC/TDD chain and audited by this engine, which is the only honest way
-to specify a tool like this.
+This repository's own specification, in `.spec/features/agent-dev-pipeline/`,
+is still written in the 0.5.0 grammar (PRD/RFC/TDD) and audited by the pinned
+0.5.0 release — the tool bootstraps its next version in the grammar the
+current one reads, and switches once the new parser passes its own tests. See
+`.spec/SCOPE-0.6.0.md` for the version that introduced the PRD/RFC/DESIGN/SPEC
+chain described above.
 
 Specified and then **removed**: the browser monitor — a server, a projected
 kanban, a document editor. It was eight tasks of interface for one operator who

@@ -241,7 +241,7 @@ export function newFeature(rootDir, name, opts = {}) {
   // feature's own placeholders back as if they were somebody else's.
   const used = highestCodes(path.join(rootDir, featuresDir));
 
-  for (const doc of ['PRD.md', 'RFC.md', 'TDD.md']) {
+  for (const doc of ['PRD.md', 'RFC.md', 'SPEC.md', 'DESIGN.md']) {
     writeIfMissing(path.join(dir, doc), fill(template(doc), { FEATURE: name }), report);
   }
 

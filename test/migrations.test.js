@@ -109,11 +109,11 @@ test('pendingMigrations chains strictly between two versions, in order @spec:AC-
   const fakeOld = { version: '0.4.0', description: 'fake', check: () => true, apply: () => ({ changed: [] }) };
   const fakeNew = { version: '0.6.0', description: 'fake', check: () => true, apply: () => ({ changed: [] }) };
 
-  // pendingMigrations reads the real registry, so this only checks the one
-  // migration that actually exists there is included exactly when expected.
+  // pendingMigrations reads the real registry, so this only checks the
+  // migrations that actually exist there are included exactly when expected.
+  // (0.6.0's own migration is covered in test/migrations-0.6.0.test.js.)
   assert.deepEqual(pendingMigrations('0.4.0', '0.5.0').map((m) => m.version), ['0.5.0']);
   assert.deepEqual(pendingMigrations('0.5.0', '0.5.0'), []);
-  assert.deepEqual(pendingMigrations('0.5.0', '0.6.0'), []);
   assert.deepEqual(pendingMigrations('0.0.0', '0.4.0'), []);
 
   // fakeOld/fakeNew document the CONTRACT chaining relies on (version compare

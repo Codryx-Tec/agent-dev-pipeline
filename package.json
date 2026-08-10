@@ -1,7 +1,7 @@
 {
   "name": "@codryx/agent-dev-pipeline",
   "version": "0.5.0",
-  "description": "Spec-anchored development with six mechanical gates: SCOPE, PRD, RFC, TDD, code, proof. Proof comes from running your tests, not from a claim. The verdict is an exit code. Zero dependencies.",
+  "description": "Spec-anchored development with seven mechanical gates: SCOPE, PRD, RFC, DESIGN, SPEC, code, proof. Proof comes from running your tests, not from a claim. The verdict is an exit code. Zero dependencies.",
   "type": "module",
   "license": "MIT",
   "repository": {

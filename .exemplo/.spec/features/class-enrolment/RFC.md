@@ -2,7 +2,7 @@
 
 > feature: class-enrolment
 > document: RFC — WHICH path, among the possible ones
-> owns: ASM-xxx (assumptions) · Q-xxx (open questions)
+> owns: D-xxx (decisions)
 > status: ready
 
 ## Purpose
@@ -52,11 +52,6 @@ expected outcomes push callers into using `try`/`catch` as control flow.
 **Consequences.** A caller who ignores the returned value gets silence instead
 of a crash. The tests assert on `ok` and on the reason for exactly that reason.
 
-## Assumptions
+## Assumptions and open questions
 
-- **ASM-001** — age is self-declared and not checked against a document *(status: confirmed)*
-- **ASM-002** — e-mail identifies a person uniquely *(status: confirmed)*
-
-## Open questions
-
-- **Q-001** — is a guardian's e-mail stored separately from the student's? *(status: answered)*
+Owned by `SPEC.md`, not here — see its `ASM-xxx`/`Q-xxx` sections.

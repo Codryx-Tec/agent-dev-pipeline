@@ -16,8 +16,11 @@ export const DEFAULT_CONFIG = {
   constitutionFile: '.spec/CONSTITUTION.md',
   scopeFile: '.spec/SCOPE.md',
 
-  // the three per-feature documents, each owning its own family of codes
-  documents: { prd: 'PRD.md', rfc: 'RFC.md', tdd: 'TDD.md' },
+  // the four per-feature documents, each owning its own family of codes.
+  // PRD is prose (what, for whom, why); RFC owns D-xxx decisions; SPEC owns
+  // US-xxx/AC-xxx/ASM-xxx/Q-xxx/T-xxx — "the layer the machine confers";
+  // DESIGN is prose (how, in detail), the blueprint a human reads.
+  documents: { prd: 'PRD.md', rfc: 'RFC.md', spec: 'SPEC.md', design: 'DESIGN.md' },
 
   // where @spec / @principle annotations are looked for
   testGlobs: [

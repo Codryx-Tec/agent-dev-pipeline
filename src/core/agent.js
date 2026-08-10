@@ -93,7 +93,7 @@ export function describeAgentCommand(config, opts) {
 export function buildBrief(project, task) {
   const criteria = [];
   for (const feature of project.features ?? []) {
-    for (const ac of feature.prd?.acs ?? []) {
+    for (const ac of feature.spec?.acs ?? []) {
       if (task.refs?.includes(ac.id)) {
         criteria.push(`### ${ac.id} — ${ac.title}\n${(ac.body ?? '').trim()}`);
       }

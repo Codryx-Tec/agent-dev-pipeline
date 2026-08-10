@@ -118,7 +118,7 @@
       card.appendChild(text('div', 'path', f.dir));
 
       var docs = text('div', 'docs');
-      [['PRD', f.hasPrd], ['RFC', f.hasRfc], ['TDD', f.hasTdd]].forEach(function (d) {
+      [['PRD', f.hasPrd], ['RFC', f.hasRfc], ['DESIGN', f.hasDesign], ['SPEC', f.hasSpec]].forEach(function (d) {
         docs.appendChild(text('span', 'doc ' + (d[1] ? 'present' : 'absent'), d[0]));
       });
       card.appendChild(docs);

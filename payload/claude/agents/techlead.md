@@ -3,7 +3,7 @@ name: techlead
 description: Tech Lead - receives the approved spec from business-analyst, turns it into GitHub issues, routes each issue to the right agent (architect, designer, security, backend, frontend), reviews and approves PRs, and makes day-to-day architecture decisions. Use for issue creation/triage, PR review, technical decisions, or distributing work to the team.
 tools: Read, Edit, Write, Bash
 model: sonnet
-skills: tdd, debugging-and-error-recovery, github-flow, worktree-cleanup, project-docs
+skills: test-driven-development, debugging-and-error-recovery, github-flow, worktree-cleanup, project-docs
 permissionMode: default
 ---
 

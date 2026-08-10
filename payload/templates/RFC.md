@@ -2,7 +2,7 @@
 
 > feature: {{FEATURE}}
 > document: RFC — WHICH path, among the possible ones
-> owns: ASM-xxx (assumptions) · Q-xxx (open questions)
+> owns: D-xxx (decisions)
 > status: draft
 
 <!--
@@ -15,20 +15,19 @@ GRAMMAR:
     **Decision: alternative N — name.**
     rationale, then consequences
 
-  - **ASM-001** — text *(status: open|confirmed|invalidated)*
-  - **Q-001** — text *(status: open|answered)*  add **blocking** if it gates the path
-
-Gate G2 passes when every decision records at least two alternatives AND a
-chosen one, both sections below exist, every item carries a status, and no
-question marked blocking is still open.
+Gate G2 passes when every decision records at least two alternatives and a
+chosen one.
 -->
 
 ## Purpose
 
-`PRD.md` fixed what to build. This document fixes how we get there — decision by
-decision, with the roads not taken written beside the one we took. A decision
-recorded without its alternatives is indistinguishable from a habit, and habits
-are what nobody can revisit later.
+`PRD.md` fixed what to build. This document fixes how we get there — decision
+by decision, with the roads not taken written beside the one we took. A
+decision recorded without its alternatives is indistinguishable from a habit,
+and habits are what nobody can revisit later.
+
+Only write an RFC when the decision is a one-way door — expensive or
+impossible to reverse. A two-way door (cheap to undo) does not need one.
 
 ## Decisions
 
@@ -46,16 +45,6 @@ are what nobody can revisit later.
 **Consequences.** {{what this now costs us, what it closes off, what it makes
 harder later. A decision with no consequences was not a decision.}}
 
-## Assumptions
+## Assumptions and open questions
 
-Status: `open` · `confirmed` · `invalidated`. An assumption still `open`
-when the feature declares itself done turns gate G5 red — on purpose.
-
-- **ASM-001** — {{what you filled in without confirming}} *(status: open)*
-
-## Open questions
-
-Status: `open` · `answered`. A question marked **blocking** must be answered
-before G2 can pass.
-
-- **Q-001** — {{what you could not decide alone}} *(status: open)*
+Owned by `SPEC.md`, not here — see its `ASM-xxx`/`Q-xxx` sections.

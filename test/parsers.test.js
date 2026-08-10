@@ -1,16 +1,22 @@
-// Parser tests. The first two suites exist because both bugs they describe were
+// Parser tests. The first suites exist because both bugs they describe were
 // found in Projeto_Agent's original audit.js, by dogfooding this very document
 // chain against it.
+//
+// US-xxx/AC-xxx/ASM-xxx/Q-xxx/T-xxx moved from prd.js/rfc.js/tdd.js into
+// spec.js in 0.6.0 (SPEC.md is "the layer the machine confers" — Q-003 in
+// .spec/SCOPE-0.6.0.md). The tests below moved with them; the regexes and
+// fixtures are unchanged, only the function under test is.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTdd } from '../src/parsers/tdd.js';
+import { parseSpec } from '../src/parsers/spec.js';
 import { parsePrd } from '../src/parsers/prd.js';
 import { parseRfc } from '../src/parsers/rfc.js';
+import { parseDesign } from '../src/parsers/design.js';
 import { parseConstitution } from '../src/parsers/constitution.js';
 
 test('a task heading shown inside a code span is documentation, not a task @spec:AC-011', () => {
-  const doc = `# TDD
+  const doc = `# SPEC
 
 | task | \`## T-001 — Title [pending|done]\` then Refs |
 
@@ -19,7 +25,7 @@ test('a task heading shown inside a code span is documentation, not a task @spec
 - Refs: AC-001
 - Files: a.js
 `;
-  const { tasks } = parseTdd(doc, 'TDD.md');
+  const { tasks } = parseSpec(doc, 'SPEC.md');
   assert.equal(tasks.length, 1, 'the code span must not invent a task');
   assert.equal(tasks[0].id, 'T-005');
 });
@@ -34,14 +40,14 @@ test('task status comes from the heading line, never from later prose @spec:AC-0
 
 Tasks marked [done] may fall back to TEST until real tests exist.
 `;
-  const { tasks } = parseTdd(doc, 'TDD.md');
+  const { tasks } = parseSpec(doc, 'SPEC.md');
   // The block of the last task runs to end of file. Searching it for a status
   // token would read the migration paragraph as this task's own status.
   assert.equal(tasks[0].status, 'pending');
 });
 
 test('an unrecognised task status is reported, never silently skipped @spec:AC-011', () => {
-  const { tasks } = parseTdd('## T-001 — Done-ish [feito]\n\n- Refs: AC-001\n', 'TDD.md');
+  const { tasks } = parseSpec('## T-001 — Done-ish [feito]\n\n- Refs: AC-001\n', 'SPEC.md');
   assert.equal(tasks.length, 1, 'the task must still be visible to the audit');
   assert.equal(tasks[0].statusValid, false);
   assert.equal(tasks[0].rawStatus, 'feito');
@@ -49,17 +55,17 @@ test('an unrecognised task status is reported, never silently skipped @spec:AC-0
 
 test('a status written in any case folds to the canonical token @spec:AC-011', () => {
   for (const written of ['DONE', 'Done', 'done', ' done ']) {
-    const { tasks } = parseTdd(`## T-001 — x [${written}]\n\n- Refs: AC-001\n`, 'TDD.md');
+    const { tasks } = parseSpec(`## T-001 — x [${written}]\n\n- Refs: AC-001\n`, 'SPEC.md');
     assert.equal(tasks[0].status, 'done', `[${written}] must fold`);
     assert.equal(tasks[0].statusValid, true);
   }
   // The multi-word statuses are hyphenated, and the hyphen is part of the token.
-  assert.equal(parseTdd('## T-001 — x [IN-PROGRESS]\n', 'TDD.md').tasks[0].status, 'in-progress');
+  assert.equal(parseSpec('## T-001 — x [IN-PROGRESS]\n', 'SPEC.md').tasks[0].status, 'in-progress');
 });
 
 test('file lists keep spaces inside paths and drop empties @spec:AC-012', () => {
   const doc = '## T-001 — x [pending]\n\n- Refs: AC-001\n- Files: a b/c.js, , d.js\n';
-  const { tasks } = parseTdd(doc, 'TDD.md');
+  const { tasks } = parseSpec(doc, 'SPEC.md');
   assert.deepEqual(tasks[0].files, ['a b/c.js', 'd.js']);
 });
 
@@ -73,7 +79,7 @@ test('what a task writes, what it reads and what it follows are three claims @sp
     '- Depends on: T-001, T-002',
     '',
   ].join('\n');
-  const { tasks } = parseTdd(doc, 'TDD.md');
+  const { tasks } = parseSpec(doc, 'SPEC.md');
 
   assert.deepEqual(tasks[0].files, ['src/join.js']);
   assert.deepEqual(tasks[0].reads, ['src/a.js', 'src/b.js']);
@@ -89,7 +95,7 @@ test('the English spellings and a lower-case id parse the same @spec:AC-045', ()
     '- Depends on: t-001',
     '',
   ].join('\n');
-  const { tasks } = parseTdd(doc, 'TDD.md');
+  const { tasks } = parseSpec(doc, 'SPEC.md');
   assert.deepEqual(tasks[0].reads, ['src/a.js']);
   // Upper-cased because ids are compared: a `Depends on: t-001` matching nothing
   // would drop the constraint, and a dropped constraint is invisible until the
@@ -98,7 +104,7 @@ test('the English spellings and a lower-case id parse the same @spec:AC-045', ()
 });
 
 test('a task declaring neither reads nor dependencies gets empty lists @spec:AC-045', () => {
-  const { tasks } = parseTdd('## T-001 — x [pending]\n\n- Files: a.js\n', 'TDD.md');
+  const { tasks } = parseSpec('## T-001 — x [pending]\n\n- Files: a.js\n', 'SPEC.md');
   assert.deepEqual(tasks[0].reads, []);
   assert.deepEqual(tasks[0].dependsOn, []);
 });
@@ -118,10 +124,10 @@ test('a criterion body stops at the next story, not at the next criterion only @
 
 - **Given** a
 `;
-  const prd = parsePrd(doc, 'PRD.md');
-  assert.equal(prd.acs[0].complete, true);
-  assert.equal(prd.acs[1].complete, false);
-  assert.deepEqual(prd.acs[1].missingClauses, ['when', 'then']);
+  const spec = parseSpec(doc, 'SPEC.md');
+  assert.equal(spec.acs[0].complete, true);
+  assert.equal(spec.acs[1].complete, false);
+  assert.deepEqual(spec.acs[1].missingClauses, ['when', 'then']);
 });
 
 test('both English and Portuguese clause keywords are accepted @spec:AC-006', () => {
@@ -133,7 +139,7 @@ test('both English and Portuguese clause keywords are accepted @spec:AC-006', ()
 - **Quando** b
 - **Então** c
 `;
-  assert.equal(parsePrd(doc, 'PRD.md').acs[0].complete, true);
+  assert.equal(parseSpec(doc, 'SPEC.md').acs[0].complete, true);
 });
 
 test('a criterion before the first story is flagged as orphan @spec:AC-006', () => {
@@ -145,8 +151,26 @@ test('a criterion before the first story is flagged as orphan @spec:AC-006', () 
 
 ### US-001 — later
 `;
+  const spec = parseSpec(doc, 'SPEC.md');
+  assert.equal(spec.orphanAcs.length, 1);
+});
+
+test('PRD.md reports its own feature and status, and owns no stories or criteria @spec:AC-001', () => {
+  const doc = '> feature: greet\n> status: draft\n\n## Context\n\nWhat this solves.\n';
   const prd = parsePrd(doc, 'PRD.md');
-  assert.equal(prd.orphanAcs.length, 1);
+  assert.equal(prd.kind, 'prd');
+  assert.equal(prd.feature, 'greet');
+  assert.equal(prd.status, 'draft');
+  assert.equal('stories' in prd, false, 'PRD.md no longer owns stories');
+  assert.equal('acs' in prd, false, 'PRD.md no longer owns acceptance criteria');
+});
+
+test('DESIGN.md reports its feature and status, with no structure beyond that @spec:AC-001', () => {
+  const doc = '> feature: greet\n> status: draft\n\n## 1. Shape of the solution\n';
+  const design = parseDesign(doc, 'DESIGN.md');
+  assert.equal(design.kind, 'design');
+  assert.equal(design.feature, 'greet');
+  assert.equal(design.status, 'draft');
 });
 
 test('only the numbered list under the alternatives marker counts @spec:AC-007', () => {
@@ -174,10 +198,10 @@ test('a question marked blocking is a distinct field, not a text convention @spe
 - **Q-001** — a *(status: open — **blocking**)*
 - **Q-002** — b *(status: open)*
 `;
-  const rfc = parseRfc(doc, 'RFC.md');
-  assert.equal(rfc.questions[0].blocking, true);
-  assert.equal(rfc.questions[1].blocking, false);
-  assert.equal(rfc.assumptions[0].status, 'open');
+  const spec = parseSpec(doc, 'SPEC.md');
+  assert.equal(spec.questions[0].blocking, true);
+  assert.equal(spec.questions[1].blocking, false);
+  assert.equal(spec.assumptions[0].status, 'open');
 });
 
 test('principle levels are read in both vocabularies @spec:AC-029', () => {
@@ -270,22 +294,25 @@ test('a single option is still not a decision @spec:AC-007', () => {
 });
 
 test('assumptions are read from a table as well as from bullets @spec:AC-008', () => {
-  const rfc = parseRfc(CREATE_RFC, 'RFC.md');
-  assert.equal(rfc.assumptions.length, 1);
-  assert.equal(rfc.assumptions[0].id, 'ASM-001');
-  assert.equal(rfc.assumptions[0].status, 'open');
+  // CREATE_RFC's Assumptions/Options/Outcome content is representative of what
+  // a SPEC.md produced by the create-rfc-adjacent workflow looks like —
+  // parseSpec extracts only what it owns (assumptions) and ignores the rest.
+  const spec = parseSpec(CREATE_RFC, 'SPEC.md');
+  assert.equal(spec.assumptions.length, 1);
+  assert.equal(spec.assumptions[0].id, 'ASM-001');
+  assert.equal(spec.assumptions[0].status, 'open');
 });
 
 test('a numbered assumption row is counted as uncoded, not silently dropped @spec:AC-008', () => {
   // It is written down but cannot be referenced, tracked or closed — so it is
   // reported rather than quietly accepted.
-  assert.equal(parseRfc(CREATE_RFC, 'RFC.md').uncodedAssumptions, 1);
+  assert.equal(parseSpec(CREATE_RFC, 'SPEC.md').uncodedAssumptions, 1);
 });
 
 test('confidence is not mapped onto status @spec:AC-008', () => {
   const doc = CREATE_RFC.replace(' *(status: open)*', '');
   // "High confidence" does not mean "confirmed". Missing status stays missing.
-  assert.equal(parseRfc(doc, 'RFC.md').assumptions[0].status, null);
+  assert.equal(parseSpec(doc, 'SPEC.md').assumptions[0].status, null);
 });
 
 // The grammar is documented inside the documents it governs. Every file `adp new`
@@ -297,24 +324,13 @@ test('confidence is not mapped onto status @spec:AC-008', () => {
 
 test('the grammar shown in an HTML comment is documentation, not an element @spec:AC-008', () => {
   const doc = [
-    '# RFC: thing',
+    '# SPEC: thing',
     '',
     '<!--',
     'GRAMMAR:',
     '  - **ASM-001** — text *(status: open|confirmed)*',
     '  - **Q-001** — text *(status: open)*  add **blocking** if it gates the path',
     '-->',
-    '',
-    '## Decisions',
-    '',
-    '### D-001 — A real decision',
-    '',
-    '**Alternatives considered**',
-    '',
-    '1. *One.* costs something',
-    '2. *Two.* costs something else',
-    '',
-    '**Decision: alternative 2 — Two.**',
     '',
     '## Assumptions',
     '',
@@ -325,7 +341,7 @@ test('the grammar shown in an HTML comment is documentation, not an element @spe
     '- **Q-010** — a real question *(status: answered)*',
   ].join('\n');
 
-  const parsed = parseRfc(doc, 'RFC.md');
+  const parsed = parseSpec(doc, 'SPEC.md');
   assert.deepEqual(parsed.assumptions.map((a) => a.id), ['ASM-010']);
   assert.deepEqual(parsed.questions.map((q) => q.id), ['Q-010']);
   // The one that actually broke G2: `blocking` inside the comment made the
@@ -342,10 +358,10 @@ test('blanking a comment does not move the lines after it @spec:AC-008', () => {
   // would also encode where this parser chooses to anchor a block, and that is
   // a separate question from whether stripping moved anything.
   const tail = ['## Assumptions', '', '- **ASM-020** — real *(status: open)*'];
-  const without = parseRfc(['# RFC: thing', '', ...tail].join('\n'), 'RFC.md');
-  const withComment = parseRfc(
-    ['# RFC: thing', '', '<!--', 'two', 'lines', '-->', '', ...tail].join('\n'),
-    'RFC.md'
+  const without = parseSpec(['# SPEC: thing', '', ...tail].join('\n'), 'SPEC.md');
+  const withComment = parseSpec(
+    ['# SPEC: thing', '', '<!--', 'two', 'lines', '-->', '', ...tail].join('\n'),
+    'SPEC.md'
   );
   // Five lines of comment were inserted, so the element moved down by exactly five.
   assert.equal(withComment.assumptions[0].line - without.assumptions[0].line, 5);

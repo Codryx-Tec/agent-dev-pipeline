@@ -191,11 +191,11 @@ test('new refuses a feature name the grammar cannot carry @spec:AC-002', () => {
   });
 });
 
-test('new creates the three documents and does not renumber over existing codes @spec:AC-002', () => {
+test('new creates the four documents and does not renumber over existing codes @spec:AC-002', () => {
   fresh((root) => {
     initProject(root);
     const first = newFeature(root, 'alpha');
-    assert.equal(first.created.length, 3);
+    assert.equal(first.created.length, 4);
     // The first feature must not be told its own placeholders are already taken.
     assert.equal(first.notes.length, 0);
 
@@ -211,17 +211,22 @@ test('an empty folder reaches every gate green once the documents are filled in 
     newFeature(root, 'greet');
 
     const dir = path.join(root, '.spec', 'features', 'greet');
-    writeFileSync(
-      path.join(dir, 'PRD.md'),
-      '### US-001 — a visitor is greeted\n\n#### AC-001 — it names them\n\n- **Given** a visitor\n- **When** greeted\n- **Then** the name appears\n'
-    );
+    // newFeature() already scaffolded all four documents from the payload
+    // templates; overwrite each with real content rather than leaving the
+    // placeholder text, which would pass the gates for the wrong reason.
+    writeFileSync(path.join(dir, 'PRD.md'), '# PRD\n\n> feature: greet\n> status: draft\n');
     writeFileSync(
       path.join(dir, 'RFC.md'),
-      '### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n\n## Assumptions\n\n- **ASM-001** — names exist *(status: confirmed)*\n\n## Open questions\n\n- **Q-001** — anonymous? *(status: answered)*\n'
+      '### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n'
     );
+    writeFileSync(path.join(dir, 'DESIGN.md'), '# DESIGN\n\n## 1. Shape of the solution\n');
     writeFileSync(
-      path.join(dir, 'TDD.md'),
-      '## T-001 — greeting [pending]\n\n- Refs: AC-001\n- Files: src/greet.js\n'
+      path.join(dir, 'SPEC.md'),
+      '### US-001 — a visitor is greeted\n\n#### AC-001 — it names them\n\n' +
+        '- **Given** a visitor\n- **When** greeted\n- **Then** the name appears\n\n' +
+        '## Assumptions\n\n- **ASM-001** — names exist *(status: confirmed)*\n\n' +
+        '## Open questions\n\n- **Q-001** — anonymous? *(status: answered)*\n\n' +
+        '## T-001 — greeting [pending]\n\n- Refs: AC-001\n- Files: src/greet.js\n'
     );
     mkdirSync(path.join(root, 'src'), { recursive: true });
     mkdirSync(path.join(root, 'test'), { recursive: true });

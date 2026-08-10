@@ -24,7 +24,7 @@ import { buildPrompt } from '../src/core/prompts.js';
 function fakeProject(tasks) {
   return {
     rootDir: '/nowhere',
-    features: [{ name: 'demo', tdd: { tasks } }],
+    features: [{ name: 'demo', spec: { tasks } }],
   };
 }
 
@@ -702,7 +702,7 @@ test('the brief carries the task, its criteria and the rules @spec:AC-020', asyn
     features: [
       {
         name: 'demo',
-        prd: {
+        spec: {
           acs: [
             { id: 'AC-001', title: 'A thing', body: '- **Given** g\n- **When** w\n- **Then** t' },
             { id: 'AC-999', title: 'Not referenced', body: 'irrelevant' },
@@ -850,13 +850,15 @@ test('the briefing is derived, and only the note is stored @spec:AC-041', async 
     features: [
       {
         name: 'demo',
-        prd: { acs: [{ id: 'AC-001', title: 'one' }, { id: 'AC-002', title: 'two' }] },
-        rfc: { questions: [{ id: 'Q-001', status: 'open', blocking: true, text: 'which path?' }] },
-        tdd: { tasks: [
-          { id: 'T-001', title: 'doing', status: 'in-progress' },
-          { id: 'T-002', title: 'resting', status: 'in-test' },
-          { id: 'T-003', title: 'also resting', status: 'in-test' },
-        ] },
+        spec: {
+          acs: [{ id: 'AC-001', title: 'one' }, { id: 'AC-002', title: 'two' }],
+          questions: [{ id: 'Q-001', status: 'open', blocking: true, text: 'which path?' }],
+          tasks: [
+            { id: 'T-001', title: 'doing', status: 'in-progress' },
+            { id: 'T-002', title: 'resting', status: 'in-test' },
+            { id: 'T-003', title: 'also resting', status: 'in-test' },
+          ],
+        },
       },
     ],
   };

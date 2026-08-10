@@ -127,7 +127,7 @@ function shapeFinding(f) {
 }
 
 function shapeFeature(f, project) {
-  const tasks = (f.tdd?.tasks ?? []).map((t) => ({
+  const tasks = (f.spec?.tasks ?? []).map((t) => ({
     code: t.id,
     title: t.title ?? '',
     status: t.status ?? 'pending',
@@ -138,7 +138,7 @@ function shapeFeature(f, project) {
   }));
 
   const record = project.verification?.[f.name] ?? null;
-  const criteria = (f.prd?.acs ?? []).map((c) => ({
+  const criteria = (f.spec?.acs ?? []).map((c) => ({
     code: c.id,
     title: c.title ?? '',
     complete: c.complete !== false,
@@ -156,8 +156,9 @@ function shapeFeature(f, project) {
     dir: f.dir,
     hasPrd: f.hasPrd,
     hasRfc: f.hasRfc,
-    hasTdd: f.hasTdd,
-    stories: (f.prd?.stories ?? []).map((s) => ({
+    hasSpec: f.hasSpec,
+    hasDesign: f.hasDesign,
+    stories: (f.spec?.stories ?? []).map((s) => ({
       code: s.id,
       title: s.title ?? '',
       line: s.line ?? null,
@@ -166,8 +167,8 @@ function shapeFeature(f, project) {
     criteria,
     tasks,
     counts: {
-      stories: (f.prd?.stories ?? []).length,
-      orphanAcs: (f.prd?.orphanAcs ?? []).length,
+      stories: (f.spec?.stories ?? []).length,
+      orphanAcs: (f.spec?.orphanAcs ?? []).length,
       criteria: criteria.length,
       proven: criteria.filter((c) => c.proven).length,
       tasks: tasks.length,

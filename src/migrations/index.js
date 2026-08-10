@@ -4,8 +4,9 @@
 // change to register one.
 
 import * as migration_0_5_0 from './0.5.0.js';
+import * as migration_0_6_0 from './0.6.0.js';
 
-export const MIGRATIONS = [migration_0_5_0];
+export const MIGRATIONS = [migration_0_5_0, migration_0_6_0];
 
 // No semver dependency — this is a zero-dependency project, and every
 // version here is a plain `x.y.z` triple, so a numeric per-segment compare is

@@ -81,7 +81,7 @@ export function buildResume(project, config, audit) {
   for (const feature of project.features ?? []) {
     const record = project.verification?.[feature.name] ?? null;
 
-    for (const t of feature.tdd?.tasks ?? []) {
+    for (const t of feature.spec?.tasks ?? []) {
       // Only `in-progress` is genuinely in flight. `in-test` is a resting
       // state — implemented, awaiting proof — and on a mature project that is
       // most of the board. Listing all of it would cost a fresh session the
@@ -91,7 +91,7 @@ export function buildResume(project, config, audit) {
       }
       if (t.status === 'in-test') awaitingProof++;
     }
-    for (const ac of feature.prd?.acs ?? []) {
+    for (const ac of feature.spec?.acs ?? []) {
       if (record?.results?.[ac.id]?.status !== 'pass') {
         unproven.push({ id: ac.id, title: ac.title ?? '', feature: feature.name });
       }
@@ -100,7 +100,7 @@ export function buildResume(project, config, audit) {
 
   const openQuestions = [];
   for (const feature of project.features ?? []) {
-    for (const q of feature.rfc?.questions ?? []) {
+    for (const q of feature.spec?.questions ?? []) {
       if (q.status !== 'answered') {
         openQuestions.push({ id: q.id, blocking: Boolean(q.blocking), text: (q.text ?? '').slice(0, 120) });
       }
@@ -137,7 +137,7 @@ export function buildResume(project, config, audit) {
  * The briefing, as text.
  *
  * Written to be pasted into a fresh session — or read by an agent as its first
- * action — in place of opening PRD, RFC and TDD.
+ * action — in place of opening PRD, RFC, DESIGN and SPEC.
  */
 export function renderResume(r) {
   const out = [];
@@ -219,5 +219,5 @@ function nextAction(r) {
   if (r.lastVerify?.stale) return 'Code moved since the last proof — run `adp verify` again.';
   if (!r.lastVerify) return 'Run `adp verify` to turn passing tests into recorded proof.';
   if (r.inFlight.length) return `Continue ${r.inFlight[0].id} (${r.inFlight[0].title}) — it was picked up and left unfinished.`;
-  return 'Every gate is clean. Pick the next task from `TDD.md`, or specify a new feature with `adp new`.';
+  return 'Every gate is clean. Pick the next task from `SPEC.md`, or specify a new feature with `adp new`.';
 }

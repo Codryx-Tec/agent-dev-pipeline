@@ -122,7 +122,7 @@ function stronglyConnected(nodes, edgesOf) {
  *
  * Ordering is stable and follows document order wherever the dependency graph
  * leaves a choice — lanes are ordered by their first task, and tasks inside a
- * lane keep the order they appear in `TDD.md` unless a dependency moves them.
+ * lane keep the order they appear in `SPEC.md` unless a dependency moves them.
  * The same document must always plan the same way, or a re-run silently becomes
  * a different execution.
  */
@@ -131,7 +131,7 @@ export function buildPlan(project, config = {}, { runId } = {}) {
 
   const all = [];
   for (const feature of project.features ?? []) {
-    for (const task of feature.tdd?.tasks ?? []) {
+    for (const task of feature.spec?.tasks ?? []) {
       all.push({
         ...task,
         feature: feature.name,

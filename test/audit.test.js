@@ -4,6 +4,11 @@ import { auditOf, has, findingsFor, gate, APPROVED_SCOPE, MINIMAL_RFC } from './
 
 const PRD_OK = `# PRD
 
+Prose only: what, for whom, why.
+`;
+
+const SPEC_OK = `# SPEC
+
 ### US-001 — a story
 
 #### AC-001 — a criterion
@@ -11,9 +16,14 @@ const PRD_OK = `# PRD
 - **Given** a
 - **When** b
 - **Then** c
-`;
 
-const TDD_OK = `# TDD
+## Assumptions
+
+- **ASM-001** — something assumed *(status: confirmed)*
+
+## Open questions
+
+- **Q-001** — something asked *(status: answered)*
 
 ## T-001 — do it [pending]
 
@@ -21,11 +31,17 @@ const TDD_OK = `# TDD
 - Files: src/a.js
 `;
 
+const DESIGN_OK = `# DESIGN
+
+## 1. Shape of the solution
+`;
+
 const base = (over = {}) => ({
   '.spec/SCOPE.md': APPROVED_SCOPE,
   '.spec/features/f/PRD.md': PRD_OK,
   '.spec/features/f/RFC.md': MINIMAL_RFC,
-  '.spec/features/f/TDD.md': TDD_OK,
+  '.spec/features/f/SPEC.md': SPEC_OK,
+  '.spec/features/f/DESIGN.md': DESIGN_OK,
   'src/a.js': 'export const a = 1;\n',
   'test/a.test.js': "test('does it @spec:AC-001', () => {});\n",
   ...over,
@@ -34,7 +50,7 @@ const base = (over = {}) => ({
 test('an unapproved scope turns G0 red and blocks everything after it @spec:AC-004', () => {
   const { gates } = auditOf(base({ '.spec/SCOPE.md': '**Scope status:** Draft\n' }));
   assert.equal(gate(gates, 'G0').state, 'red');
-  for (const id of ['G1', 'G2', 'G3', 'G4', 'G5']) {
+  for (const id of ['G1', 'G2', 'G3', 'G4', 'G5', 'G6']) {
     assert.equal(gate(gates, id).state, 'blocked', `${id} must be blocked, not red`);
     assert.equal(gate(gates, id).blockedBy, 'G0');
   }
@@ -42,14 +58,14 @@ test('an unapproved scope turns G0 red and blocks everything after it @spec:AC-0
 });
 
 test('a story with no criterion is a finding @spec:AC-005', () => {
-  const { audit } = auditOf(base({ '.spec/features/f/PRD.md': '### US-001 — lonely\n' }));
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': '### US-001 — lonely\n' }));
   assert.ok(has(audit, 'US_WITHOUT_AC'));
   assert.match(findingsFor(audit, 'US_WITHOUT_AC')[0].message, /US-001/);
 });
 
 test('an incomplete criterion names the missing clause @spec:AC-006', () => {
-  const prd = '### US-001 — x\n\n#### AC-001 — y\n\n- **Given** a\n- **When** b\n';
-  const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd }));
+  const spec = '### US-001 — x\n\n#### AC-001 — y\n\n- **Given** a\n- **When** b\n';
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
   assert.match(findingsFor(audit, 'AC_INCOMPLETE')[0].message, /then/);
 });
 
@@ -61,20 +77,20 @@ test('a decision with fewer than two alternatives is a finding @spec:AC-007', ()
 });
 
 test('a missing assumptions or questions section is a finding @spec:AC-008', () => {
-  const rfc = MINIMAL_RFC.replace('## Assumptions', '## Notes');
-  const { audit } = auditOf(base({ '.spec/features/f/RFC.md': rfc }));
+  const spec = SPEC_OK.replace('## Assumptions', '## Notes');
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
   assert.ok(has(audit, 'SECTION_MISSING'));
 });
 
 test('an open assumption warns during the work and errors once the feature claims done @spec:AC-009', () => {
-  const rfcOpen = MINIMAL_RFC.replace('*(status: confirmed)*', '*(status: open)*');
+  const specOpen = SPEC_OK.replace('*(status: confirmed)*', '*(status: open)*');
 
-  const during = auditOf(base({ '.spec/features/f/RFC.md': rfcOpen }));
+  const during = auditOf(base({ '.spec/features/f/SPEC.md': specOpen }));
   assert.equal(findingsFor(during.audit, 'ASM_OPEN')[0].severity, 'warning');
 
   const done = auditOf(
     base({
-      '.spec/features/f/RFC.md': rfcOpen,
+      '.spec/features/f/SPEC.md': specOpen,
       '.spec/features/f/PRD.md': `# PRD\n\n> status: implemented\n${PRD_OK}`,
     })
   );
@@ -82,19 +98,20 @@ test('an open assumption warns during the work and errors once the feature claim
 });
 
 test('a criterion covered by no task is a finding @spec:AC-010', () => {
-  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': '## T-001 — x [pending]\n\n- Refs: US-999\n' }));
+  const spec = SPEC_OK.replace('- Refs: AC-001\n- Files: src/a.js\n', '- Refs: US-999\n');
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
   assert.ok(has(audit, 'AC_WITHOUT_TASK'));
 });
 
 test('a task referencing an undefined code is a finding @spec:AC-011', () => {
-  const tdd = TDD_OK.replace('- Refs: AC-001', '- Refs: AC-001, AC-777');
-  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': tdd }));
+  const spec = SPEC_OK.replace('- Refs: AC-001', '- Refs: AC-001, AC-777');
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
   assert.match(findingsFor(audit, 'REF_BROKEN')[0].message, /AC-777/);
 });
 
 test('a task with no declared files is reported as never parallelizable @spec:AC-012', () => {
-  const tdd = TDD_OK.replace('- Files: src/a.js\n', '');
-  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': tdd }));
+  const spec = SPEC_OK.replace('- Files: src/a.js\n', '');
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
   assert.match(findingsFor(audit, 'TASK_WITHOUT_FILES')[0].message, /never be parallelized/);
 });
 
@@ -113,8 +130,8 @@ test('a skipped test is recorded as no proof, never as proof @spec:AC-017', () =
 });
 
 test('a task cannot declare itself done without proof @spec:AC-014', () => {
-  const tdd = TDD_OK.replace('[pending]', '[done]');
-  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': tdd }));
+  const spec = SPEC_OK.replace('[pending]', '[done]');
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
   assert.ok(has(audit, 'TASK_DONE_WITHOUT_PROOF'));
 });
 
@@ -125,7 +142,7 @@ test('a task with real PASS proof is accepted as done @spec:AC-014', () => {
   });
   const { audit } = auditOf(
     base({
-      '.spec/features/f/TDD.md': TDD_OK.replace('[pending]', '[done]'),
+      '.spec/features/f/SPEC.md': SPEC_OK.replace('[pending]', '[done]'),
       '.spec/verification/f.json': verification,
     })
   );
@@ -136,8 +153,8 @@ test('a task whose refs reach no criterion is named @spec:AC-049', () => {
   // `US-001` resolves, so REF_BROKEN stays quiet and the task looks fine. But
   // proof is granted per criterion, and the proof check filters this reference
   // out silently — so the task can never be proven and nothing said so.
-  const tdd = TDD_OK.replace('- Refs: AC-001', '- Refs: US-001');
-  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': tdd }));
+  const spec = SPEC_OK.replace('- Refs: AC-001', '- Refs: US-001');
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
 
   assert.equal(has(audit, 'REF_BROKEN'), false, 'the reference does resolve');
   const found = findingsFor(audit, 'REF_WITHOUT_AC');
@@ -149,8 +166,8 @@ test('a task whose refs reach no criterion is named @spec:AC-049', () => {
 test('a task carrying at least one criterion is left alone @spec:AC-049', () => {
   // Referencing the story for context alongside a criterion is normal, and it
   // costs nothing — the finding fires only when proof is impossible.
-  const tdd = TDD_OK.replace('- Refs: AC-001', '- Refs: US-001, AC-001');
-  const { audit } = auditOf(base({ '.spec/features/f/TDD.md': tdd }));
+  const spec = SPEC_OK.replace('- Refs: AC-001', '- Refs: US-001, AC-001');
+  const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));
   assert.equal(has(audit, 'REF_WITHOUT_AC'), false);
 });
 
@@ -217,9 +234,7 @@ test('an invalid regex is reported even when the glob matches nothing @spec:AC-0
 });
 
 test('duplicate traceability codes are caught across documents @spec:AC-005', () => {
-  const { audit } = auditOf(
-    base({ '.spec/features/g/PRD.md': PRD_OK, '.spec/features/g/RFC.md': MINIMAL_RFC })
-  );
+  const { audit } = auditOf(base({ '.spec/features/g/SPEC.md': SPEC_OK }));
   assert.ok(has(audit, 'ID_DUPLICATE'), 'codes are unique project-wide, not per document');
 });
 

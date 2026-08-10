@@ -7,7 +7,7 @@ Run it:
 
 ```sh
 cd .exemplo
-node ../bin/adp.js status        # six lights; G4 red — nothing is proven yet
+node ../bin/adp.js status        # seven lights; G5 red — nothing is proven yet
 node ../bin/adp.js trust         # read the test command, then approve it
 node ../bin/adp.js verify        # runs the tests, records what actually passed
 node ../bin/adp.js audit --ci    # exit 0 — clean under the strict posture
@@ -27,17 +27,17 @@ Then break it, which is the part worth doing:
 
 ```sh
 rm .spec/verification/class-enrolment.json
-node ../bin/adp.js audit --ci    # G4 red again, and all three tasks now report
+node ../bin/adp.js audit --ci    # G5 red again, and all three tasks now report
                                  # TASK_DONE_WITHOUT_PROOF
 ```
 
 Then break it on purpose — that is the part worth doing:
 
 ```sh
-# delete the @spec:AC-002 annotation from a test title  -> G4 goes red: AC_WITHOUT_TEST
-# change a task's status to [done]                 -> G5 goes red: TASK_DONE_WITHOUT_PROOF
+# delete the @spec:AC-002 annotation from a test title  -> G5 goes red: AC_WITHOUT_TEST
+# change a task's status to [done]                 -> G6 goes red: TASK_DONE_WITHOUT_PROOF
 # remove one alternative from D-001 in RFC.md           -> G2 goes red: DECISION_WITHOUT_ALTERNATIVE
-# add a criterion to PRD.md with no task                -> G3 warns: AC_WITHOUT_TASK
+# add a criterion to SPEC.md with no task               -> G4 warns: AC_WITHOUT_TASK
 ```
 
 Each time, `node ../bin/adp.js prompt` gives you the exact text to paste
@@ -49,9 +49,12 @@ back to an AI to fix it.
 .spec/SCOPE.md            approved — this is what opens G0
 .spec/CONSTITUTION.md     four principles; P-004 is executed against a test tag
 .spec/features/class-enrolment/
-    PRD.md                2 stories, 3 acceptance criteria  (owns US-xxx, AC-xxx)
-    RFC.md                2 decisions with alternatives     (owns ASM-xxx, Q-xxx)
-    TDD.md                3 tasks, each declaring its files (owns T-xxx)
+    PRD.md                prose only — what, for whom, why
+    RFC.md                2 decisions with alternatives     (owns D-xxx)
+    DESIGN.md             the technical shape, in prose
+    SPEC.md               2 stories, 3 criteria, 2 assumptions, 1 question,
+                           3 tasks — the layer the machine confers
+                           (owns US-xxx, AC-xxx, ASM-xxx, Q-xxx, T-xxx)
 src/enrolment.js          every rule, in one function
 test/enrolment.test.js    one test per criterion, annotated in the TITLE
 adp.config.json       where the tests are and how to run them

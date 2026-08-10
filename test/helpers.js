@@ -25,8 +25,10 @@ export const MINIMAL_RFC = `# RFC: t
 2. *Two.* second
 
 **Decision: alternative 1 — one.**
+`;
 
-## Assumptions
+// ASM-xxx/Q-xxx moved from RFC.md to SPEC.md in 0.6.0 — see spec.js.
+export const MINIMAL_SPEC_TAIL = `## Assumptions
 
 - **ASM-001** — something assumed *(status: confirmed)*
 

@@ -9,7 +9,8 @@ import path from 'path';
 import { walkFiles, readIfExists, latestMtime } from '../util/glob.js';
 import { parsePrd } from '../parsers/prd.js';
 import { parseRfc } from '../parsers/rfc.js';
-import { parseTdd } from '../parsers/tdd.js';
+import { parseSpec } from '../parsers/spec.js';
+import { parseDesign } from '../parsers/design.js';
 import { parseConstitution } from '../parsers/constitution.js';
 import { scanAnnotations } from '../parsers/annotations.js';
 import { spawnSync } from 'child_process';
@@ -65,15 +66,18 @@ export function loadProject(config) {
 
     const prdFile = read(config.documents.prd);
     const rfcFile = read(config.documents.rfc);
-    const tddFile = read(config.documents.tdd);
+    const specFile = read(config.documents.spec);
+    const designFile = read(config.documents.design);
 
     let prd = null;
     let rfc = null;
-    let tdd = null;
+    let spec = null;
+    let design = null;
     try {
       prd = prdFile.raw ? parsePrd(prdFile.raw, prdFile.relPath) : null;
       rfc = rfcFile.raw ? parseRfc(rfcFile.raw, rfcFile.relPath) : null;
-      tdd = tddFile.raw ? parseTdd(tddFile.raw, tddFile.relPath) : null;
+      spec = specFile.raw ? parseSpec(specFile.raw, specFile.relPath) : null;
+      design = designFile.raw ? parseDesign(designFile.raw, designFile.relPath) : null;
     } catch (err) {
       errors.push(`${name}: ${err.message}`);
     }
@@ -83,13 +87,16 @@ export function loadProject(config) {
       dir: rel(rootDir, dir),
       prd,
       rfc,
-      tdd,
+      spec,
+      design,
       prdPath: prdFile.relPath,
       rfcPath: rfcFile.relPath,
-      tddPath: tddFile.relPath,
+      specPath: specFile.relPath,
+      designPath: designFile.relPath,
       hasPrd: prdFile.raw !== null,
       hasRfc: rfcFile.raw !== null,
-      hasTdd: tddFile.raw !== null,
+      hasSpec: specFile.raw !== null,
+      hasDesign: designFile.raw !== null,
     };
   });
 

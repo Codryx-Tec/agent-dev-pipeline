@@ -3,7 +3,7 @@ name: tester
 description: Tester for e-CertDoc - validates that everything implemented complies with the spec's acceptance criteria first in the development environment and then in the real environment, then opens the PR. Issues go/no-go and guards against regressions. Use after any implementation is finished and before a PR is opened.
 tools: Read, Bash
 model: sonnet
-skills: tdd, debugging-and-error-recovery
+skills: test-driven-development, debugging-and-error-recovery
 permissionMode: auto
 ---
 

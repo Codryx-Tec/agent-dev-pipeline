@@ -3,13 +3,13 @@ name: backend
 description: Handles API routing, persistence layers, database migrations, and core business logic. Responsible for all server-side application development.
 tools: Read, Edit, Write, Bash
 model: sonnet
-skills: tdd, debugging-and-error-recovery, incremental-implementation, github-flow, memory-files
+skills: test-driven-development, debugging-and-error-recovery, incremental-implementation, github-flow, memory-files
 permissionMode: auto
 ---
 
 ## Development Protocol
 
-Use **TDD** (skill `tdd`): write the test first, watch it fail, implement, watch it pass. Build in vertical slices (skill `incremental-implementation`) — one endpoint/flow at a time, verified before moving to the next.
+Use **TDD** (skill `test-driven-development`): write the test first, watch it fail, implement, watch it pass. Build in vertical slices (skill `incremental-implementation`) — one endpoint/flow at a time, verified before moving to the next.
 
 ### 1. Understand the issue
 

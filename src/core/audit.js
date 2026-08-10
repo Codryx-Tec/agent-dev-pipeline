@@ -10,8 +10,8 @@
 // for CI and for the page, and it never varies by locale.
 //
 // Traceability codes are unique PROJECT-WIDE, not per document, so a task in one
-// feature's TDD may legally reference a criterion defined in another feature's
-// PRD. Reference resolution is therefore global — see RFC D-003.
+// feature's SPEC may legally reference a criterion defined in another
+// feature's SPEC. Reference resolution is therefore global — see RFC D-003.
 
 import { existsSync } from 'fs';
 import path from 'path';
@@ -89,22 +89,21 @@ export function auditProject(project, { ci = false } = {}) {
     }
   };
 
+  // SPEC.md owns every family the audit cross-references — US/AC, ASM/Q and
+  // T-xxx all moved here in 0.6.0, so one block feeds every index instead of
+  // three separate per-document ones.
   for (const f of features) {
-    if (f.prd) {
-      for (const s of f.prd.stories) {
+    if (f.spec) {
+      for (const s of f.spec.stories) {
         register(s.id, s, f.name);
         knownUs.set(s.id, { story: s, feature: f });
       }
-      for (const ac of f.prd.acs) {
+      for (const ac of f.spec.acs) {
         register(ac.id, ac, f.name);
         knownAc.set(ac.id, { ac, feature: f });
       }
-    }
-    if (f.rfc) {
-      for (const item of [...f.rfc.assumptions, ...f.rfc.questions]) register(item.id, item, f.name);
-    }
-    if (f.tdd) {
-      for (const t of f.tdd.tasks) {
+      for (const item of [...f.spec.assumptions, ...f.spec.questions]) register(item.id, item, f.name);
+      for (const t of f.spec.tasks) {
         register(t.id, t, f.name);
         knownTask.set(t.id, { task: t, feature: f });
       }
@@ -113,38 +112,16 @@ export function auditProject(project, { ci = false } = {}) {
 
   // -------------------------------------------------------------- per feature
   for (const f of features) {
-    // ---- G1 PRD ----
+    // ---- G1 PRD — prose only: what, for whom, why ----
     if (!f.hasPrd) {
       emit('PRD_MISSING', 'error', `${f.name} has no ${config.documents.prd}`, { feature: f.name, file: f.prdPath });
-    } else {
-      if (f.prd.feature && f.prd.feature !== f.name) {
-        emit('FEATURE_MISMATCH', 'warning',
-          `${f.prdPath} declares feature "${f.prd.feature}" but lives in "${f.name}"`,
-          { feature: f.name, file: f.prdPath });
-      }
-      if (!f.prd.stories.length) {
-        emit('SPEC_WITHOUT_US', 'error', `${f.prdPath} contains no user story`, { feature: f.name, file: f.prdPath });
-      }
-      for (const s of f.prd.stories) {
-        if (!s.acs.length) {
-          emit('US_WITHOUT_AC', 'error', `${s.id} (${s.title}) has no acceptance criterion`,
-            { feature: f.name, file: s.file, line: s.line });
-        }
-      }
-      for (const ac of f.prd.acs) {
-        if (!ac.complete) {
-          emit('AC_INCOMPLETE', 'error',
-            `${ac.id} (${ac.title}) is missing its ${ac.missingClauses.join(' and ')} clause`,
-            { feature: f.name, file: ac.file, line: ac.line });
-        }
-      }
-      for (const ac of f.prd.orphanAcs) {
-        emit('AC_OUTSIDE_US', 'error', `${ac.id} appears before any user story`,
-          { feature: f.name, file: ac.file, line: ac.line });
-      }
+    } else if (f.prd.feature && f.prd.feature !== f.name) {
+      emit('FEATURE_MISMATCH', 'warning',
+        `${f.prdPath} declares feature "${f.prd.feature}" but lives in "${f.name}"`,
+        { feature: f.name, file: f.prdPath });
     }
 
-    // ---- G2 RFC ----
+    // ---- G2 RFC — D-xxx decisions only ----
     if (!f.hasRfc) {
       emit('RFC_MISSING', 'error', `${f.name} has no ${config.documents.rfc}`, { feature: f.name, file: f.rfcPath });
     } else {
@@ -163,100 +140,131 @@ export function auditProject(project, { ci = false } = {}) {
             { feature: f.name, file: d.file, line: d.line });
         }
       }
-      // An assumption written as a bare numbered row is recorded but not
-      // trackable: nothing can reference it, and it can never be closed.
-      if (f.rfc.uncodedAssumptions) {
-        emit('ASM_WITHOUT_CODE', 'warning',
-          `${f.rfcPath} has ${f.rfc.uncodedAssumptions} assumption row(s) numbered instead of coded — use ASM-001 so they can be referenced and closed`,
-          { feature: f.name, file: f.rfcPath });
+    }
+
+    // ---- G3 DESIGN — presence only; the blueprint a human reads ----
+    if (!f.hasDesign) {
+      emit('DESIGN_MISSING', 'error', `${f.name} has no ${config.documents.design}`,
+        { feature: f.name, file: f.designPath });
+    }
+
+    // ---- G4 SPEC — the layer the machine confers: US/AC, ASM/Q, T-xxx ----
+    if (!f.hasSpec) {
+      emit('SPEC_MISSING', 'error', `${f.name} has no ${config.documents.spec}`, { feature: f.name, file: f.specPath });
+      continue;
+    }
+
+    if (!f.spec.stories.length) {
+      emit('SPEC_WITHOUT_US', 'error', `${f.specPath} contains no user story`, { feature: f.name, file: f.specPath });
+    }
+    for (const s of f.spec.stories) {
+      if (!s.acs.length) {
+        emit('US_WITHOUT_AC', 'error', `${s.id} (${s.title}) has no acceptance criterion`,
+          { feature: f.name, file: s.file, line: s.line });
       }
-      if (f.rfc.uncodedQuestions) {
-        emit('ASM_WITHOUT_CODE', 'warning',
-          `${f.rfcPath} has ${f.rfc.uncodedQuestions} question row(s) numbered instead of coded — use Q-001`,
-          { feature: f.name, file: f.rfcPath });
+    }
+    for (const ac of f.spec.acs) {
+      if (!ac.complete) {
+        emit('AC_INCOMPLETE', 'error',
+          `${ac.id} (${ac.title}) is missing its ${ac.missingClauses.join(' and ')} clause`,
+          { feature: f.name, file: ac.file, line: ac.line });
       }
-      if (!f.rfc.hasAssumptionsSection) {
-        emit('SECTION_MISSING', 'error', `${f.rfcPath} has no Assumptions section — if there are none, write "None." and be suspicious`,
-          { feature: f.name, file: f.rfcPath });
+    }
+    for (const ac of f.spec.orphanAcs) {
+      emit('AC_OUTSIDE_US', 'error', `${ac.id} appears before any user story`,
+        { feature: f.name, file: ac.file, line: ac.line });
+    }
+
+    // An assumption or question written as a bare numbered row is recorded but
+    // not trackable: nothing can reference it, and it can never be closed.
+    if (f.spec.uncodedAssumptions) {
+      emit('ASM_WITHOUT_CODE', 'warning',
+        `${f.specPath} has ${f.spec.uncodedAssumptions} assumption row(s) numbered instead of coded — use ASM-001 so they can be referenced and closed`,
+        { feature: f.name, file: f.specPath });
+    }
+    if (f.spec.uncodedQuestions) {
+      emit('ASM_WITHOUT_CODE', 'warning',
+        `${f.specPath} has ${f.spec.uncodedQuestions} question row(s) numbered instead of coded — use Q-001`,
+        { feature: f.name, file: f.specPath });
+    }
+    if (!f.spec.hasAssumptionsSection) {
+      emit('SECTION_MISSING', 'error', `${f.specPath} has no Assumptions section — if there are none, write "None." and be suspicious`,
+        { feature: f.name, file: f.specPath });
+    }
+    if (!f.spec.hasQuestionsSection) {
+      emit('SECTION_MISSING', 'error', `${f.specPath} has no Open questions section`,
+        { feature: f.name, file: f.specPath });
+    }
+    for (const a of f.spec.assumptions) {
+      if (!a.status) {
+        emit('STATUS_INVALID', 'error', `${a.id} carries no status — use open, confirmed or invalidated`,
+          { feature: f.name, file: a.file, line: a.line });
       }
-      if (!f.rfc.hasQuestionsSection) {
-        emit('SECTION_MISSING', 'error', `${f.rfcPath} has no Open questions section`,
-          { feature: f.name, file: f.rfcPath });
-      }
-      for (const a of f.rfc.assumptions) {
-        if (!a.status) {
-          emit('STATUS_INVALID', 'error', `${a.id} carries no status — use open, confirmed or invalidated`,
-            { feature: f.name, file: a.file, line: a.line });
-        }
-      }
-      for (const q of f.rfc.questions) {
-        if (!q.status) {
-          emit('STATUS_INVALID', 'error', `${q.id} carries no status — use open or answered`,
+    }
+    for (const q of f.spec.questions) {
+      if (!q.status) {
+        emit('STATUS_INVALID', 'error', `${q.id} carries no status — use open or answered`,
+          { feature: f.name, file: q.file, line: q.line });
+      } else if (q.status === 'open') {
+        if (q.blocking) {
+          emit('Q_BLOCKING_OPEN', 'error',
+            `${q.id} is marked blocking and still open — it must be answered before the path is settled`,
             { feature: f.name, file: q.file, line: q.line });
-        } else if (q.status === 'open') {
-          if (q.blocking) {
-            emit('Q_BLOCKING_OPEN', 'error',
-              `${q.id} is marked blocking and still open — it must be answered before the path is settled`,
-              { feature: f.name, file: q.file, line: q.line });
-          } else {
-            emit('Q_OPEN', 'warning', `${q.id} is still open`,
-              { feature: f.name, file: q.file, line: q.line });
-          }
-        }
-      }
-      // An open assumption is a warning while the work runs and an error once
-      // the feature claims to be done — the same fact, two postures.
-      const featureDone = ['implemented', 'audited'].includes(f.prd?.status);
-      for (const a of f.rfc.assumptions) {
-        if (a.status === 'open') {
-          emit('ASM_OPEN', featureDone ? 'error' : 'warning',
-            `${a.id} is still an open assumption${featureDone ? ' in a feature declared done' : ''}`,
-            { feature: f.name, file: a.file, line: a.line });
+        } else {
+          emit('Q_OPEN', 'warning', `${q.id} is still open`,
+            { feature: f.name, file: q.file, line: q.line });
         }
       }
     }
+    // An open assumption is a warning while the work runs and an error once
+    // the feature claims to be done — the same fact, two postures. Document
+    // status still comes from PRD.md: that stays a PRD concern even though
+    // the assumption itself moved to SPEC.md.
+    const featureDone = ['implemented', 'audited'].includes(f.prd?.status);
+    for (const a of f.spec.assumptions) {
+      if (a.status === 'open') {
+        emit('ASM_OPEN', featureDone ? 'error' : 'warning',
+          `${a.id} is still an open assumption${featureDone ? ' in a feature declared done' : ''}`,
+          { feature: f.name, file: a.file, line: a.line });
+      }
+    }
 
-    // ---- G3 TDD ----
-    if (!f.hasTdd) {
-      emit('TDD_MISSING', 'error', `${f.name} has no ${config.documents.tdd}`, { feature: f.name, file: f.tddPath });
-    } else {
-      for (const t of f.tdd.tasks) {
-        if (!t.statusValid) {
-          emit('TASK_STATUS_INVALID', 'error',
-            `${t.id} has status "${t.rawStatus ?? 'none'}" — use pending, in-progress, in-test or done`,
+    for (const t of f.spec.tasks) {
+      if (!t.statusValid) {
+        emit('TASK_STATUS_INVALID', 'error',
+          `${t.id} has status "${t.rawStatus ?? 'none'}" — use pending, in-progress, in-test or done`,
+          { feature: f.name, file: t.file, line: t.line });
+      }
+      if (!t.files.length) {
+        emit('TASK_WITHOUT_FILES', 'warning',
+          `${t.id} declares no files — it can never be parallelized and will run alone`,
+          { feature: f.name, file: t.file, line: t.line });
+      }
+      for (const rf of t.files) {
+        if (!existsSync(path.join(project.rootDir, rf))) {
+          emit('FILE_MISSING', t.status === 'done' ? 'error' : 'warning',
+            `${t.id} maps ${rf}, which does not exist`,
             { feature: f.name, file: t.file, line: t.line });
         }
-        if (!t.files.length) {
-          emit('TASK_WITHOUT_FILES', 'warning',
-            `${t.id} declares no files — it can never be parallelized and will run alone`,
+      }
+      for (const ref of t.refs) {
+        if (!knownAc.has(ref) && !knownUs.has(ref)) {
+          emit('REF_BROKEN', 'error', `${t.id} references ${ref}, which no document defines`,
             { feature: f.name, file: t.file, line: t.line });
         }
-        for (const rf of t.files) {
-          if (!existsSync(path.join(project.rootDir, rf))) {
-            emit('FILE_MISSING', t.status === 'done' ? 'error' : 'warning',
-              `${t.id} maps ${rf}, which does not exist`,
-              { feature: f.name, file: t.file, line: t.line });
-          }
-        }
-        for (const ref of t.refs) {
-          if (!knownAc.has(ref) && !knownUs.has(ref)) {
-            emit('REF_BROKEN', 'error', `${t.id} references ${ref}, which no document defines`,
-              { feature: f.name, file: t.file, line: t.line });
-          }
-        }
+      }
 
-        // Proof is granted per CRITERION, so a task whose references reach none
-        // of them can never be proven and can never legitimately reach
-        // [done]. Its story references resolve, so REF_BROKEN stays quiet
-        // and the task looks fine — and the proof check silently drops every one
-        // of them, which is an absence of information read as a guarantee. This
-        // says out loud what that filter discards.
-        if (t.refs.length && !t.refs.some((ref) => knownAc.has(ref))) {
-          emit('REF_WITHOUT_AC', 'warning',
-            `${t.id} references ${t.refs.join(', ')} — ${t.refs.length > 1 ? 'none of them is' : 'that is not'} ` +
-              'a criterion, so nothing here can grant it proof',
-            { feature: f.name, file: t.file, line: t.line });
-        }
+      // Proof is granted per CRITERION, so a task whose references reach none
+      // of them can never be proven and can never legitimately reach
+      // [done]. Its story references resolve, so REF_BROKEN stays quiet
+      // and the task looks fine — and the proof check silently drops every one
+      // of them, which is an absence of information read as a guarantee. This
+      // says out loud what that filter discards.
+      if (t.refs.length && !t.refs.some((ref) => knownAc.has(ref))) {
+        emit('REF_WITHOUT_AC', 'warning',
+          `${t.id} references ${t.refs.join(', ')} — ${t.refs.length > 1 ? 'none of them is' : 'that is not'} ` +
+            'a criterion, so nothing here can grant it proof',
+          { feature: f.name, file: t.file, line: t.line });
       }
     }
   }
@@ -300,7 +308,7 @@ export function auditProject(project, { ci = false } = {}) {
   // absent — reported, never assumed.
   for (const f of features) {
     const record = project.verification[f.name];
-    const acs = f.prd ? f.prd.acs : [];
+    const acs = f.spec ? f.spec.acs : [];
     for (const ac of acs) {
       if (!taggedAcs.has(ac.id)) continue; // already reported as AC_WITHOUT_TEST
       const result = record?.results?.[ac.id];
@@ -313,12 +321,12 @@ export function auditProject(project, { ci = false } = {}) {
     if (record?.reporter === 'exitcode') {
       emit('PROOF_WEAK', 'warning',
         `${f.name} was proven only by the runner's global exit code — prefer a per-test reporter`,
-        { feature: f.name, file: f.prdPath });
+        { feature: f.name, file: f.specPath });
     }
     if (record && isProofStale(project, record)) {
       emit('PROOF_STALE', 'warning',
         `${f.name}: code changed after the last proof — run verify again`,
-        { feature: f.name, file: f.prdPath });
+        { feature: f.name, file: f.specPath });
     }
   }
 

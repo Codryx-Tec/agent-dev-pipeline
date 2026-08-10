@@ -8,25 +8,32 @@
 
 ## Core loop
 
-Start every session with `adp status`. Six lights come back. Work on the
+Start every session with `adp status`. Seven lights come back. Work on the
 **first red one** — the ones after it read `blocked`, not broken, and fixing
 those first is wasted effort.
 
 ```
-SCOPE ──▶ PRD ──▶ RFC ──▶ TDD ──▶ code ──▶ verify ──▶ audit
-  G0      G1      G2      G3                 G4        G5
+SCOPE ──▶ PRD ──▶ RFC ──▶ DESIGN ──▶ SPEC ──▶ code ──▶ verify ──▶ audit
+  G0      G1      G2       G3         G4                 G5        G6
 ```
+
+`PRD.md` is prose only — what, for whom, why. `RFC.md` owns `D-xxx` decisions.
+`SPEC.md` is where `US-xxx`, `AC-xxx`, `ASM-xxx`, `Q-xxx` and `T-xxx` all
+live now — it is the layer the machine confers. `DESIGN.md` (formerly called
+TDD in older projects) is the technical blueprint a human reads; it has no
+grammar of its own beyond existing.
 
 | Gate | Passes when |
 |---|---|
 | G0 | `.spec/SCOPE.md` says `Approved` |
-| G1 | every story owns a criterion; every criterion has Given/When/Then |
-| G2 | every decision records ≥2 alternatives and a chosen one; no blocking question open |
-| G3 | every criterion is covered by a task; every reference resolves |
-| G4 | every criterion has a test that PASSED (a skip is never proof) |
-| G5 | documents, code and constitution still agree |
+| G1 | the PRD exists and its `feature:` line matches its directory |
+| G2 | every decision records ≥2 alternatives and a chosen one |
+| G3 | the DESIGN document exists |
+| G4 | every story owns a criterion, every criterion has Given/When/Then, every criterion is covered by a task, every reference resolves, no blocking question is open |
+| G5 | every criterion has a test that PASSED (a skip is never proof) |
+| G6 | documents, code and constitution still agree |
 
-**The exit code is the failing gate**: `0` clean, `1`–`6` for G0–G5. Never parse
+**The exit code is the failing gate**: `0` clean, `1`–`7` for G0–G6. Never parse
 output to find out where you are.
 
 ## Proof is written by `verify`, and by nothing else
@@ -38,7 +45,7 @@ runs the project's test command and records which criteria actually passed.
 
 ```sh
 adp verify        # runs the tests, writes .spec/verification/<feature>.json
-adp audit --ci    # now G4 can be green
+adp audit --ci    # now G5 can be green
 ```
 
 Before verify has run, every criterion reports `AC_WITHOUT_PROOF` — *has a test, but
@@ -53,8 +60,8 @@ that came from a repo. `adp trust` shows the human that exact command and asks.
 
 ## Rules
 
-1. **Spec first.** `PRD.md` before `RFC.md` before `TDD.md` before code. The
-   gates enforce the order; do not route around them.
+1. **Spec first.** `PRD.md` before `RFC.md` before `DESIGN.md` before
+   `SPEC.md` before code. The gates enforce the order; do not route around them.
 2. **Every acceptance criterion becomes a test whose TITLE carries
    `@spec:AC-xxx`.** No annotation, no criterion — as far as the machine is
    concerned.
@@ -103,7 +110,7 @@ must never be what stops you proving that work is done.
 
 ## Running several tasks at once
 
-When `TDD.md` holds several `[pending]` tasks, the engine can run them in
+When `SPEC.md` holds several `[pending]` tasks, the engine can run them in
 parallel, each in its own git worktree:
 
 ```sh
@@ -156,10 +163,9 @@ Pipeline: business-analyst → architect → techlead → designer/backend/front
 
 Writing an `RFC.md`? The `create-rfc` skill produces the decision-record shape —
 options with pros and cons, decision criteria with weights, RACI, outcome. The
-engine reads that shape natively. Two things it needs from you: give each
-assumption an `ASM-xxx` code instead of a bare row number, and add an
-`## Open questions` section with `Q-xxx` items. Without codes an assumption
-cannot be referenced, tracked or closed.
+engine reads that shape natively. Assumptions and open questions belong in
+`SPEC.md`, not here: give each one an `ASM-xxx`/`Q-xxx` code instead of a bare
+row number. Without codes an assumption cannot be referenced, tracked or closed.
 
 ## Feature or issue
 

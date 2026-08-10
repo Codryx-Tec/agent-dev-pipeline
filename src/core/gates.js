@@ -1,4 +1,4 @@
-// Gates — six named checkpoints, each owning a subset of finding codes.
+// Gates — seven named checkpoints, each owning a subset of finding codes.
 //
 // RFC D-009: one verdict for a project whose PRD is not written yet is
 // technically correct and practically useless. Gates make findings arrive in
@@ -7,6 +7,13 @@
 //
 // Three states, not two. `blocked` means an earlier gate is red, so this gate
 // was never evaluated — rendering that as red would blame the wrong step.
+//
+// 0.6.0 (M2) split the document chain: PRD.md became prose only (what, for
+// whom, why); US-xxx/AC-xxx/ASM-xxx/Q-xxx/T-xxx all moved to a new SPEC.md —
+// "the layer the machine confers"; TDD.md was renamed DESIGN.md and kept only
+// the prose a human reads. That is what turned six gates into seven: G3
+// (DESIGN) is now presence-only, and the codes that used to live in G1
+// (PRD) and G3 (TDD/breakdown) mostly relocated to a new G4 (SPEC).
 //
 // Every code the audit can emit MUST appear exactly once below. test/gates.test.js
 // asserts it; without that test a new code belongs to no gate and becomes
@@ -23,52 +30,50 @@ export const GATES = [
     id: 'G1',
     title: 'PRD complete',
     question: 'Is the PRD complete — what, for whom, why?',
-    codes: [
-      'PRD_MISSING',
-      'SPEC_WITHOUT_US',
-      'US_WITHOUT_AC',
-      'AC_INCOMPLETE',
-      'AC_OUTSIDE_US',
-      'ID_DUPLICATE',
-      'ID_TOO_SHORT',
-    ],
+    codes: ['PRD_MISSING', 'ID_DUPLICATE', 'ID_TOO_SHORT'],
   },
   {
     id: 'G2',
     title: 'Path decided',
     question: 'Is the path decided, with alternatives recorded?',
-    codes: [
-      'RFC_MISSING',
-      'DECISION_WITHOUT_ALTERNATIVE',
-      'DECISION_WITHOUT_CHOICE',
-      'SECTION_MISSING',
-      'Q_BLOCKING_OPEN',
-      'STATUS_INVALID',
-      'ASM_WITHOUT_CODE',
-    ],
+    codes: ['RFC_MISSING', 'DECISION_WITHOUT_ALTERNATIVE', 'DECISION_WITHOUT_CHOICE'],
   },
   {
     id: 'G3',
-    title: 'Breakdown implementable',
-    question: 'Is the breakdown implementable and plannable?',
+    title: 'Design exists',
+    question: 'Is the design written?',
+    codes: ['DESIGN_MISSING'],
+  },
+  {
+    id: 'G4',
+    title: 'Spec implementable',
+    question: 'Is the spec complete and implementable?',
     codes: [
-      'TDD_MISSING',
+      'SPEC_MISSING',
+      'SPEC_WITHOUT_US',
+      'US_WITHOUT_AC',
+      'AC_INCOMPLETE',
+      'AC_OUTSIDE_US',
       'AC_WITHOUT_TASK',
       'REF_BROKEN',
       'REF_WITHOUT_AC',
       'TASK_WITHOUT_FILES',
       'TASK_STATUS_INVALID',
       'FILE_MISSING',
+      'Q_BLOCKING_OPEN',
+      'ASM_WITHOUT_CODE',
+      'SECTION_MISSING',
+      'STATUS_INVALID',
     ],
   },
   {
-    id: 'G4',
+    id: 'G5',
     title: 'Proven',
     question: 'Is every acceptance criterion proven by a passing test?',
     codes: ['AC_WITHOUT_TEST', 'AC_WITHOUT_PROOF', 'PROOF_STALE', 'PROOF_WEAK'],
   },
   {
-    id: 'G5',
+    id: 'G6',
     title: 'Aligned',
     question: 'Do the documents, the code and the constitution still agree?',
     codes: [
@@ -109,8 +114,9 @@ export const LABELS = {
   SCOPE_FIELD_EMPTY: 'required scope field empty',
   PRD_MISSING: 'PRD missing',
   RFC_MISSING: 'RFC missing',
-  TDD_MISSING: 'TDD missing',
-  SPEC_WITHOUT_US: 'PRD has no user story',
+  DESIGN_MISSING: 'DESIGN missing',
+  SPEC_MISSING: 'SPEC missing',
+  SPEC_WITHOUT_US: 'SPEC has no user story',
   US_WITHOUT_AC: 'user story without acceptance criterion',
   AC_INCOMPLETE: 'incomplete acceptance criterion',
   AC_OUTSIDE_US: 'acceptance criterion outside any story',
@@ -191,7 +197,7 @@ export function evaluateGates(findings) {
   return {
     gates: results,
     firstRed: firstRed ? firstRed.id : null,
-    // exit code doubles as the gate number that failed: 0 clean, 1..6 for G0..G5
+    // exit code doubles as the gate number that failed: 0 clean, 1..7 for G0..G6
     exitCode: firstRed ? GATES.findIndex((g) => g.id === firstRed.id) + 1 : 0,
   };
 }

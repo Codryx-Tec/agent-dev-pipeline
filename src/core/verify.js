@@ -306,7 +306,7 @@ export function writeRecords(project, config, verification) {
 
   const written = [];
   for (const feature of project.features) {
-    const owned = (feature.prd?.acs ?? []).map((a) => a.id);
+    const owned = (feature.spec?.acs ?? []).map((a) => a.id);
     if (!owned.length) continue;
 
     const results = {};
@@ -353,7 +353,7 @@ export function summarise(project, written) {
 
   for (const f of project.features) {
     const record = written.find((w) => w.feature === f.name)?.record;
-    for (const ac of f.prd?.acs ?? []) {
+    for (const ac of f.spec?.acs ?? []) {
       total++;
       const s = record?.results?.[ac.id]?.status;
       if (s === 'pass') proven++;

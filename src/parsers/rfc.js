@@ -1,5 +1,10 @@
-// RFC parser — owns D-xxx (decisions), ASM-xxx (assumptions) and Q-xxx
-// (open questions).
+// RFC parser — owns D-xxx (decisions).
+//
+// ASM-xxx (assumptions) and Q-xxx (open questions) moved to SPEC.md in
+// 0.6.0 (see spec.js) — they are owned by the layer the machine confers, not
+// by the document that argues for a path. RFC.md keeps exactly the part that
+// makes it a decision record: was more than one path weighed, and was one of
+// them actually chosen.
 //
 // TWO DIALECTS, because two tools write this document and neither should be
 // forced to imitate the other.
@@ -20,17 +25,12 @@
 //
 // The engine cares about the same thing in both: were at least two paths
 // weighed, and was one of them actually chosen. Everything else is house style.
-//
-// Assumptions and questions are read from bullets OR from a table, because
-// dialect B tabulates them.
 
-import { lineOf, blocksBetween, stripNonGrammar, fold } from '../util/text.js';
+import { lineOf, blocksBetween, stripNonGrammar } from '../util/text.js';
 
 const RE_DECISION = /^###\s+(D-\d+)\s*[—–-]\s*(.+?)\s*$/gm;
-const RE_ITEM = /^\s*[-*]\s*\*\*((?:ASM|Q)-\d+)\*\*/gm;
 const RE_NUMBERED = /^\s*\d+\.\s+/gm;
 const RE_DECIDED = /\*\*Decision:/;
-const RE_STATUS_IN = /status:\s*([a-zà-ú-]+)/i;
 
 // dialect B
 const RE_OPTIONS_SECTION = /^##\s+(?:Options Considered|Op[çc][õo]es Consideradas)\s*$/m;
@@ -38,16 +38,6 @@ const RE_OPTION = /^###\s+(?:Option|Op[çc][ãa]o)\s+(\d+)\s*[:.]?\s*(.+?)\s*$/g
 const RE_OUTCOME_SECTION = /^##\s+(?:Outcome|Resultado)\s*$/m;
 const RE_OUTCOME_DECISION = /^\*\*(?:Decision|Decis[ãa]o)\*\*\s*:\s*(.+)$/m;
 const RE_RECOMMENDED = /⭐|\*\*(?:Recommended|Recomendado|Recomendada)\*\*\s*:/;
-// table rows: | ASM-001 | text | ... |   or   | 1 | text | ... |
-const RE_TABLE_ROW = /^\|\s*((?:ASM|Q)-\d+|\d+)\s*\|([^|]*)\|(.*)$/gm;
-
-export const ASM_STATUSES = ['open', 'confirmed', 'invalidated'];
-export const Q_STATUSES = ['open', 'answered'];
-
-const SECTIONS = {
-  assumptions: /^##\s+(?:Assumptions|Suposi[çc][õo]es|Premissas)\s*$/m,
-  questions: /^##\s+(?:Open questions|Open Questions|Perguntas em aberto|Quest[õo]es em aberto)\s*$/m,
-};
 
 function parseNativeDecisions(scan, content, file) {
   return blocksBetween(scan, [...scan.matchAll(RE_DECISION)]).map(({ match, body }) => {
@@ -102,43 +92,6 @@ function parseOptionsDecision(scan, content, file) {
   };
 }
 
-function parseTableItems(scan, content, file, sectionRe, kind) {
-  const at = scan.search(sectionRe);
-  if (at === -1) return { items: [], uncoded: 0 };
-  // the section runs to the next `## ` heading
-  const rest = scan.slice(at + 1);
-  const nextHeading = rest.search(/^##\s+/m);
-  const body = nextHeading === -1 ? scan.slice(at) : scan.slice(at, at + 1 + nextHeading);
-
-  const items = [];
-  let uncoded = 0;
-  for (const m of body.matchAll(RE_TABLE_ROW)) {
-    const id = m[1];
-    const text = m[2].trim();
-    if (!text || /^-+$/.test(text) || /^(assumption|suposi|question|pergunta)/i.test(text)) continue;
-    if (/^\d+$/.test(id)) {
-      uncoded++;
-      continue;
-    }
-    const tail = `${m[2]}|${m[3]}`;
-    const raw = tail.match(RE_STATUS_IN)?.[1] ?? null;
-    items.push({
-      id,
-      kind,
-      file,
-      line: lineOf(content, at + m.index),
-      // Dialect B tabulates a Confidence column instead of a status. Confidence
-      // is not status — "High confidence" does not mean "confirmed" — so it is
-      // reported as missing rather than silently mapped onto one.
-      status: raw ? fold(raw) : null,
-      blocking: /\*\*blocking\*\*|\*\*bloqueante\*\*/i.test(tail),
-      text,
-      fromTable: true,
-    });
-  }
-  return { items, uncoded };
-}
-
 export function parseRfc(content, file) {
   const scan = stripNonGrammar(content);
 
@@ -146,42 +99,11 @@ export function parseRfc(content, file) {
   const optionsDecision = parseOptionsDecision(scan, content, file);
   if (optionsDecision) decisions.push(optionsDecision);
 
-  const bulletItems = blocksBetween(scan, [...scan.matchAll(RE_ITEM)]).map(({ match, body }) => {
-    const raw = body.match(RE_STATUS_IN)?.[1] ?? null;
-    return {
-      id: match[1],
-      kind: match[1].startsWith('ASM') ? 'assumption' : 'question',
-      file,
-      line: lineOf(content, match.index),
-      status: raw ? fold(raw) : null,
-      blocking: /\*\*blocking\*\*|\*\*bloqueante\*\*/i.test(body),
-      text: body.split('\n')[0].trim(),
-      fromTable: false,
-    };
-  });
-
-  const asmTable = parseTableItems(scan, content, file, SECTIONS.assumptions, 'assumption');
-  const qTable = parseTableItems(scan, content, file, SECTIONS.questions, 'question');
-
-  const byId = new Map();
-  for (const item of [...bulletItems, ...asmTable.items, ...qTable.items]) {
-    if (!byId.has(item.id)) byId.set(item.id, item);
-  }
-  const items = [...byId.values()];
-
   return {
     kind: 'rfc',
     file,
     dialect: optionsDecision ? (decisions.length > 1 ? 'mixed' : 'create-rfc') : 'native',
     decisions,
-    assumptions: items.filter((i) => i.kind === 'assumption'),
-    questions: items.filter((i) => i.kind === 'question'),
-    // Rows carrying a bare number instead of a traceability code: the assumption
-    // is written down, but it cannot be referenced, tracked or closed.
-    uncodedAssumptions: asmTable.uncoded,
-    uncodedQuestions: qTable.uncoded,
-    hasAssumptionsSection: SECTIONS.assumptions.test(scan),
-    hasQuestionsSection: SECTIONS.questions.test(scan),
     hasOutcomeSection: RE_OUTCOME_SECTION.test(scan),
   };
 }

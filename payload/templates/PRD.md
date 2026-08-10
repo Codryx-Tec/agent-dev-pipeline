@@ -2,53 +2,36 @@
 
 > feature: {{FEATURE}}
 > document: PRD — WHAT, for WHOM, WHY
-> owns: US-xxx (user stories) · AC-xxx (acceptance criteria)
 > status: draft
 
-<!--
-GRAMMAR — the engine reads these shapes and nothing else:
+Prose only. No stories, no criteria, no technology — those belong to
+`SPEC.md` and `RFC.md`. A PRD that names a database, a framework or a data
+structure has drifted into being a spec in disguise; say what the system must
+do, never how it does it.
 
-  ### US-001 — Story title
-  #### AC-001 — Criterion title
-  - **Given** ...      (or **Dado**)
-  - **When** ...       (or **Quando**)
-  - **Then** ...       (or **Então**)
-
-Codes are unique across the WHOLE project, not just this file. Use three digits.
-Gate G1 passes when every story owns at least one criterion and every criterion
-has all three clauses.
--->
+Gate G1 passes when this document exists and the `feature:` line above
+matches the directory it lives in.
 
 ## Context
 
-Why this feature exists, in a paragraph anyone on the team can read.
+Why this feature exists, in a paragraph anyone on the team can read. Ground it
+in a number where you can — "the process has some problems" proves nothing;
+"support tickets about this take 20 minutes to resolve" does.
 
-## Stories
+## What this delivers
 
-### US-001 — {{a role}} {{achieves something}}
-
-As a {{role}}, I want {{capability}}, so that {{outcome}}.
-
-#### AC-001 — {{observable result}}
-
-- **Given** {{the starting state}}
-- **When** {{the action}}
-- **Then** {{the observable result}}
-
-<!--
-A criterion must be something a test can check. "Must be fast" is not a
-criterion; "responds in under 300ms" is. If you cannot imagine the assertion,
-the criterion is not finished.
--->
+The outcome, for the person who asked for it. Not a list of screens or
+endpoints — what becomes true that was not true before.
 
 ## Out of scope for this PRD
 
-## Assumptions
+## Stories and criteria
 
-Owned by `RFC.md`. Anything you assumed while writing these stories goes there
-as an ASM-xxx, with a status.
+Owned by `SPEC.md` — the layer the machine confers. Write `US-xxx` and
+`AC-xxx` there, not here.
 
-## Open questions
+## Assumptions and open questions
 
-Owned by `RFC.md`. Anything you could not decide goes there as a Q-xxx. Mark it
+Owned by `SPEC.md`. Anything you assumed while writing this goes there as an
+`ASM-xxx`; anything you could not decide goes there as a `Q-xxx`, marked
 **blocking** if the path cannot be chosen without the answer.
