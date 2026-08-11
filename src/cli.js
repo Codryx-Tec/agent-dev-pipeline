@@ -775,6 +775,9 @@ export async function run(argv) {
     console.log(`principles: ${project.constitution.principles.length}`);
     console.log(`test files: ${project.testFiles.length} · src files: ${project.srcFiles.length}`);
     console.log(`codes     : ${allMappedCodes().size} mapped across ${GATES.length} gates`);
+    console.log(
+      `backlog   : ${project.backlog.present ? `${project.backlog.items.length} item(s)` : 'none (.spec/BACKLOG.md absent)'}`
+    );
     if (project.features.length) {
       console.log('');
       console.log('ceremony  :');

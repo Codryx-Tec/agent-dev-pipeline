@@ -42,7 +42,7 @@ export function isProofStale(project, record) {
 
 export function auditProject(project, { ci = false } = {}) {
   const findings = [];
-  const { config, features, scope, rfcs } = project;
+  const { config, features, scope, rfcs, backlog } = project;
 
   // The ceremony matrix (M2b, SCOPE-0.6.0.md §2.5): what each feature's
   // declared signals say G2/G3 are due, and whether the gate is due at all,
@@ -142,6 +142,20 @@ export function auditProject(project, { ci = false } = {}) {
     }
   }
 
+  // ---------------------------------------------------- BACKLOG (global, once)
+  // Optional — its absence just means nothing has been pushed out of the MVP
+  // yet (M2c-core). What it must never do is smuggle a real tracking code:
+  // "só ao ser promovido a PRD é que o item ganha códigos" (SCOPE-0.6.0.md §2.2).
+  if (backlog.present) {
+    for (const item of backlog.items) {
+      if (item.taggedCode) {
+        emit('BACKLOG_ITEM_WITH_CODE', 'warning',
+          `backlog item carries ${item.taggedCode} — codes belong to a promoted PRD, not a backlog entry`,
+          { file: item.file, line: item.line });
+      }
+    }
+  }
+
   // -------------------------------------------------------------- per feature
   for (const f of features) {
     // ---- G1 PRD — prose only: what, for whom, why ----
@@ -150,6 +164,13 @@ export function auditProject(project, { ci = false } = {}) {
     } else if (f.prd.feature && f.prd.feature !== f.name) {
       emit('FEATURE_MISMATCH', 'warning',
         `${f.prdPath} declares feature "${f.prd.feature}" but lives in "${f.name}"`,
+        { feature: f.name, file: f.prdPath });
+    }
+    // A PRD that exists must be accounted for: in the MVP boundary or
+    // nowhere is never a legal state (M2c-core, SCOPE-0.6.0.md §2.2).
+    if (f.hasPrd && !scope.mvp.includes(f.name)) {
+      emit('PRD_UNPLACED', 'error',
+        `${f.name} has a PRD but is not declared in ${scope.file}'s MVP checklist — add "- [ ] ${f.name}" under "MVP (prioritized):"`,
         { feature: f.name, file: f.prdPath });
     }
     for (const s of f.prd?.signals ?? []) {

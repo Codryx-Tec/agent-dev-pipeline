@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { auditOf, has, findingsFor, gate, APPROVED_SCOPE, MINIMAL_RFC } from './helpers.js';
+import { auditOf, has, findingsFor, gate, approvedScope, MINIMAL_RFC } from './helpers.js';
 
 // > signals: multiple-teams keeps this fixture at rfc-first ceremony, so G2
 // and G3 stay evaluated (M2b) — without a declared signal, no ceremony
@@ -44,7 +44,7 @@ const DESIGN_OK = `# DESIGN
 `;
 
 const base = (over = {}) => ({
-  '.spec/SCOPE.md': APPROVED_SCOPE,
+  '.spec/SCOPE.md': approvedScope(),
   '.spec/features/f/PRD.md': PRD_OK,
   '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
   '.spec/features/f/SPEC.md': SPEC_OK,
@@ -100,6 +100,37 @@ test('a light-ceremony feature with no declared signal is never checked for a mi
   const { audit, gates } = auditOf(base({ '.spec/features/f/PRD.md': prd }));
   assert.equal(has(audit, 'RFC_MISSING'), false);
   assert.equal(gate(gates, 'G2').state, 'n/a');
+});
+
+test('a PRD not named in the MVP checklist is unplaced @spec:AC-061', () => {
+  const { audit } = auditOf(base({ '.spec/SCOPE.md': approvedScope([]) }));
+  assert.match(findingsFor(audit, 'PRD_UNPLACED')[0].message, /not declared in .*MVP checklist/);
+});
+
+test('a PRD named in the MVP checklist is placed, whatever its checkbox state @spec:AC-061', () => {
+  const { audit } = auditOf(base());
+  assert.equal(has(audit, 'PRD_UNPLACED'), false);
+});
+
+test('a feature with no PRD at all is never reported as unplaced — PRD_MISSING already says so @spec:AC-061', () => {
+  const { audit } = auditOf(
+    base({ '.spec/features/g/SPEC.md': SPEC_OK, '.spec/SCOPE.md': approvedScope(['f']) })
+  );
+  assert.ok(has(audit, 'PRD_MISSING'));
+  assert.equal(has(audit, 'PRD_UNPLACED'), false);
+});
+
+test('a backlog item carrying a real tracking code is flagged, and stays a warning @spec:AC-061', () => {
+  const { audit, gates } = auditOf(base({ '.spec/BACKLOG.md': '- extend AC-002 to cover refunds\n' }));
+  const finding = findingsFor(audit, 'BACKLOG_ITEM_WITH_CODE')[0];
+  assert.match(finding.message, /AC-002/);
+  assert.equal(finding.severity, 'warning');
+  assert.equal(gate(gates, 'G1').state, 'green', 'a warning must not turn the gate red');
+});
+
+test('no BACKLOG.md at all is a normal, clean state — nothing has been deferred yet @spec:AC-061', () => {
+  const { audit } = auditOf(base());
+  assert.equal(has(audit, 'BACKLOG_ITEM_WITH_CODE'), false);
 });
 
 test('one RFC shared by two PRDs is checked once, not once per PRD @spec:AC-007', () => {

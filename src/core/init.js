@@ -152,6 +152,15 @@ export function initProject(rootDir, opts = {}) {
     fill(template('SCOPE.md'), { PROJECT: project, DATE: today(), OWNER: owner }),
     report
   );
+  // ---- BACKLOG.md: scaffolded once, like SCOPE.md/CONSTITUTION.md — its
+  // ABSENCE later is never an error (M2c-core: nothing has been pushed out
+  // of the MVP yet is a normal state), but there is nothing ceremony-costly
+  // about one empty project-wide file that already exists everywhere else ----
+  writeIfMissing(
+    path.join(rootDir, '.spec', 'BACKLOG.md'),
+    fill(template('BACKLOG.md'), { PROJECT: project }),
+    report
+  );
   // git does not track empty directories; the placeholders are what make the
   // layout survive a clone. Not payload content, so not part of the install map.
   writeIfMissing(path.join(rootDir, '.spec', 'features', '.gitkeep'), '', report);
@@ -264,6 +273,9 @@ export function newFeature(rootDir, name, opts = {}) {
     `ceremony: ${ceremony.level}${signals.length ? ` (signals: ${signals.join(', ')})` : ' (no signals declared)'}` +
       ` — ${ceremony.requiresDesign ? 'DESIGN.md created' : 'DESIGN.md skipped, not due at this level'}` +
       `; RFC ${ceremony.requiresRfc ? 'due — create one with `adp new --rfc <slug>`' : 'not due at this level'}`
+  );
+  report.notes.push(
+    `add "- [ ] ${name}" to SCOPE.md's MVP checklist, or \`adp audit\` will report PRD_UNPLACED`
   );
   if (used.length) {
     report.notes.push(

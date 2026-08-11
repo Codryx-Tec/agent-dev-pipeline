@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GATES, LABELS, allMappedCodes, evaluateGates, gateOf } from '../src/core/gates.js';
 import { renderTerminal, renderPrompt } from '../src/core/report.js';
-import { auditOf, APPROVED_SCOPE, MINIMAL_RFC, gate } from './helpers.js';
+import { auditOf, approvedScope, MINIMAL_RFC, gate } from './helpers.js';
 import { ATTEMPT_CAP } from '../src/core/prompts.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -70,7 +70,7 @@ test('gateOf resolves a known code and refuses an unknown one @spec:AC-024', () 
 
 test('a finding renders its readable name before its stable code @spec:AC-024', () => {
   const { audit, gates } = auditOf({
-    '.spec/SCOPE.md': APPROVED_SCOPE,
+    '.spec/SCOPE.md': approvedScope(),
     '.spec/features/f/PRD.md': '# PRD\n\n> rfcs: RFC-001\n',
     '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
     '.spec/features/f/DESIGN.md': '# DESIGN\n',
@@ -97,7 +97,7 @@ test('a red gate produces a paste-ready prompt with its findings @spec:AC-023', 
 
 test('a clean project exits 0 with no red gate @spec:AC-018', () => {
   const { gates } = auditOf({
-    '.spec/SCOPE.md': APPROVED_SCOPE,
+    '.spec/SCOPE.md': approvedScope(),
     '.spec/features/f/PRD.md': '# PRD\n\n> rfcs: RFC-001\n',
     '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
     '.spec/features/f/DESIGN.md': '# DESIGN\n',

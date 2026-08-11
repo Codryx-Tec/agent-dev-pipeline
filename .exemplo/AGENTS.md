@@ -26,7 +26,7 @@ grammar of its own beyond existing.
 | Gate | Passes when |
 |---|---|
 | G0 | `.spec/SCOPE.md` says `Approved` |
-| G1 | the PRD exists and its `feature:` line matches its directory |
+| G1 | the PRD exists, its `feature:` line matches its directory, and it is named in `SCOPE.md`'s MVP checklist |
 | G2 | every decision records ≥2 alternatives and a chosen one — `n/a` below rfc-first ceremony |
 | G3 | the DESIGN document exists — `n/a` at light ceremony |
 | G4 | every story owns a criterion, every criterion has Given/When/Then, every criterion is covered by a task, every reference resolves, no blocking question is open |
@@ -49,6 +49,20 @@ direct, no RFC, no DESIGN. `adp new <feature> --signals <list>` declares
 signals and scaffolds only what that level needs; `adp status` shows the
 level and signals per feature. Getting this wrong costs a re-read, not a
 rewrite — edit the `signals:` line and re-audit.
+
+### Every PRD is in the MVP or nowhere at all
+
+A PRD sitting outside `SCOPE.md`'s "MVP (prioritized)" checklist is
+`PRD_UNPLACED` (G1) — there is no third state between "building this now"
+and "not yet." Each checklist line names the feature by its slug first —
+`- [ ] <feature-slug> — description` — and checkbox state tracks delivery,
+not membership. What hasn't started yet belongs in `BACKLOG.md` instead:
+plain prose, one item per line, deliberately carrying no tracking code —
+only a promoted PRD earns one. An item that already looks like a real code
+(`AC-002`, `T-003`, ...) is `BACKLOG_ITEM_WITH_CODE`, a warning: it would
+otherwise be free to claim progress the audit can't see. To promote an
+item: remove its line, run `adp new <feature-slug>`, add the slug to the
+MVP checklist.
 
 ## Proof is written by `verify`, and by nothing else
 

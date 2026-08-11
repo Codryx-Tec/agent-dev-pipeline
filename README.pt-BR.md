@@ -68,7 +68,7 @@ de causas, ou escrever um documento que ninguém precisa.
 | Gate | Pergunta | Passa quando |
 |---|---|---|
 | **G0** | O escopo está acordado? | `.spec/SCOPE.md` diz `Approved` |
-| **G1** | O quê, para quem, por quê? | o PRD existe e sua linha `feature:` bate com o diretório |
+| **G1** | O quê, para quem, por quê? | o PRD existe, sua linha `feature:` bate com o diretório, e ele está nomeado na checklist de MVP do `SCOPE.md` |
 | **G2** | Qual caminho? | toda decisão registra ≥2 alternativas e uma escolhida — `n/a` abaixo da cerimônia rfc-first |
 | **G3** | Como, em detalhe? | o documento de design existe — `n/a` na cerimônia leve |
 | **G4** | É implementável? | toda história tem um critério, todo critério tem Given/When/Then, todo critério é coberto por uma tarefa, toda referência resolve, nenhuma questão bloqueante em aberto |
@@ -90,6 +90,16 @@ aberto entre times significa RFC obrigatória; dinheiro ou dado pessoal
 significa a cadeia completa. `adp new <feature> --signals <lista>` cria
 somente o que o nível calculado exige, e `adp status` mostra o nível e os
 sinais por feature.
+
+**Todo PRD está no MVP ou em lugar nenhum.** A checklist "MVP
+(prioritized)" do `SCOPE.md` nomeia as features pelo slug —
+`- [ ] <slug-da-feature> — descrição` — e um PRD cujo slug não aparece ali
+é `PRD_UNPLACED` (G1). O que ainda não começou vai para o `BACKLOG.md`:
+prosa simples, um item por linha, deliberadamente sem código de rastreio —
+só um PRD promovido ganha um. Um item que já parece um código real
+(`AC-002`, `T-003`, ...) é `BACKLOG_ITEM_WITH_CODE`, um warning. Para
+promover um item: apague a linha, rode `adp new <slug-da-feature>`,
+acrescente o slug à checklist — sem comando dedicado para isso.
 
 Apenas os achados do primeiro gate vermelho são impressos. Num projeto cujo PRD
 ainda não foi escrito, imprimir todos enterraria a única coisa a fazer agora sob

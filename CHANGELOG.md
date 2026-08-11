@@ -40,6 +40,17 @@ one PRD often needs several, one per one-way door.
   never affecting the exit code. `adp new --signals <list>` scaffolds only
   what the computed level requires; `adp status` reports the level and
   signals per feature.
+- **The MVP boundary, and `BACKLOG.md`.** `SCOPE.md`'s "MVP (prioritized)"
+  checklist now names features by slug (`- [ ] <feature-slug> —
+  description`); a PRD whose slug is missing there is `PRD_UNPLACED` (G1)
+  — every PRD is declared in or nowhere at all, never in limbo. What
+  hasn't started yet goes in the new, optional `BACKLOG.md` instead: plain
+  prose, no tracking codes — an item that already looks like a real one
+  (`AC-002`, `T-003`, ...) is `BACKLOG_ITEM_WITH_CODE`, a warning. No new
+  command for promotion: remove the backlog line, run `adp new`, add the
+  slug to the checklist. Deferred: `MVP_WIDENED` (detecting the boundary
+  growing silently after approval), which needs a before/after snapshot
+  this pass found no clean write-trigger for yet.
 
 ## [0.5.0] — 2026-08-04
 

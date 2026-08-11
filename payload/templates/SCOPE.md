@@ -22,9 +22,16 @@
 
 ## 3. Features
 
-- **MVP (prioritized):**
+- **MVP (prioritized):** each line names the feature by its slug first —
+  `- [ ] <feature-slug> — description`, e.g. `- [ ] student-enrolment — a
+  visitor can enrol in an open class`. The slug is what `adp new` writes as
+  a directory name and what the audit cross-references: a PRD whose slug
+  is missing here is `PRD_UNPLACED` (G1). Checkbox state tracks delivery,
+  not membership — `[x]` still counts as in the MVP.
   - [ ]
-- **Nice-to-have (post-MVP):**
+- **Nice-to-have (post-MVP):** what got pushed out — write it in
+  `BACKLOG.md`, not here. Backlog items stay prose, on purpose: only a
+  promoted PRD earns a tracking code.
 
 ## 4. Out of scope
 

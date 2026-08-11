@@ -65,7 +65,7 @@ fix consequences instead of causes, or to write a document nobody needs.
 | Gate | Question | Passes when |
 |---|---|---|
 | **G0** | Is the scope agreed? | `.spec/SCOPE.md` says `Approved` |
-| **G1** | What, for whom, why? | the PRD exists and its `feature:` line matches its directory |
+| **G1** | What, for whom, why? | the PRD exists, its `feature:` line matches its directory, and it is named in `SCOPE.md`'s MVP checklist |
 | **G2** | Which path? | every decision records ≥2 alternatives and a chosen one — `n/a` below rfc-first ceremony |
 | **G3** | How, in detail? | the design document exists — `n/a` at light ceremony |
 | **G4** | Is it implementable? | every story owns a criterion, every criterion has Given/When/Then, every criterion is covered by a task, every reference resolves, no blocking question open |
@@ -86,6 +86,16 @@ DESIGN is due; a cross-team open decision means RFC-first; money or
 personal data means the full chain. `adp new <feature> --signals <list>`
 scaffolds only what the computed level needs, and `adp status` reports the
 level and signals per feature.
+
+**Every PRD is in the MVP or nowhere at all.** `SCOPE.md`'s "MVP
+(prioritized)" checklist names features by slug — `- [ ] <feature-slug> —
+description` — and a PRD whose slug is missing there is `PRD_UNPLACED`
+(G1). What hasn't started belongs in `BACKLOG.md` instead: plain prose,
+one item per line, deliberately carrying no tracking code — only a
+promoted PRD earns one. An item that already looks like a real code
+(`AC-002`, `T-003`, ...) is `BACKLOG_ITEM_WITH_CODE`, a warning. To
+promote an item: remove its line, run `adp new <feature-slug>`, add the
+slug to the checklist — no dedicated command for it.
 
 Only the first red gate's findings are printed. For a project whose PRD is not
 written yet, printing all of them buries the one thing to do next under dozens of

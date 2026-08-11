@@ -23,6 +23,7 @@
 ## 3. Features
 
 - **MVP (prioritized):**
+  - [x] class-enrolment — the feature below, by its directory slug
   - [x] Enrol a visitor in a class that has seats
   - [x] Refuse enrolment when the class is full
   - [x] Require guardian data before enrolling a minor

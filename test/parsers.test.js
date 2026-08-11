@@ -14,6 +14,7 @@ import { parsePrd } from '../src/parsers/prd.js';
 import { parseRfc } from '../src/parsers/rfc.js';
 import { parseDesign } from '../src/parsers/design.js';
 import { parseConstitution } from '../src/parsers/constitution.js';
+import { parseBacklog } from '../src/parsers/backlog.js';
 
 test('a task heading shown inside a code span is documentation, not a task @spec:AC-011', () => {
   const doc = `# SPEC
@@ -175,6 +176,38 @@ test('an empty "rfcs:" field never swallows the prose on a later line @spec:AC-0
   // after an empty field and capture the next paragraph as if it were an id.
   const doc = '> feature: greet\n> status: draft\n> rfcs:\n\nThis is prose, not an RFC id.\n';
   assert.deepEqual(parsePrd(doc, 'PRD.md').rfcs, []);
+});
+
+test('an absent BACKLOG.md parses as present:false with no items, never an error @spec:AC-061', () => {
+  const backlog = parseBacklog(null, 'BACKLOG.md');
+  assert.equal(backlog.present, false);
+  assert.deepEqual(backlog.items, []);
+});
+
+test('BACKLOG.md reads bullet and numbered items as plain prose @spec:AC-061', () => {
+  const doc = '## Product\n\n- a public API for reading progress\n\n## Technical\n\n1. CSV export of the hours ledger\n';
+  const backlog = parseBacklog(doc, 'BACKLOG.md');
+  assert.equal(backlog.present, true);
+  assert.deepEqual(
+    backlog.items.map((i) => i.text),
+    ['a public API for reading progress', 'CSV export of the hours ledger']
+  );
+  assert.ok(backlog.items.every((i) => i.taggedCode === null));
+});
+
+test('an item that already carries a real tracking code is flagged, not silently accepted @spec:AC-061', () => {
+  const doc = '- extend AC-002 to cover refunds\n';
+  const backlog = parseBacklog(doc, 'BACKLOG.md');
+  assert.equal(backlog.items[0].taggedCode, 'AC-002');
+});
+
+test('an example wrapped in an HTML comment is documentation, not a real item @spec:AC-061', () => {
+  const doc = '<!--\n- one item per line, plain prose:\n  - example item\n-->\n\n- a real item\n';
+  const backlog = parseBacklog(doc, 'BACKLOG.md');
+  assert.deepEqual(
+    backlog.items.map((i) => i.text),
+    ['a real item']
+  );
 });
 
 test('DESIGN.md reports its feature and status, with no structure beyond that @spec:AC-001', () => {

@@ -10,10 +10,18 @@ import { auditProject } from '../src/core/audit.js';
 import { evaluateGates } from '../src/core/gates.js';
 import { projectCeremony } from '../src/core/ceremony.js';
 
-export const APPROVED_SCOPE = `# Project Scope
+// A function, not a bare string, since M2c-core: a scope fixture now has to
+// say which feature slug(s) it declares in the MVP checklist, or every
+// feature using it trips PRD_UNPLACED.
+export const approvedScope = (mvp = ['f']) => `# Project Scope
 
 **Scope status:** Approved
 **Scope owner:** test
+
+## 3. Features
+
+- **MVP (prioritized):**
+${mvp.map((slug) => `  - [ ] ${slug}`).join('\n')}
 `;
 
 export const MINIMAL_RFC = `# RFC: t

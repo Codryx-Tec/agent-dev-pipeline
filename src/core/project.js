@@ -12,10 +12,28 @@ import { parseRfc } from '../parsers/rfc.js';
 import { parseSpec } from '../parsers/spec.js';
 import { parseDesign } from '../parsers/design.js';
 import { parseConstitution } from '../parsers/constitution.js';
+import { parseBacklog } from '../parsers/backlog.js';
 import { scanAnnotations } from '../parsers/annotations.js';
 import { spawnSync } from 'child_process';
 
 const RE_SCOPE_STATUS = /^\*\*Scope status:\*\*\s*(.+)$/m;
+// The MVP checklist (M2c-core, SCOPE-0.6.0.md §2.2): a line only counts once
+// it names a real feature slug as its first token after the checkbox — a
+// prose description ("`init` command that scaffolds...") starts with a
+// backtick or a capital letter and simply produces no match, so existing
+// scope documents cost nothing to keep once this line is added.
+const RE_MVP_HEADER = /-\s*\*\*MVP \(prioritized\):\*\*/;
+const RE_MVP_ITEM = /^[ \t]*-\s*\[[ xX]\]\s*([a-z0-9][a-z0-9-]*)/gm;
+
+function extractMvp(content) {
+  if (!content) return [];
+  const header = content.match(RE_MVP_HEADER);
+  if (!header) return [];
+  const rest = content.slice(header.index + header[0].length);
+  const stopIdx = rest.search(/\n[ \t]*-\s*\*\*|\n##/);
+  const block = stopIdx === -1 ? rest : rest.slice(0, stopIdx);
+  return [...block.matchAll(RE_MVP_ITEM)].map((m) => m[1]);
+}
 
 function rel(rootDir, p) {
   return path.relative(rootDir, p).split(path.sep).join('/');
@@ -80,6 +98,8 @@ export function loadProject(config) {
           (m) => m[1].trim()
         )
       : [],
+    // M2c-core: the feature slugs declared as in the MVP boundary.
+    mvp: extractMvp(scopeRaw),
   };
 
   // ---- features ----
@@ -135,6 +155,10 @@ export function loadProject(config) {
     rel(rootDir, constitutionPath)
   );
 
+  // ---- backlog: project-wide, optional (M2c-core) ----
+  const backlogPath = path.join(rootDir, config.backlogFile);
+  const backlog = parseBacklog(readIfExists(backlogPath), rel(rootDir, backlogPath));
+
   // ---- files and annotations ----
   const testFiles = walkFiles(rootDir, {
     includeGlobs: config.testGlobs,
@@ -170,6 +194,7 @@ export function loadProject(config) {
     features,
     rfcs,
     constitution,
+    backlog,
     testFiles,
     srcFiles,
     annotations,

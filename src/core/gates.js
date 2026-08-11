@@ -33,7 +33,7 @@ export const GATES = [
     id: 'G1',
     title: 'PRD complete',
     question: 'Is the PRD complete — what, for whom, why?',
-    codes: ['PRD_MISSING', 'ID_DUPLICATE', 'ID_TOO_SHORT', 'SIGNAL_UNKNOWN'],
+    codes: ['PRD_MISSING', 'ID_DUPLICATE', 'ID_TOO_SHORT', 'SIGNAL_UNKNOWN', 'PRD_UNPLACED', 'BACKLOG_ITEM_WITH_CODE'],
   },
   {
     id: 'G2',
@@ -126,6 +126,8 @@ export const LABELS = {
   ID_DUPLICATE: 'duplicate traceability code',
   ID_TOO_SHORT: 'traceability code too short',
   SIGNAL_UNKNOWN: 'unrecognized ceremony signal',
+  PRD_UNPLACED: 'PRD not declared in the MVP boundary',
+  BACKLOG_ITEM_WITH_CODE: 'backlog item carries a real tracking code',
   DECISION_WITHOUT_ALTERNATIVE: 'decision without alternatives',
   DECISION_WITHOUT_CHOICE: 'decision without a chosen option',
   SECTION_MISSING: 'required section missing',

@@ -18,6 +18,9 @@ export const DEFAULT_CONFIG = {
   rfcDir: '.spec/rfc',
   constitutionFile: '.spec/CONSTITUTION.md',
   scopeFile: '.spec/SCOPE.md',
+  // Optional and project-wide, like the constitution — its absence just
+  // means nothing has been pushed out of the MVP yet (M2c-core).
+  backlogFile: '.spec/BACKLOG.md',
 
   // the four per-feature documents, each owning its own family of codes.
   // PRD is prose (what, for whom, why); RFC owns D-xxx decisions; SPEC owns

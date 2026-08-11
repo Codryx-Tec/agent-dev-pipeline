@@ -257,7 +257,10 @@ test('newRfc refuses a slug the grammar cannot carry @spec:AC-007', () => {
 test('an empty folder reaches every gate green once the documents are filled in @spec:AC-018', () => {
   fresh((root) => {
     initProject(root, { agent: 'none' });
-    writeFileSync(path.join(root, '.spec', 'SCOPE.md'), '**Scope status:** Approved\n');
+    writeFileSync(
+      path.join(root, '.spec', 'SCOPE.md'),
+      '**Scope status:** Approved\n\n## 3. Features\n\n- **MVP (prioritized):**\n  - [ ] greet\n'
+    );
     newFeature(root, 'greet');
 
     const dir = path.join(root, '.spec', 'features', 'greet');

@@ -31,6 +31,7 @@
 ## 3. Features
 
 - **MVP (prioritized):**
+  - [x] agent-dev-pipeline — the whole engine; the items below are its own delivery breakdown, not separate features
   - [ ] `init` command that scaffolds `.spec/` and installs the agent skill, never overwriting what is already there.
   - [ ] Document chain with templates and per-document ID ownership: `PRD.md` owns US-xxx / AC-xxx, `RFC.md` owns ASM-xxx / Q-xxx, `TDD.md` owns T-xxx.
   - [ ] Six mechanical gates (G0 scope → G5 audit), each a distinct exit code with a human-readable reason.
