@@ -58,23 +58,38 @@ quatro maneiras de quebrá-lo, para você ver cada gate disparar.
 ## Os sete gates
 
 Um gate é **verde** quando nada sob sua responsabilidade falhou, **vermelho**
-quando algo falhou, e **bloqueado** quando um gate anterior está vermelho.
-Bloqueado é um terceiro estado de propósito: "ainda não chegamos lá" não é a
-mesma coisa que "isto está errado", e tratar os dois igual manda as pessoas
-corrigirem consequências em vez de causas.
+quando algo falhou, **bloqueado** quando um gate anterior está vermelho, e
+**n/a** quando a matriz de cerimônia diz que ele não é devido. Quatro
+estados, não dois, de propósito: "ainda não chegamos lá" não é a mesma
+coisa que "isto está errado", e "não é exigido neste tamanho" não é nenhum
+dos dois — tratá-los igual manda as pessoas corrigirem consequências em vez
+de causas, ou escrever um documento que ninguém precisa.
 
 | Gate | Pergunta | Passa quando |
 |---|---|---|
 | **G0** | O escopo está acordado? | `.spec/SCOPE.md` diz `Approved` |
 | **G1** | O quê, para quem, por quê? | o PRD existe e sua linha `feature:` bate com o diretório |
-| **G2** | Qual caminho? | toda decisão registra ≥2 alternativas e uma escolhida |
-| **G3** | Como, em detalhe? | o documento de design existe |
+| **G2** | Qual caminho? | toda decisão registra ≥2 alternativas e uma escolhida — `n/a` abaixo da cerimônia rfc-first |
+| **G3** | Como, em detalhe? | o documento de design existe — `n/a` na cerimônia leve |
 | **G4** | É implementável? | toda história tem um critério, todo critério tem Given/When/Then, todo critério é coberto por uma tarefa, toda referência resolve, nenhuma questão bloqueante em aberto |
 | **G5** | Está provado? | todo critério tem um teste que PASSOU |
 | **G6** | Ainda concordam? | sem testes órfãos, sem "concluída" não provada, sem princípio violado |
 
-**O exit code é o gate que falhou.** `0` limpo, `1`–`7` para G0–G6. Um pipeline
-descobre *onde* quebrou só pelo status, sem nada para parsear.
+**O exit code é o gate que falhou.** `0` limpo, `1`–`7` para G0–G6. `n/a`
+nunca define o exit code — G4, G5 e G6 são avaliados independente do que
+G2/G3 dizem. Um pipeline descobre *onde* quebrou só pelo status, sem nada
+para parsear.
+
+**Nem toda feature deve a mesma cerimônia.** A linha `> signals:` do PRD
+declara quais de cinco fatos são verdadeiros sobre ela — `multiple-teams`,
+`hard-to-reverse`, `money-or-pii`, `new-tech`, `large-estimate` — e um
+nível é calculado a partir disso, nunca escrito à mão: nenhum sinal
+declarado significa SPEC e tarefas direto (G2 e G3 ambos `n/a`); um sinal
+mais leve sozinho significa que um DESIGN leve é devido; uma decisão em
+aberto entre times significa RFC obrigatória; dinheiro ou dado pessoal
+significa a cadeia completa. `adp new <feature> --signals <lista>` cria
+somente o que o nível calculado exige, e `adp status` mostra o nível e os
+sinais por feature.
 
 Apenas os achados do primeiro gate vermelho são impressos. Num projeto cujo PRD
 ainda não foi escrito, imprimir todos enterraria a única coisa a fazer agora sob

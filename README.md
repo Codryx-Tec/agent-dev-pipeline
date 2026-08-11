@@ -55,23 +55,37 @@ README lists four ways to break it so you can watch each gate fire.
 
 ## The seven gates
 
-A gate is **green** when nothing it owns failed, **red** when something did, and
-**blocked** when an earlier gate is red. Blocked is a third state on purpose:
-"we have not got there yet" is not the same as "this is wrong", and rendering
-them alike sends people to fix consequences instead of causes.
+A gate is **green** when nothing it owns failed, **red** when something did,
+**blocked** when an earlier gate is red, and **n/a** when the ceremony
+matrix says it is not due. Four states, not two, on purpose: "we have not
+got there yet" is not the same as "this is wrong," and "not required at
+this size" is not the same as either — rendering them alike sends people to
+fix consequences instead of causes, or to write a document nobody needs.
 
 | Gate | Question | Passes when |
 |---|---|---|
 | **G0** | Is the scope agreed? | `.spec/SCOPE.md` says `Approved` |
 | **G1** | What, for whom, why? | the PRD exists and its `feature:` line matches its directory |
-| **G2** | Which path? | every decision records ≥2 alternatives and a chosen one |
-| **G3** | How, in detail? | the design document exists |
+| **G2** | Which path? | every decision records ≥2 alternatives and a chosen one — `n/a` below rfc-first ceremony |
+| **G3** | How, in detail? | the design document exists — `n/a` at light ceremony |
 | **G4** | Is it implementable? | every story owns a criterion, every criterion has Given/When/Then, every criterion is covered by a task, every reference resolves, no blocking question open |
 | **G5** | Is it proven? | every criterion has a test that PASSED |
 | **G6** | Do they still agree? | no orphan tests, no unproven "done", no violated principle |
 
-**The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. A pipeline
-learns *where* it broke from the status alone, with nothing to parse.
+**The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. `n/a`
+never sets the exit code — G4, G5 and G6 are evaluated no matter what G2/G3
+read. A pipeline learns *where* it broke from the status alone, with
+nothing to parse.
+
+**Not every feature owes the same ceremony.** A PRD's `> signals:` line
+declares which of five things are true about it — `multiple-teams`,
+`hard-to-reverse`, `money-or-pii`, `new-tech`, `large-estimate` — and a
+level is computed from that, never written by hand: none declared means
+SPEC and tasks direct (G2/G3 both `n/a`); one softer signal means a light
+DESIGN is due; a cross-team open decision means RFC-first; money or
+personal data means the full chain. `adp new <feature> --signals <list>`
+scaffolds only what the computed level needs, and `adp status` reports the
+level and signals per feature.
 
 Only the first red gate's findings are printed. For a project whose PRD is not
 written yet, printing all of them buries the one thing to do next under dozens of

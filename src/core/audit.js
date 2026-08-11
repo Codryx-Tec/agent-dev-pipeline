@@ -17,6 +17,7 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { CI_ESCALATES } from './gates.js';
 import { checkPrinciples } from './principles.js';
+import { SIGNALS, projectCeremony } from './ceremony.js';
 
 const RE_SHORT_ID = /^(US|AC|T|ASM|Q|P|RFC)-\d{1,2}$/;
 
@@ -42,6 +43,13 @@ export function isProofStale(project, record) {
 export function auditProject(project, { ci = false } = {}) {
   const findings = [];
   const { config, features, scope, rfcs } = project;
+
+  // The ceremony matrix (M2b, SCOPE-0.6.0.md §2.5): what each feature's
+  // declared signals say G2/G3 are due, and whether the gate is due at all,
+  // project-wide. Computed once, read by both the per-feature G2/G3 checks
+  // below and by gates.js's evaluateGates() (see the CLI, which threads it
+  // through as `{ ceremony }`).
+  const ceremony = projectCeremony(features);
 
   const emit = (code, severity, message, extra = {}) => {
     const finalSeverity =
@@ -144,22 +152,34 @@ export function auditProject(project, { ci = false } = {}) {
         `${f.prdPath} declares feature "${f.prd.feature}" but lives in "${f.name}"`,
         { feature: f.name, file: f.prdPath });
     }
+    for (const s of f.prd?.signals ?? []) {
+      if (!SIGNALS.includes(s)) {
+        emit('SIGNAL_UNKNOWN', 'warning',
+          `${f.prdPath} declares signal "${s}", which the ceremony matrix does not recognize — use one of: ${SIGNALS.join(', ')}`,
+          { feature: f.name, file: f.prdPath });
+      }
+    }
 
-    // ---- G2 RFC — linked by id, not a fixed sibling file (Q-001) ----
-    if (!f.rfcRefs.length) {
-      emit('RFC_MISSING', 'error', `${f.prdPath} declares no RFC — add an "rfcs:" line naming at least one`,
-        { feature: f.name, file: f.prdPath });
-    } else {
-      for (const ref of f.rfcRefs) {
-        if (!rfcs.has(ref)) {
-          emit('RFC_MISSING', 'error', `${f.prdPath} references ${ref}, which does not exist`,
-            { feature: f.name, file: f.prdPath });
+    // ---- G2 RFC — linked by id, not a fixed sibling file (Q-001). Due only
+    // when this feature's ceremony level requires it (M2b) ----
+    const featureCeremony = ceremony.perFeature.get(f.name);
+    if (featureCeremony.requiresRfc) {
+      if (!f.rfcRefs.length) {
+        emit('RFC_MISSING', 'error', `${f.prdPath} declares no RFC — add an "rfcs:" line naming at least one`,
+          { feature: f.name, file: f.prdPath });
+      } else {
+        for (const ref of f.rfcRefs) {
+          if (!rfcs.has(ref)) {
+            emit('RFC_MISSING', 'error', `${f.prdPath} references ${ref}, which does not exist`,
+              { feature: f.name, file: f.prdPath });
+          }
         }
       }
     }
 
-    // ---- G3 DESIGN — presence only; the blueprint a human reads ----
-    if (!f.hasDesign) {
+    // ---- G3 DESIGN — presence only; the blueprint a human reads. Due only
+    // above light ceremony (M2b) ----
+    if (featureCeremony.requiresDesign && !f.hasDesign) {
       emit('DESIGN_MISSING', 'error', `${f.name} has no ${config.documents.design}`,
         { feature: f.name, file: f.designPath });
     }

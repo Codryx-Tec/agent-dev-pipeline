@@ -5,8 +5,11 @@
 // the order the work happens, and give the page an honest thing to show: a
 // sequence of lights where the FIRST red one is the only one that matters.
 //
-// Three states, not two. `blocked` means an earlier gate is red, so this gate
-// was never evaluated — rendering that as red would blame the wrong step.
+// Four states, not three. `blocked` means an earlier gate is red, so this
+// gate was never evaluated — rendering that as red would blame the wrong
+// step. `n/a` (M2b, SCOPE-0.6.0.md §2.5) means the ceremony matrix decided
+// this gate is not due for any feature at its current level — G2/G3 only,
+// never G0/G1/G4/G5/G6, which the scope document treats as never skippable.
 //
 // 0.6.0 (M2) split the document chain: PRD.md became prose only (what, for
 // whom, why); US-xxx/AC-xxx/ASM-xxx/Q-xxx/T-xxx all moved to a new SPEC.md —
@@ -30,7 +33,7 @@ export const GATES = [
     id: 'G1',
     title: 'PRD complete',
     question: 'Is the PRD complete — what, for whom, why?',
-    codes: ['PRD_MISSING', 'ID_DUPLICATE', 'ID_TOO_SHORT'],
+    codes: ['PRD_MISSING', 'ID_DUPLICATE', 'ID_TOO_SHORT', 'SIGNAL_UNKNOWN'],
   },
   {
     id: 'G2',
@@ -122,6 +125,7 @@ export const LABELS = {
   AC_OUTSIDE_US: 'acceptance criterion outside any story',
   ID_DUPLICATE: 'duplicate traceability code',
   ID_TOO_SHORT: 'traceability code too short',
+  SIGNAL_UNKNOWN: 'unrecognized ceremony signal',
   DECISION_WITHOUT_ALTERNATIVE: 'decision without alternatives',
   DECISION_WITHOUT_CHOICE: 'decision without a chosen option',
   SECTION_MISSING: 'required section missing',
@@ -167,9 +171,19 @@ export function label(code) {
   return LABELS[code] ?? code;
 }
 
+// Which key on a ceremony result (core/ceremony.js's projectCeremony())
+// decides whether a given gate is due at all. Only G2/G3 are ever optional —
+// see the note at the top of this file for why the rest are not in here.
+const CEREMONY_KEY = { G2: 'g2Applicable', G3: 'g3Applicable' };
+
 // Evaluate the gates against a finding list. Order is load-bearing: once a gate
 // is red, everything after it is `blocked`, never red.
-export function evaluateGates(findings) {
+//
+// `ceremony`, when passed, is core/ceremony.js's projectCeremony() result. It
+// is optional so every caller that predates M2b (and every test that builds
+// findings by hand) keeps evaluating G2/G3 exactly as before — a gate is only
+// ever n/a when something explicitly said so.
+export function evaluateGates(findings, { ceremony = null } = {}) {
   const results = [];
   let blockedFrom = null;
 
@@ -177,19 +191,23 @@ export function evaluateGates(findings) {
     const own = findings.filter((f) => gateOf(f.code) === gate.id);
     const errors = own.filter((f) => f.severity === 'error');
     const warnings = own.filter((f) => f.severity === 'warning');
+    const base = { ...gate, findings: own, errors: errors.length, warnings: warnings.length };
 
     if (blockedFrom) {
-      results.push({
-        ...gate, state: 'blocked', blockedBy: blockedFrom,
-        findings: own, errors: errors.length, warnings: warnings.length,
-      });
+      results.push({ ...base, state: 'blocked', blockedBy: blockedFrom, reason: null });
       continue;
     }
+
+    const ceremonyKey = CEREMONY_KEY[gate.id];
+    if (ceremony && ceremonyKey && !ceremony[ceremonyKey]) {
+      // n/a never sets blockedFrom — G4/G5/G6 are always evaluated regardless
+      // of G2/G3's ceremony state (§12.1: "Duas fases nunca são puladas").
+      results.push({ ...base, state: 'n/a', blockedBy: null, reason: ceremony.reason[gate.id] });
+      continue;
+    }
+
     const state = errors.length ? 'red' : 'green';
-    results.push({
-      ...gate, state, blockedBy: null,
-      findings: own, errors: errors.length, warnings: warnings.length,
-    });
+    results.push({ ...base, state, blockedBy: null, reason: null });
     if (state === 'red') blockedFrom = gate.id;
   }
 

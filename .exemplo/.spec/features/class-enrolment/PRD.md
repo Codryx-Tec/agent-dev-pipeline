@@ -4,6 +4,7 @@
 > document: PRD — WHAT, for WHOM, WHY
 > status: implemented
 > rfcs: RFC-001
+> signals: multiple-teams
 
 ## Context
 

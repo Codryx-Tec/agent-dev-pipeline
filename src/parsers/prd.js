@@ -19,6 +19,7 @@ const RE_FEATURE = /^>\s*feature:\s*(\S+)/m;
 // [ \t]*, not \s* — an empty "rfcs:" field must not let the match cross the
 // newline and swallow the next line's prose as if it were the value.
 const RE_RFCS = /^>\s*rfcs?:[ \t]*(.+)$/m;
+const RE_SIGNALS = /^>\s*signals:[ \t]*(.+)$/m;
 
 export const SPEC_STATUSES = [
   'draft',
@@ -28,6 +29,9 @@ export const SPEC_STATUSES = [
   'audited',
 ];
 
+// The recognized signal slugs live in core/ceremony.js, not here — a parser
+// stays a parser, and reports the raw list as written. Anything unrecognized
+// is audit.js's problem (SIGNAL_UNKNOWN), not this file's to silently drop.
 export function parsePrd(content, file) {
   return {
     kind: 'prd',
@@ -35,5 +39,6 @@ export function parsePrd(content, file) {
     feature: content.match(RE_FEATURE)?.[1] ?? null,
     status: content.match(RE_STATUS)?.[1] ?? null,
     rfcs: splitList(content.match(RE_RFCS)?.[1] ?? '').map((id) => id.toUpperCase()),
+    signals: splitList(content.match(RE_SIGNALS)?.[1] ?? ''),
   };
 }

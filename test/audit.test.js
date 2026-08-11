@@ -2,9 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { auditOf, has, findingsFor, gate, APPROVED_SCOPE, MINIMAL_RFC } from './helpers.js';
 
+// > signals: multiple-teams keeps this fixture at rfc-first ceremony, so G2
+// and G3 stay evaluated (M2b) — without a declared signal, no ceremony
+// requires an RFC or a DESIGN, and every test in this file that exercises
+// them would silently stop testing what it says it tests.
 const PRD_OK = `# PRD
 
 > rfcs: RFC-001
+> signals: multiple-teams
 
 Prose only: what, for whom, why.
 `;
@@ -79,15 +84,22 @@ test('a decision with fewer than two alternatives is a finding @spec:AC-007', ()
 });
 
 test('a PRD declaring no RFC is a finding @spec:AC-007', () => {
-  const prd = '# PRD\n\nProse only.\n';
+  const prd = '# PRD\n\n> signals: multiple-teams\n\nProse only.\n';
   const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd }));
   assert.match(findingsFor(audit, 'RFC_MISSING')[0].message, /declares no RFC/);
 });
 
 test('a PRD referencing an RFC that does not exist is a finding @spec:AC-007', () => {
-  const prd = '# PRD\n\n> rfcs: RFC-404\n\nProse only.\n';
+  const prd = '# PRD\n\n> rfcs: RFC-404\n> signals: multiple-teams\n\nProse only.\n';
   const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd }));
   assert.match(findingsFor(audit, 'RFC_MISSING')[0].message, /RFC-404, which does not exist/);
+});
+
+test('a light-ceremony feature with no declared signal is never checked for a missing RFC @spec:AC-058', () => {
+  const prd = '# PRD\n\nProse only.\n';
+  const { audit, gates } = auditOf(base({ '.spec/features/f/PRD.md': prd }));
+  assert.equal(has(audit, 'RFC_MISSING'), false);
+  assert.equal(gate(gates, 'G2').state, 'n/a');
 });
 
 test('one RFC shared by two PRDs is checked once, not once per PRD @spec:AC-007', () => {

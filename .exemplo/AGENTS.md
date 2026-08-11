@@ -27,14 +27,28 @@ grammar of its own beyond existing.
 |---|---|
 | G0 | `.spec/SCOPE.md` says `Approved` |
 | G1 | the PRD exists and its `feature:` line matches its directory |
-| G2 | every decision records ≥2 alternatives and a chosen one |
-| G3 | the DESIGN document exists |
+| G2 | every decision records ≥2 alternatives and a chosen one — `n/a` below rfc-first ceremony |
+| G3 | the DESIGN document exists — `n/a` at light ceremony |
 | G4 | every story owns a criterion, every criterion has Given/When/Then, every criterion is covered by a task, every reference resolves, no blocking question is open |
 | G5 | every criterion has a test that PASSED (a skip is never proof) |
 | G6 | documents, code and constitution still agree |
 
 **The exit code is the failing gate**: `0` clean, `1`–`7` for G0–G6. Never parse
-output to find out where you are.
+output to find out where you are. `n/a` never sets the exit code — G4, G5 and
+G6 are evaluated regardless of what G2/G3 read.
+
+### The ceremony matrix decides what G2 and G3 are actually due
+
+Not every feature owes the same four documents. A PRD's `> signals:` line
+declares which of five things are true — `multiple-teams`, `hard-to-reverse`,
+`money-or-pii`, `new-tech`, `large-estimate` — and the level is *computed*
+from that, never written by hand: money or PII means the full chain; a
+cross-team open decision means RFC-first; any one of the three softer
+signals alone means a light DESIGN; none declared means SPEC and tasks
+direct, no RFC, no DESIGN. `adp new <feature> --signals <list>` declares
+signals and scaffolds only what that level needs; `adp status` shows the
+level and signals per feature. Getting this wrong costs a re-read, not a
+rewrite — edit the `signals:` line and re-audit.
 
 ## Proof is written by `verify`, and by nothing else
 
@@ -176,8 +190,9 @@ be referenced, tracked or closed.
 **Broken existing behaviour → ISSUE.** `fix(<module>): <desc>`. Body: current
 behaviour with logs, expected behaviour, steps to reproduce.
 
-**New capability → FEATURE.** `feat(<module>): <desc>`. Run `adp new <name>`
-and write the three documents.
+**New capability → FEATURE.** `feat(<module>): <desc>`. Run `adp new <name>
+[--signals <list>]` and write whichever documents it scaffolds — the
+ceremony matrix above decides how many that is.
 
 A one-line fix does not need a feature folder. A change that alters what the
 system promises does, even when the diff is small — the promise is what the

@@ -5,7 +5,7 @@
 import { label, GATES } from './gates.js';
 import { renderPrompt } from './prompts.js';
 
-const MARK = { green: '✔', red: '✘', blocked: '·' };
+const MARK = { green: '✔', red: '✘', blocked: '·', 'n/a': '○' };
 
 function line(f) {
   const where = f.file ? ` ${f.file}${f.line ? `:${f.line}` : ''}` : '';
@@ -19,11 +19,13 @@ export function renderGates(evaluation) {
     const detail =
       g.state === 'blocked'
         ? `blocked by ${g.blockedBy}`
-        : g.state === 'red'
-          ? `${g.errors} error(s)${g.warnings ? `, ${g.warnings} warning(s)` : ''}`
-          : g.warnings
-            ? `clean (${g.warnings} warning(s))`
-            : 'clean';
+        : g.state === 'n/a'
+          ? `n/a — ${g.reason}`
+          : g.state === 'red'
+            ? `${g.errors} error(s)${g.warnings ? `, ${g.warnings} warning(s)` : ''}`
+            : g.warnings
+              ? `clean (${g.warnings} warning(s))`
+              : 'clean';
     out.push(`  ${MARK[g.state]} ${g.id} ${g.title.padEnd(26)} ${detail}`);
   }
   return out.join('\n');
@@ -82,7 +84,7 @@ export function renderJson(audit, evaluation) {
       exitCode: evaluation.exitCode,
       firstRed: evaluation.firstRed,
       gates: evaluation.gates.map((g) => ({
-        id: g.id, title: g.title, state: g.state, blockedBy: g.blockedBy,
+        id: g.id, title: g.title, state: g.state, blockedBy: g.blockedBy, reason: g.reason,
         errors: g.errors, warnings: g.warnings,
       })),
       findings: audit.findings.map((f) => ({ ...f, label: label(f.code), gate: gateIdOf(f.code) })),

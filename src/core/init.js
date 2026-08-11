@@ -20,6 +20,7 @@ import { verifyPayload, renderIntegrity, assertInside, sha256, loadManifest, wal
 import { buildInstallPlan } from './install-map.js';
 import { PACKAGE_DIR, PAYLOAD_DIR, TEMPLATES_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME } from './paths.js';
 import { VERSION } from '../version.js';
+import { SIGNALS, describeFeatureCeremony } from './ceremony.js';
 
 export { PACKAGE_DIR, PAYLOAD_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME };
 
@@ -245,10 +246,25 @@ export function newFeature(rootDir, name, opts = {}) {
   // visible if rfcDir is scanned too.
   const used = highestCodes([path.join(rootDir, featuresDir), path.join(rootDir, rfcDir)]);
 
-  for (const doc of ['PRD.md', 'SPEC.md', 'DESIGN.md']) {
-    writeIfMissing(path.join(dir, doc), fill(template(doc), { FEATURE: name }), report);
+  // The ceremony matrix (M2b) decides which documents this feature actually
+  // owes, at creation time — a project does not need to be born with an
+  // empty DESIGN.md it has no signal justifying (SCOPE-0.6.0.md §2.5). An
+  // unrecognized slug is dropped rather than silently accepted; the audit
+  // reports it as SIGNAL_UNKNOWN once the PRD exists to read it from.
+  const signals = (Array.isArray(opts.signals) ? opts.signals : []).filter((s) => SIGNALS.includes(s));
+  const ceremony = describeFeatureCeremony({ signals });
+  const docs = ceremony.requiresDesign ? ['PRD.md', 'SPEC.md', 'DESIGN.md'] : ['PRD.md', 'SPEC.md'];
+
+  for (const doc of docs) {
+    writeIfMissing(path.join(dir, doc), fill(template(doc), { FEATURE: name, SIGNALS: signals.join(', ') }), report);
   }
 
+  report.ceremony = ceremony;
+  report.notes.push(
+    `ceremony: ${ceremony.level}${signals.length ? ` (signals: ${signals.join(', ')})` : ' (no signals declared)'}` +
+      ` — ${ceremony.requiresDesign ? 'DESIGN.md created' : 'DESIGN.md skipped, not due at this level'}` +
+      `; RFC ${ceremony.requiresRfc ? 'due — create one with `adp new --rfc <slug>`' : 'not due at this level'}`
+  );
   if (used.length) {
     report.notes.push(
       `codes already in use elsewhere — continue from: ${used.join(', ')} (codes are unique project-wide)`

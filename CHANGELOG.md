@@ -6,6 +6,41 @@ This file starts at 0.5.0. Earlier releases are described from their commits and
 are summarised here for completeness rather than reconstructed in detail — the
 git history is the authority for anything before this file existed.
 
+## [Unreleased]
+
+Work toward 0.6.0, per `.spec/SCOPE-0.6.0.md`.
+
+### ⚠️ Breaking
+
+**The document chain splits: PRD/RFC/TDD becomes PRD/RFC/DESIGN/SPEC.**
+`PRD.md` is prose only now — `US-xxx`/`AC-xxx`/`ASM-xxx`/`Q-xxx`/`T-xxx` all
+moved to a new `SPEC.md`, "the layer the machine confers." `TDD.md` is
+renamed `DESIGN.md` and keeps only the prose a human reads. Six gates became
+seven: G3 (DESIGN) is presence-only, and the codes that used to live in G1
+and G3 mostly relocated to a new G4 (SPEC). A `0.5→0.6.0` migration codemod
+ships with `adp upgrade`.
+
+**RFCs are un-nested: one flat, global family.** `RFC.md` is no longer a
+fixed sibling of each feature's PRD — decision records live at
+`.spec/rfc/RFC-<NNN>-<slug>.md`, created with `adp new --rfc <slug>` and
+linked from any PRD's `> rfcs:` line. One RFC can now serve several PRDs;
+one PRD often needs several, one per one-way door.
+
+### Added
+
+- **An install lockfile and `adp upgrade`.** `.spec/.adp-install.json`
+  records what was installed and its hashes; `adp upgrade` compares it
+  against the current payload and applies pending file changes and document
+  migrations. `adp doctor` warns on version drift.
+- **The ceremony matrix.** A PRD's `> signals:` line (`multiple-teams`,
+  `hard-to-reverse`, `money-or-pii`, `new-tech`, `large-estimate`) computes
+  a ceremony level — light, medium, rfc-first or full — that decides
+  whether G2 (RFC) and G3 (DESIGN) are due at all for that feature. Not due
+  reads as a new gate state, `n/a`, distinct from red/green/blocked and
+  never affecting the exit code. `adp new --signals <list>` scaffolds only
+  what the computed level requires; `adp status` reports the level and
+  signals per feature.
+
 ## [0.5.0] — 2026-08-04
 
 ### ⚠️ Breaking

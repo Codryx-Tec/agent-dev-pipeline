@@ -11,6 +11,7 @@ import { loadConfig } from './config.js';
 import { loadProject } from './core/project.js';
 import { auditProject } from './core/audit.js';
 import { evaluateGates, GATES, allMappedCodes } from './core/gates.js';
+import { projectCeremony } from './core/ceremony.js';
 import { renderTerminal, renderJson, renderGates, renderPrompt } from './core/report.js';
 import { initProject, newFeature, newRfc, renderReport, AGENT_SKILL_DIRS, PAYLOAD_DIR } from './core/init.js';
 import { verifyPayload, renderIntegrity } from './core/integrity.js';
@@ -39,7 +40,9 @@ const HELP = `agent-dev-pipeline — the specification that stays true
 usage: adp <command> [options]
 
   init [--agent <name>]     scaffold .spec/ here and install the agent skill
-  new <feature>             create PRD.md, SPEC.md and DESIGN.md for a feature
+  new <feature> [--signals <list>]
+                            create PRD.md and SPEC.md; DESIGN.md too if the
+                            ceremony matrix says it is due (see --signals)
   new --rfc <slug>          create a new decision record at .spec/rfc/RFC-NNN-<slug>.md
   status                    what exists and where the work stands
   audit [--ci] [--json]     evaluate every gate and report the findings
@@ -74,6 +77,9 @@ options:
   --no-memory     skip the .spec memory files (init)
   --no-agents-md  skip AGENTS.md (init)
   --rfc           create a decision record instead of a feature (new)
+  --signals <list>  comma-separated: multiple-teams, hard-to-reverse,
+                    money-or-pii, new-tech, large-estimate (new) — decides
+                    the ceremony level: which of RFC/DESIGN are due
   --apply         write what upgrade would otherwise only report (upgrade)
   --only-migrations  run pending .spec/** migrations without touching payload files (upgrade)
   --ci            escalate the softer findings to errors (use this in a pipeline)
@@ -228,7 +234,7 @@ export async function run(argv) {
     console.log('');
     console.log('next:');
     console.log('  1. fill in .spec/SCOPE.md and set its status to Approved   (opens gate G0)');
-    console.log('  2. adp new <feature>                                   (creates PRD, RFC, TDD)');
+    console.log('  2. adp new <feature> [--signals <list>]                (creates PRD, SPEC, maybe DESIGN)');
     console.log('  3. adp status                                          (see where you are)');
     return 0;
   }
@@ -247,7 +253,8 @@ export async function run(argv) {
         return 0;
       }
       const name = positional[1];
-      const report = newFeature(rootDir, name, { featuresDir: config.featuresDir, rfcDir: config.rfcDir });
+      const signals = typeof flags.signals === 'string' ? flags.signals.split(',').map((s) => s.trim()) : [];
+      const report = newFeature(rootDir, name, { featuresDir: config.featuresDir, rfcDir: config.rfcDir, signals });
       console.log(renderReport(report, { title: `feature "${name}" scaffolded` }));
       console.log('');
       console.log('next: write the stories and criteria in SPEC.md, then run `adp status`');
@@ -367,7 +374,8 @@ export async function run(argv) {
   // ---- ring 3 ----
   const project = loadProject(config);
   const audit = auditProject(project, { ci: Boolean(flags.ci) });
-  const evaluation = evaluateGates(audit.findings);
+  const ceremony = projectCeremony(project.features);
+  const evaluation = evaluateGates(audit.findings, { ceremony });
 
   // Ring 3, and the only command that executes anything from the repository.
   if (command === 'verify' && flags.status) {
@@ -767,6 +775,15 @@ export async function run(argv) {
     console.log(`principles: ${project.constitution.principles.length}`);
     console.log(`test files: ${project.testFiles.length} · src files: ${project.srcFiles.length}`);
     console.log(`codes     : ${allMappedCodes().size} mapped across ${GATES.length} gates`);
+    if (project.features.length) {
+      console.log('');
+      console.log('ceremony  :');
+      for (const f of project.features) {
+        const c = ceremony.perFeature.get(f.name);
+        const signals = c.signals.length ? c.signals.join(', ') : 'none declared';
+        console.log(`  ${f.name.padEnd(24)} ${c.level.padEnd(10)} signals: ${signals}`);
+      }
+    }
     console.log('');
     console.log(renderGates(evaluation));
     return evaluation.exitCode;

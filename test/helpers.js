@@ -8,6 +8,7 @@ import { loadConfig } from '../src/config.js';
 import { loadProject } from '../src/core/project.js';
 import { auditProject } from '../src/core/audit.js';
 import { evaluateGates } from '../src/core/gates.js';
+import { projectCeremony } from '../src/core/ceremony.js';
 
 export const APPROVED_SCOPE = `# Project Scope
 
@@ -56,7 +57,8 @@ export function auditOf(files, { ci = false, config = {} } = {}) {
   try {
     const project = loadProject(loadConfig(root));
     const audit = auditProject(project, { ci });
-    return { audit, gates: evaluateGates(audit.findings), project, root };
+    const ceremony = projectCeremony(project.features);
+    return { audit, gates: evaluateGates(audit.findings, { ceremony }), ceremony, project, root };
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

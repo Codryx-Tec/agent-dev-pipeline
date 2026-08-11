@@ -38,6 +38,7 @@ Then break it on purpose — that is the part worth doing:
 # change a task's status to [done]                 -> G6 goes red: TASK_DONE_WITHOUT_PROOF
 # remove one alternative from D-001 in RFC.md           -> G2 goes red: DECISION_WITHOUT_ALTERNATIVE
 # add a criterion to SPEC.md with no task               -> G4 warns: AC_WITHOUT_TASK
+# remove the "signals:" line from PRD.md                -> G2 reads n/a; RFC.md is no longer required
 ```
 
 Each time, `node ../bin/adp.js prompt` gives you the exact text to paste
@@ -49,7 +50,10 @@ back to an AI to fix it.
 .spec/SCOPE.md            approved — this is what opens G0
 .spec/CONSTITUTION.md     four principles; P-004 is executed against a test tag
 .spec/features/class-enrolment/
-    PRD.md                prose only — what, for whom, why
+    PRD.md                prose only — what, for whom, why; declares
+                           "signals: multiple-teams", which is what puts
+                           this feature at rfc-first ceremony and keeps
+                           G2/G3 due (see "break it" above)
     RFC.md                2 decisions with alternatives     (owns D-xxx)
     DESIGN.md             the technical shape, in prose
     SPEC.md               2 stories, 3 criteria, 2 assumptions, 1 question,

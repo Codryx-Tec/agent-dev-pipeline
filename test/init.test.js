@@ -191,16 +191,45 @@ test('new refuses a feature name the grammar cannot carry @spec:AC-002', () => {
   });
 });
 
-test('new creates the three feature documents and does not renumber over existing codes @spec:AC-002', () => {
+test('new creates PRD and SPEC by default; DESIGN.md is not due at light ceremony @spec:AC-002 @spec:AC-058', () => {
   fresh((root) => {
     initProject(root);
     const first = newFeature(root, 'alpha');
-    assert.equal(first.created.length, 3, 'RFC.md is no longer part of feature scaffolding (Q-001)');
-    // The first feature must not be told its own placeholders are already taken.
-    assert.equal(first.notes.length, 0);
+    assert.equal(first.created.length, 2, 'no signals declared means light ceremony (M2b) — DESIGN.md is skipped');
+    assert.deepEqual(first.created.sort(), ['.spec/features/alpha/PRD.md', '.spec/features/alpha/SPEC.md']);
+    assert.equal(first.ceremony.level, 'light');
+    // A ceremony note is expected; codes-in-use is not — first feature ever.
+    assert.equal(first.notes.filter((n) => /codes already in use/.test(n)).length, 0);
 
     const second = newFeature(root, 'beta');
     assert.match(second.notes.join(' '), /codes are unique project-wide/);
+  });
+});
+
+test('new --signals raises the ceremony level and scaffolds DESIGN.md too @spec:AC-058', () => {
+  fresh((root) => {
+    initProject(root);
+    const report = newFeature(root, 'payment-flow', { signals: ['money-or-pii'] });
+    assert.equal(report.created.length, 3, 'full ceremony requires DESIGN.md up front');
+    assert.deepEqual(report.created.sort(), [
+      '.spec/features/payment-flow/DESIGN.md',
+      '.spec/features/payment-flow/PRD.md',
+      '.spec/features/payment-flow/SPEC.md',
+    ]);
+    assert.equal(report.ceremony.level, 'full');
+    assert.equal(report.ceremony.requiresRfc, true);
+
+    const prd = readFileSync(path.join(root, '.spec/features/payment-flow/PRD.md'), 'utf8');
+    assert.match(prd, /> signals: money-or-pii/);
+  });
+});
+
+test('new --signals with an unrecognized slug quietly drops it — the parser leaves it for SIGNAL_UNKNOWN to catch @spec:AC-058', () => {
+  fresh((root) => {
+    initProject(root);
+    const report = newFeature(root, 'gamma', { signals: ['not-a-real-signal'] });
+    assert.equal(report.ceremony.level, 'light', 'an unrecognized slug contributes nothing to the level');
+    assert.equal(report.created.length, 2);
   });
 });
 
