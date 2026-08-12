@@ -7,145 +7,175 @@
 
 ## 1. Shape of the system
 
-Three rings, each depending only on the ring beneath it. Nothing in an inner ring
-knows an outer ring exists.
+Three layers, each depending only on the layer beneath it. Nothing in an
+inner layer knows an outer layer exists. (This is a different "ring" from
+`cli.js`'s own "three cost rings" comment — that one is about how much of
+the project a command loads before doing anything; this one is dependency
+direction. Same word, two unrelated meanings, worth keeping straight.)
 
 ```
         the caller: a terminal, a CI job, or an AI agent
               │  argv in · stdout + exit code out
    ┌──────────▼───────────────────────────────────────────────┐
-   │  bin/adp.js · src/cli.js   dispatch, rendering, --json   │
+   │  bin/adp.js · src/cli.js   dispatch, rendering, --json    │
    └──────────────────────┬───────────────────────────────────┘
                           │  pure function calls
    ┌──────────────────────▼───────────────────────────────────┐
-   │  src/core/  project · audit · gates · verify · init      │
-   │             plan · executor · ledger · prompts           │
+   │  src/core/  project · audit · gates · ceremony · verify   │
+   │  init · upgrade · trust · plan · executor · resume        │
+   │  estimate · closure · report · report-html · ledger       │
    └──────────────────────┬───────────────────────────────────┘
                           │
    ┌──────────────────────▼───────────────────────────────────┐
-   │  src/parsers/  prd · rfc · tdd · constitution · annotations│
-   │  src/util/     text · glob                                │
+   │  src/parsers/  prd · rfc · spec · design · constitution   │
+   │                backlog · annotations                       │
+   │  src/migrations/  0.5.0 · 0.6.0 · index (the registry)     │
+   │  src/util/     text · glob                                 │
    └───────────────────────────────────────────────────────────┘
 
    outside the repository:  <state-dir>/ledger.jsonl · streams/<runId>/*.jsonl
 ```
 
 **The load-bearing rule:** `src/core/` performs no I/O beyond reading the
-documents — it takes a project and returns findings. Rendering and serialisation
-sit above it, which is what makes `audit --ci` in a pipeline and `status` in a
-terminal literally the same verdict rather than two implementations that agree
-today.
+documents — it takes a project and returns findings. Rendering and
+serialisation sit above it, which is what makes `audit --ci` in a pipeline
+and `status` in a terminal literally the same verdict rather than two
+implementations that agree today.
 
 ## 2. Repository layout
 
-The repository root **is** the package. What the tool *is* lives in `src/`; what
-the tool *installs* lives in `payload/`; nothing is both:
+The repository root **is** the package. What the tool *is* lives in `src/`;
+what the tool *installs* lives in `payload/`; nothing is both:
 
 ```
-
-├── bin/adp.js              entrypoint; sets process.exitCode, never process.exit
+├── bin/adp.js               entrypoint; sets process.exitCode, never process.exit
 ├── src/
 │   ├── cli.js                  command dispatch, three cost rings
-│   ├── config.js               DEFAULT_CONFIG + loader, everything defaulted
+│   ├── config.js                DEFAULT_CONFIG + loader, everything defaulted
+│   ├── version.js               the tool's own version, read exactly once
 │   ├── parsers/
-│   │   ├── prd.js              US-xxx / AC-xxx with Given/When/Then
-│   │   ├── rfc.js              ASM-xxx / Q-xxx / decisions and alternatives
-│   │   ├── tdd.js              T-xxx with Refs, Files, Reads, Depends
-│   │   ├── constitution.js     P-xxx, levels, declared verifications
-│   │   └── annotations.js      @spec / @principle scanner + sandboxed grep
+│   │   ├── prd.js                   prose only — what, for whom, why
+│   │   ├── rfc.js                   D-xxx decisions, two dialects
+│   │   ├── spec.js                  US/AC/ASM/Q/T — "the layer the machine confers"
+│   │   ├── design.js                thin — DESIGN.md is presence-checked, not parsed
+│   │   ├── backlog.js               what fell outside the MVP boundary
+│   │   ├── constitution.js          P-xxx, levels, declared verifications
+│   │   └── annotations.js           @spec / @principle scanner + sandboxed grep
 │   ├── core/
-│   │   ├── project.js          load the whole project once
-│   │   ├── audit.js            findings with stable codes
-│   │   ├── principles.js       execute the constitution's verifications
-│   │   ├── gates.js            G0–G5: finding code → gate, ordering, blocking
-│   │   ├── verify.js           run the test command, extract per-test results
-│   │   ├── reporters/          tap.js · vitest.js · junit.js · exitcode.js
-│   │   ├── plan.js             file-conflict graph → lanes and waves
-│   │   ├── executor.js         worktrees, headless workers, merges
-│   │   ├── ledger.js           append-only events outside the repo
-│   │   ├── prompts.js          red gate → paste-ready prompt
-│   │   ├── report.js           terminal / json / markdown rendering
-│   │   └── init.js             scaffold, idempotent
+│   │   ├── project.js               load the whole project once
+│   │   ├── audit.js                 findings with stable codes
+│   │   ├── ceremony.js              signals → level → which gates a feature owes
+│   │   ├── principles.js            execute the constitution's verifications
+│   │   ├── gates.js                 G0–G6: finding code → gate, ordering, blocking, n/a
+│   │   ├── verify.js                run the test command, extract per-test results
+│   │   ├── reporters/               tap.js · vitest.js · junit.js · exitcode.js
+│   │   ├── estimate.js              Function Point hours from a declared PF count
+│   │   ├── closure.js               adp close — recalibrate the hours table from outcomes
+│   │   ├── plan.js                  file-conflict graph → lanes and waves
+│   │   ├── executor.js              worktrees, headless workers, merges
+│   │   ├── rerun.js                 re-run one lane or task, cleanly
+│   │   ├── resume.js                derive session-resume briefing from the repo
+│   │   ├── ledger.js                append-only events outside the repo
+│   │   ├── prompts.js               red gate → paste-ready prompt
+│   │   ├── report.js                terminal / json / markdown rendering
+│   │   ├── report-html.js           adp report — self-contained viability snapshot
+│   │   ├── trust.js                 consent gate for the project's test command
+│   │   ├── integrity.js             payload SHA-256, the write guard
+│   │   ├── install-map.js           one map of where every payload file lands
+│   │   ├── paths.js                 shared path helpers
+│   │   ├── upgrade.js               classify + apply payload drift against the lockfile
+│   │   ├── agent.js                 headless agent CLI invocation
+│   │   └── init.js                  scaffold, idempotent
+│   ├── migrations/
+│   │   ├── index.js                  pendingMigrations() — plain numeric version compare
+│   │   ├── 0.5.0.js                  Portuguese → English token rename
+│   │   └── 0.6.0.js                  PRD/RFC/TDD → PRD/RFC/SPEC/DESIGN, RFC un-nesting
+│   ├── server/                       server.js (read-only http) · state.js (projection)
+│   ├── ui/                           index.html · app.css · app.js
 │   └── util/{text.js,glob.js}
-├── server/                     read-only http + state projection
-├── ui/                         index.html · app.css · app.js
-├── server/                     read-only http + state projection
-├── ui/                         index.html · app.css · app.js
-├── payload/                    what init copies into a project
-│   ├── templates/              SCOPE · PRD · RFC · TDD · CONSTITUTION
-│   ├── claude/skills/adp/      the agent contract
-│   └── claude/{agents,hooks}/  role agents and hooks
-└── test/*.test.js              node:test, no framework
+├── payload/                     what init copies into a project
+│   ├── templates/                    SCOPE · PRD · RFC · SPEC · DESIGN · CONSTITUTION
+│   ├── metrics/                      hours-per-fp.default.json — the cold-start table
+│   ├── claude/skills/adp/            the agent contract
+│   └── claude/{agents,hooks}/        role agents and hooks
+└── test/*.test.js                node:test, no framework
 ```
-
-<!-- A note here explained how the page's source would be split across six files
-     and inlined at request time, refining D-005. It went with the monitor
-     (D-011). -->
 
 ## 3. Document grammar
 
-Deliberately compatible with what `Projeto_Agent/.spec/scripts/audit.js` already
-accepts, so the existing scripts keep passing during the migration.
+| Element | Owning document | Form |
+|---|---|---|
+| story | `PRD.md` used to; `SPEC.md` now | `### US-001 — Title` |
+| criterion | `SPEC.md` | `#### AC-001 — Title` then `- **Given**` / `- **When**` / `- **Then**` bullets |
+| assumption | `SPEC.md` | `- **ASM-001** — text *(status: open\|confirmed\|invalidated)*` |
+| question | `SPEC.md` | `- **Q-001** — text *(status: open\|answered)*` |
+| decision | `RFC-<NNN>-<slug>.md`, flat under `.spec/rfc/` | `### D-001 — Title` with an **Alternatives considered** list of ≥2 and a **Decision:** line |
+| task | `SPEC.md` | `## T-001 — Title [pending\|in-progress\|in-test\|done]` then `- Refs:`, `- Files:`, optional `- Reads:` / `- Depends on:` |
+| principle | `CONSTITUTION.md` | `## P-001 [MUST\|SHOULD\|MAY] Title` then `- verification(...)` |
+| signal | `PRD.md` header | `> signals: multiple-teams, hard-to-reverse, money-or-pii, new-tech, large-estimate` (any subset) |
+| RFC link | `PRD.md` header | `> rfcs: RFC-001, RFC-004` — one PRD may point at several |
+| backlog item | `BACKLOG.md`, project-wide, optional | one prose line per item, no tracking code — a line that already looks like one (`US-001`, `T-003`, …) is `BACKLOG_ITEM_WITH_CODE` |
+| decision field | `SCOPE.md` | `**Decision:** pending\|go\|no-go` — read, rendered, never enforced |
+| test annotation | test title | `@spec:AC-001` or `@principle:P-001` |
 
-| Element | Form |
-|---|---|
-| story | `### US-001 — Title` |
-| criterion | `#### AC-001 — Title` then `- **Given**` / `- **When**` / `- **Then**` bullets |
-| assumption | `- **ASM-001** — text *(status: open\|confirmed\|invalidated)*` |
-| question | `- **Q-001** — text *(status: open\|answered)*` |
-| decision | `### D-001 — Title` with an **Alternatives considered** list of ≥2 and a **Decision:** line |
-| task | `## T-001 — Title [pending\|in-progress\|in-test\|done]` then `- Refs:` and `- Files:` |
-| principle | `## P-001 [MUST\|SHOULD\|MAY] Title` then `- verification(...)` |
-| test annotation | `@spec:AC-001` or `@principle:P-001` in the test **title** |
+0.6.0 split what one PRD/RFC/TDD trio used to hold: `PRD.md` is prose only
+(what, for whom, why); `RFC.md` keeps only `D-xxx` and moved out of the
+feature directory into a flat, globally-numbered family (`.spec/rfc/`),
+because one RFC can serve several PRDs and one PRD often needs several;
+`SPEC.md` is new and owns everything else the engine cross-references —
+"the layer the machine confers"; `DESIGN.md` (renamed from `TDD.md`) is
+prose only, HOW in detail, with no grammar of its own beyond its header —
+gate G3 passes once it exists.
 
-Two grammar notes carried over from the reference engine, both deliberate. The
-annotation goes in the test *title*, not a comment, because a title survives into
-every reporter's output — which is what lets one scanner work across `pytest` and
-`vitest` without knowing either. And codes are unique **project-wide**, not
-per-document, so a task in `TDD.md` may legally reference a criterion defined in
-any `PRD.md` in the project; reference resolution is global.
+Two grammar notes carried over from the reference engine, both deliberate.
+The annotation goes in the test *title*, not a comment, because a title
+survives into every reporter's output — which is what lets one scanner
+work across `pytest` and `vitest` without knowing either. And codes are
+unique **project-wide**, not per-document, so a task may legally reference
+a criterion defined in any `PRD.md`/`SPEC.md` in the project; reference
+resolution is global.
 
-Statuses are engine tokens: English, and never localised at render time (D-016).
-Note the new status `[in-test]`, which the TEST column needs and the current scripts do
-not know — handled in T-004.
+Statuses are engine tokens: English, and never localised at render time
+(D-016).
 
 ## 4. The gates
 
-Each gate owns a subset of finding codes. A gate is green when none of its codes
-fired at error severity, red when at least one did, and **blocked** when any
-earlier gate is red — blocked is a third state, rendered distinctly from red,
-because "we have not got there yet" is not the same as "this is wrong".
+Each gate owns a subset of finding codes. A gate is green when none of its
+codes fired at error severity, red when at least one did, **blocked** when
+an earlier gate is red, and **n/a** when the ceremony matrix decided this
+gate is not due for any feature at its current level — n/a applies only to
+G2 and G3, never the other five, which are never skippable regardless of
+ceremony. Four states because "we have not got there yet" (blocked), "this
+is wrong" (red) and "not owed right now" (n/a) are three different claims,
+and only a gate with zero findings of its own is ever allowed to read n/a —
+a gate sitting on a real error is red even at a ceremony level that
+wouldn't otherwise require it (a stale RFC that exists is still checked for
+completeness, independent of who currently links it).
 
 | Gate | Question it answers | Owns |
 |---|---|---|
 | G0 | Is the scope approved? | `SCOPE_MISSING`, `SCOPE_NOT_APPROVED`, `SCOPE_FIELD_EMPTY` |
-| G1 | Is the PRD complete? | `PRD_MISSING`, `SPEC_WITHOUT_US`, `US_WITHOUT_AC`, `AC_INCOMPLETE`, `AC_OUTSIDE_US`, `ID_DUPLICATE`, `ID_TOO_SHORT` |
-| G2 | Is the path decided? | `RFC_MISSING`, `DECISION_WITHOUT_ALTERNATIVE`, `DECISION_WITHOUT_CHOICE`, `SECTION_MISSING`, `Q_BLOCKING_OPEN`, `STATUS_INVALID`, `ASM_WITHOUT_CODE` |
-| G3 | Is the breakdown implementable? | `TDD_MISSING`, `AC_WITHOUT_TASK`, `REF_BROKEN`, `REF_WITHOUT_AC`, `TASK_WITHOUT_FILES`, `TASK_STATUS_INVALID`, `FILE_MISSING` |
-| G4 | Is it proven? | `AC_WITHOUT_TEST`, `AC_WITHOUT_PROOF`, `PROOF_STALE`, `PROOF_WEAK` |
-| G5 | Is everything aligned? | `TEST_ORPHAN`, `TASK_DONE_WITHOUT_PROOF`, `ASM_OPEN`, `Q_OPEN`, `PRINCIPLE_WITHOUT_VERIFICATION`, `PRINCIPLE_VIOLATED`, `LEVEL_INVALID`, `VERIFICATION_MALFORMED`, `GLOB_WITHOUT_FILES`, `FILE_ORPHAN`, `FEATURE_MISMATCH`, `PROJECT_INVALID` |
+| G1 | Is the PRD complete — what, for whom, why? | `PRD_MISSING`, `ID_DUPLICATE`, `ID_TOO_SHORT`, `SIGNAL_UNKNOWN`, `PRD_UNPLACED`, `BACKLOG_ITEM_WITH_CODE`, `PRD_WITH_SOLUTION` |
+| G2 | Is the path decided, with alternatives recorded? | `RFC_MISSING`, `DECISION_WITHOUT_ALTERNATIVE`, `DECISION_WITHOUT_CHOICE`, `CONTEXT_WITHOUT_NUMBERS` — n/a-eligible |
+| G3 | Is the design written? | `DESIGN_MISSING` — n/a-eligible, presence-only |
+| G4 | Is the spec complete and implementable? | `SPEC_MISSING`, `SPEC_WITHOUT_US`, `US_WITHOUT_AC`, `AC_INCOMPLETE`, `AC_OUTSIDE_US`, `AC_WITHOUT_TASK`, `REF_BROKEN`, `REF_WITHOUT_AC`, `TASK_WITHOUT_FILES`, `TASK_STATUS_INVALID`, `FILE_MISSING`, `Q_BLOCKING_OPEN`, `ASM_WITHOUT_CODE`, `SECTION_MISSING`, `STATUS_INVALID`, `AC_NOT_OBSERVABLE` |
+| G5 | Is every acceptance criterion proven by a passing test? | `AC_WITHOUT_TEST`, `AC_WITHOUT_PROOF`, `PROOF_STALE`, `PROOF_WEAK` |
+| G6 | Do the documents, the code and the constitution still agree? | `TEST_ORPHAN`, `TASK_DONE_WITHOUT_PROOF`, `ASM_OPEN`, `Q_OPEN`, `PRINCIPLE_WITHOUT_VERIFICATION`, `PRINCIPLE_VIOLATED`, `LEVEL_INVALID`, `VERIFICATION_MALFORMED`, `GLOB_WITHOUT_FILES`, `FILE_ORPHAN`, `FEATURE_MISMATCH`, `PROJECT_INVALID`, `DOC_TOO_LONG`, `DOC_FOSSIL` |
 
-`gates.js` holds this map as data, and a test asserts that **every code the audit
-can emit is assigned to exactly one gate**. Without that test, a new code silently
-belongs to no gate and becomes invisible — the failure mode D-009 warned about.
-That test reads the emittable codes out of the engine's own source rather than
-from a hand-kept list, because a hand-kept list would drift, and drift is the one
-thing this tool exists to catch.
+`gates.js` holds this map as data, and a test asserts that **every code the
+audit can emit is assigned to exactly one gate**. Without that test, a new
+code silently belongs to no gate and becomes invisible — the failure mode
+D-009 warned about. That test reads the emittable codes out of the engine's
+own source rather than from a hand-kept list, because a hand-kept list
+would drift, and drift is the one thing this tool exists to catch.
 
-> **Synced with the implementation (M1).** Eight codes above were added while
-> building: the four `*_MISSING` codes, because a missing document must be
-> reported by the gate that owns it rather than crashing the loader;
-> `DECISION_WITHOUT_CHOICE`, because a decision can record its alternatives and still
-> never pick one; `Q_OPEN`, because a non-blocking open question is worth a
-> warning; `FEATURE_MISMATCH`; and `PROJECT_INVALID`. The exit code also
-> carries information the original design did not specify: it is the **number of
-> the first failing gate** (1–6 for G0–G5), so a pipeline learns *where* it broke
-> from the status alone.
+The exit code is the number of the first failing gate (1–7 for G0–G6, 0
+clean), so a pipeline learns *where* it broke from the status alone.
 
 ## 5. Task status and proof
 
-Status lives in the `TDD.md` heading and nowhere else. The engine reads it, and
-pairs it with the proof recorded per acceptance criterion.
+Status lives in `SPEC.md`'s task heading and nowhere else. The engine reads
+it, and pairs it with the proof recorded per acceptance criterion.
 
 | Status | Meaning | The engine's view |
 |---|---|---|
@@ -155,74 +185,106 @@ pairs it with the proof recorded per acceptance criterion.
 | `[done]` | claimed finished | **every referenced criterion must have PASS proof** |
 
 That last row is the whole point: `[done]` is a claim, and the audit either
-grants it or reports `TASK_DONE_WITHOUT_PROOF` (AC-014). A task cannot leave
-`[in-test]` by declaring itself finished — the test runner decides, and a skipped
-test is never proof.
-
-<!-- This section previously specified a kanban projection into five columns.
-     The columns went with the monitor (RFC D-011); the rule underneath them did
-     not, and is what is written above. -->
+grants it or reports `TASK_DONE_WITHOUT_PROOF`. A task cannot leave
+`[in-test]` by declaring itself finished — the test runner decides, and a
+skipped test is never proof.
 
 ## 6. Execution model
 
-`plan.js` builds the file-conflict graph — tasks whose `Files:` sets intersect
-are fused into one lane, and each connected component becomes a lane with its own
-branch and worktree. A task with no declared files is never placed in a lane; it
-goes to the sequential remainder with its reason recorded (AC-012). Lanes are cut
-into waves of at most `maxParallel`.
+`plan.js` builds the file-conflict graph — tasks whose `Files:` sets
+intersect are fused into one lane, and each connected component becomes a
+lane with its own branch and worktree. A task with no declared files is
+never placed in a lane; it goes to the sequential remainder with its reason
+recorded. Lanes are cut into waves of at most `maxParallel`. Declared
+`Reads:`/`Depends on:` lay a separate ordering graph over the same lanes: a
+cycle among tasks, a dependency on an unknown id, or a dependency on an
+excluded task is refused rather than guessed at; mutually dependent lanes
+are merged, not refused, since two lanes each needing the other is a real
+absence of parallelism, not a contradiction.
 
-`executor.js` runs a lane by creating the worktree, invoking the configured agent
-CLI once per task in headless mode with the task brief as its prompt, expecting
-exactly one commit per task, then merging the lane back with `--no-ff`. It is a
-**dispatcher, not a script**: every lane and every sequential task is an
-addressable target, so re-running one lane cleans that lane's previous worktree
-and branch and leaves merged work alone (AC-022).
+`executor.js` runs a lane by creating the worktree, invoking the configured
+agent CLI once per task in headless mode with the task brief as its
+prompt, expecting exactly one commit per task, then merging the lane back
+with `--no-ff`. It is a **dispatcher, not a script**: every lane and every
+sequential task is an addressable target, so re-running one lane cleans
+that lane's previous worktree and branch and leaves merged work alone.
 
-Token economy is enforced structurally rather than by good intentions. The worker
-writes its raw output to `<state-dir>/streams/<runId>/<lane>--<task>.jsonl`, which
-lives outside the repository and is read only on explicit request. The orchestrator
-composes its progress reports from task status, the ledger and each worker's short
-final summary — never from a transcript (AC-021). One task, one worktree, one fresh
-context, one commit, one summary.
+Token economy is enforced structurally rather than by good intentions. The
+worker writes its raw output to `<state-dir>/streams/<runId>/<lane>--
+<task>.jsonl`, which lives outside the repository and is read only on
+explicit request. The orchestrator composes its progress reports from task
+status, the ledger and each worker's short final summary — never from a
+transcript. One task, one worktree, one fresh context, one commit, one
+summary.
 
-**Two honest limits, both consequences recorded in `RFC.md`.** ASM-005 assumes
-declared file lists are accurate; a worker touching an undeclared file breaks lane
-disjointness, so T-018 detects the violation after the fact and reports it rather
-than trusting the declaration. And per D-002 a worker cannot be asked a follow-up:
-it succeeds, fails, or times out.
+**Two honest limits, both consequences recorded in `RFC.md`.** ASM-005
+assumes declared file lists are accurate; a worker touching an undeclared
+file breaks lane disjointness, so the executor detects the violation after
+the fact and reports it rather than trusting the declaration. And per D-002
+a worker cannot be asked a follow-up: it succeeds, fails, or times out.
+
+## 7. What 0.6.0 added
+
+Six pieces landed after M1's original six-gate, four-parser shape (US-018
+through US-023 in `SPEC.md` carry the full Given/When/Then criteria for all
+of them):
+
+**Ceremony matrix** (`core/ceremony.js`). A PRD's declared signals compute
+a level (`light`/`medium`/`rfc-first`/`full`), never the other way around —
+a PRD can never disagree with its own signals. The level decides whether a
+feature owes G2 (RFC) and G3 (DESIGN); `projectCeremony()` aggregates every
+feature's level project-wide, worst case wins, feeding `gates.js`'s `n/a`
+state.
+
+**MVP boundary and backlog** (`parsers/backlog.js`). Every feature with a
+PRD must be named in `SCOPE.md`'s MVP checklist or it is `PRD_UNPLACED` —
+nothing exists in limbo. `.spec/BACKLOG.md` is where everything else waits,
+as prose with no tracking code; a backlog line that already carries one is
+`BACKLOG_ITEM_WITH_CODE`, because a deferred item that already looks proven
+is the loophole this check exists to close.
+
+**Viability report** (`core/report-html.js`, `adp report`). A portable,
+self-contained snapshot — one HTML file with no external reference, or a
+text form for a terminal — carrying every gate, every feature's ceremony
+and MVP placement, and `SCOPE.md`'s `**Decision:**` field. Declared and
+rendered, never enforced; the same posture ceremony signals and the
+backlog already take.
+
+**Function Point estimation** (`core/estimate.js`, `adp profile` / `adp
+estimate --pf <n>`). Hours are a human-declared PF count times the
+matching row of `.spec/metrics/hours-per-fp.json` (seeded from
+`payload/metrics/hours-per-fp.default.json`, every row `source:
+"cold-start"`) — never machine-counted. `real-time`/`infra`/`mathematical`
+app types carry an explicit applicability warning, since Function Point
+analysis measures them poorly.
+
+**Closing the estimation loop** (`core/closure.js`, `adp close --hours
+<n>`). Without this, the hours table never leaves cold start and every
+estimate stays opinion imported from a market figure, forever.
+`recalibrateRow()` blends each real outcome into the matching table row —
+nudge at 1 observation, blend at 2, mean-plus-widen at 3–5, fully observed
+at 6+ — always clamped so `low ≤ likely ≤ high` holds. Local to one project
+only; cross-project history (`hours-history.jsonl`, anonymized,
+`adp metrics import/export`) is still `.spec/BACKLOG.md`.
+
+**Antipatterns as findings** (`core/audit.js`, `parsers/rfc.js`,
+`parsers/design.js`). Five of PRD-003b's eight codes: `PRD_WITH_SOLUTION`
+(a PRD naming a forbidden technical term), `CONTEXT_WITHOUT_NUMBERS` (an
+RFC's context with no measurable figure), `DOC_TOO_LONG` (a PRD or DESIGN
+over its configured line ceiling — `SPEC.md` is exempt, its length tracks
+real content), `DOC_FOSSIL` (a DESIGN older than the newest file its tasks
+map, past a five-minute copy-jitter tolerance), and `AC_NOT_OBSERVABLE` (a
+criterion with a vague adjective and no number anywhere in its
+Given/When/Then text). `STRAW_OPTION`, `OPTION_DO_NOTHING_MISSING` and
+`DUPLICATE_PROSE` remain in `.spec/BACKLOG.md`.
+
+**The migration registry** (`migrations/index.js`, `0.5.0.js`, `0.6.0.js`,
+`adp upgrade`). `0.5.0.js` was the Portuguese-to-English token rename,
+written after the fact since 0.5.0 shipped without one. `0.6.0.js` is the
+PRD/RFC/TDD → PRD/RFC/SPEC/DESIGN codemod and RFC un-nesting, operating per
+feature directory rather than per file since it reads up to three source
+documents to write three destination ones, and never overwrites a SPEC.md
+section that already exists — a partial or hand-started SPEC.md is merged
+into, not clobbered.
 
 ---
-
-## Tasks
-
-### Milestone M1 — Engine core
-
-## Expected parallelism
-
-Given the file lists above, the planner should produce roughly this shape.
-Milestone M1 is the widest: T-002 through T-006 touch five disjoint parser files
-and can run as five concurrent lanes, with T-007 waiting because it depends on all
-of them. Core tasks T-020 through T-024 are five disjoint files, so five lanes.
-
-The genuine serializations are honest ones: T-007 needs every parser, T-008 needs
-the audit's code list, T-014 needs the audit and verification state, and T-023
-needs the executor. Nothing is serialized by accident — and any task that looks
-parallel but is not will say so, because a task with no declared file list is
-routed to the sequential remainder with its reason printed.
-
-## Migration from the current scripts
-
-`Projeto_Agent/.spec/scripts/audit.js` and `verify.js` keep working untouched
-until M2 lands, because the grammar in section 3 is a superset of what they parse.
-When the new engine passes on the same repository, the old scripts become a
-compatibility shim that prints a pointer to the new command, and `AGENTS.md`
-rule 10 — read config from `.spec/spec.config.json`, never hardcode paths —
-carries over unchanged.
-
-Two behaviours change on purpose and must be announced, because both make the
-gate stricter than it is today. Proof stops meaning *an annotation exists* and
-starts meaning *a test passed*, so tasks currently marked `[done]` may
-legitimately fall back to TEST until real tests exist. And the constitution's
-`verification(forbidden|required)` declarations begin to execute, so principles
-that have been decorative since they were written will start producing findings —
-P-003 through P-009 in the current constitution have never been run.
