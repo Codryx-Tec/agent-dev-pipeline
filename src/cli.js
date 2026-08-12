@@ -43,12 +43,21 @@ import {
   estimateJsonPath,
   loadProfile,
   loadHoursTable,
+  loadEstimate,
   computeEstimate,
   renderEstimateMd,
   renderEstimateCsv,
   APP_TYPES,
   FAMILIARITY_LEVELS,
 } from './core/estimate.js';
+import {
+  loadClosures,
+  appendClosure,
+  recordClosure,
+  recalibrateRow,
+  calibrationLabel,
+  saveHoursTable,
+} from './core/closure.js';
 
 const HELP = `agent-dev-pipeline — the specification that stays true
 
@@ -68,6 +77,9 @@ usage: adp <command> [options]
   estimate --pf <n> [--csv]
                             hours = declared Function Points x the profile's table row;
                             never proof — PF count is human-declared, not auto-counted
+  close --hours <n> [--note "<s>"]
+                            record the real hours a feature took; recalibrates the
+                            table row adp estimate last used toward what happened
   audit [--ci] [--json]     evaluate every gate and report the findings
   gates [--list] [--json]   the seven gates and their state, without the findings
   prompt [<gate>]           the paste-ready text for a red gate
@@ -114,6 +126,7 @@ options:
   --brownfield    existing codebase, not a fresh one (profile)
   --tests         the codebase already has automated tests (profile)
   --pf <n>        declared Function Point count (estimate) — never machine-counted
+  --hours <n>     real hours a feature took (close) — the one field nothing else supplies
   --csv           print CSV instead of Markdown (estimate)
   --port <n>      port for the monitor (default 7788)
   --host <addr>   bind address for the monitor (default 127.0.0.1, loopback)
@@ -121,7 +134,9 @@ options:
   --lane <id>     execute only this lane (run)
   --allow-edits   let the agent write to the worktree unasked (run, rerun)
   --no-lane-tests skip the approved test command after each task (run, rerun)
-  --note <s>      what the session was doing (checkpoint)
+  --note <s>      what the session was doing (checkpoint), or what surprised you /
+                  what you'd do differently (close) — stored, not auto-written to
+                  BEST_PRACTICES.md; same flag name, unrelated meaning per command
   --next <s>      what it intended to do next (checkpoint)
   --clear         forget the recorded note (checkpoint)
   --no-merge      leave lanes on their branches instead of merging back (run)
@@ -467,6 +482,54 @@ export async function run(argv) {
     writeFileSync(estimateJsonFile, JSON.stringify(estimate, null, 2) + '\n');
     console.log(md);
     console.log(`wrote ${path.relative(rootDir, estimatePath)}`);
+    return 0;
+  }
+
+  if (command === 'close') {
+    if (typeof flags.hours !== 'string' || !Number.isFinite(Number(flags.hours))) {
+      console.error('error: --hours needs a number: adp close --hours <n>');
+      return 2;
+    }
+    const hours = Number(flags.hours);
+    const note = typeof flags.note === 'string' ? flags.note : null;
+    const estimate = loadEstimate(rootDir, config);
+    if (!estimate) {
+      console.error('note: no .spec/metrics/estimate.json — run `adp estimate --pf <n>` first for a deviation to report.');
+      console.error('recording the hours alone.');
+    }
+
+    let closure;
+    try {
+      closure = recordClosure({ hours, note, estimate });
+    } catch (err) {
+      console.error(`error: ${err.message}`);
+      return 2;
+    }
+    appendClosure(rootDir, config, closure);
+    console.log(`recorded : ${hours}h` + (closure.deviationPct !== null ? ` (estimate said ${closure.estimate.likely}h — ${closure.deviationPct > 0 ? '+' : ''}${closure.deviationPct}%)` : ''));
+
+    if (closure.rowUsed && closure.observedHoursPerFp !== null) {
+      const hoursTable = loadHoursTable(rootDir, config);
+      if (hoursTable) {
+        const idx = hoursTable.findIndex((r) => r.profile === closure.rowUsed);
+        if (idx !== -1) {
+          const priorClosures = loadClosures(rootDir, config)
+            .filter((c) => c.rowUsed === closure.rowUsed && c.observedHoursPerFp !== null)
+            .map((c) => c.observedHoursPerFp);
+          const updatedRow = recalibrateRow(hoursTable[idx], priorClosures);
+          hoursTable[idx] = updatedRow;
+          saveHoursTable(rootDir, config, hoursTable);
+          console.log(`table    : ${closure.rowUsed} updated — ${calibrationLabel(updatedRow.observations)} (${updatedRow.observations} observation(s))`);
+        }
+      }
+    }
+
+    if (note) {
+      console.log('');
+      console.log('note recorded. If this taught you something worth repeating, add it to');
+      console.log('.spec/BEST_PRACTICES.md by hand — a pattern earns a place there after it');
+      console.log('has worked more than once, which a single closure cannot establish alone.');
+    }
     return 0;
   }
 

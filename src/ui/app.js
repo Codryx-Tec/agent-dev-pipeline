@@ -112,7 +112,8 @@
       var estFact = text('span', 'fact');
       estFact.appendChild(text('b', null, e.pf + ' PF'));
       estFact.appendChild(document.createTextNode(
-        ' → ' + e.hours.low + '–' + e.hours.high + 'h (' + e.rowUsed + ')'
+        ' → ' + e.hours.low + '–' + e.hours.high + 'h (' + e.rowUsed + ')' +
+        (e.calibration ? ' · ' + e.calibration : '')
       ));
       host.appendChild(estFact);
     }

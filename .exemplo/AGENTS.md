@@ -94,6 +94,28 @@ the constitution: declare, do not fabricate. When `appType` is
 those poorly, and the tool already prints that caveat — repeat it, don't
 drop it.
 
+### `adp close` — closing the loop, so the table stops being a guess
+
+Every row in `hours-per-fp.json` starts `source: "cold-start"` — a market
+figure nobody here has confirmed. `adp close --hours <n> [--note "<s>"]`
+records what a feature actually took and recalibrates the row `adp
+estimate` last used toward it: 1 observation nudges the range gently, 3–5
+blend the observed mean in and widen the bounds to fit, 6+ replaces the
+row with this team's own numbers. **`--hours` is the one field nothing
+else can supply** — declare it honestly, after the feature is actually
+done, not as a target to hit. `--note` is stored on the closure record but
+**not** auto-written into `.spec/BEST_PRACTICES.md` — that file only earns
+an entry once a pattern has worked more than once, which a single closure
+can never establish; add it there by hand if it turns out to be one.
+`adp report` shows the resulting calibration label ("no calibration" /
+"partial calibration" / "calibrated") next to the estimate.
+
+**Still not cross-project.** This closes the loop inside one project's own
+`.spec/`. Sharing calibration data between projects
+(`~/.adp/metrics/hours-history.jsonl`, anonymized by default, `adp metrics
+import/export`) is `SCOPE-0.6.0.md` PRD-003c's fuller design and is not
+built in this version — don't imply it exists.
+
 ### The audit also catches document quality, not just structure
 
 Passing G0–G6 proves a document exists and resolves — it never proved the

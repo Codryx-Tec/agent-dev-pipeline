@@ -15,7 +15,22 @@ import { loadProject } from '../core/project.js';
 import { auditProject } from '../core/audit.js';
 import { evaluateGates, GATES } from '../core/gates.js';
 import { projectCeremony } from '../core/ceremony.js';
-import { loadEstimate } from '../core/estimate.js';
+import { loadEstimate, loadHoursTable } from '../core/estimate.js';
+import { calibrationLabel } from '../core/closure.js';
+
+/**
+ * The last estimate, with the current calibration label for the table row
+ * it used — null when no `adp close` has ever recorded against that row
+ * (PRD-003c-core: this reads the row's own `observations` count, already
+ * updated by `adp close`, rather than re-reading closures.jsonl itself).
+ */
+function buildEstimateWithCalibration(rootDir, config) {
+  const estimate = loadEstimate(rootDir, config);
+  if (!estimate) return null;
+  const hoursTable = loadHoursTable(rootDir, config);
+  const row = hoursTable?.find((r) => r.profile === estimate.rowUsed) ?? null;
+  return { ...estimate, calibration: row ? calibrationLabel(row.observations) : null };
+}
 
 /** Files whose modification time decides whether the state could have changed. */
 function watchedPaths(config) {
@@ -110,7 +125,7 @@ export function buildState(config) {
       items: project.backlog?.items?.length ?? 0,
     },
     // PRD-003-core: the last `adp estimate` run, or null if none has run yet.
-    estimate: loadEstimate(project.rootDir, config),
+    estimate: buildEstimateWithCalibration(project.rootDir, config),
     gates,
     firstRed: evaluation.firstRed,
     exitCode: evaluation.exitCode,

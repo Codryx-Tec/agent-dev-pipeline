@@ -65,6 +65,7 @@ export function renderReportText(state) {
   if (state.estimate) {
     const e = state.estimate;
     out.push(`  effort: ${e.pf} PF x ${e.rowUsed} (source: ${e.source}) -> low ${e.hours.low}h · likely ${e.hours.likely}h · high ${e.hours.high}h`);
+    if (e.calibration) out.push(`  calibration: ${e.calibration} — run \`adp close --hours <n>\` after this feature ships to improve it`);
     out.push('  declared, not counted — the PF figure above is human-entered (`adp estimate --pf`), not machine-counted. Not proof.');
     if (e.lowFit) out.push(`  APF measures ${e.profile.appType} poorly — treat this range as weaker evidence than usual.`);
   } else {
@@ -151,6 +152,7 @@ ${featureRows || '<tr><td colspan="6">none yet</td></tr>'}
 ${
   state.estimate
     ? `<p>Effort: <strong>${state.estimate.pf} PF</strong> × <code>${esc(state.estimate.rowUsed)}</code> (source: ${esc(state.estimate.source)}) &rarr; low <strong>${state.estimate.hours.low}h</strong> · likely <strong>${state.estimate.hours.likely}h</strong> · high <strong>${state.estimate.hours.high}h</strong></p>
+       ${state.estimate.calibration ? `<p>Calibration: <strong>${esc(state.estimate.calibration)}</strong> — run <code>adp close --hours &lt;n&gt;</code> after this feature ships to improve it further</p>` : ''}
        <p class="note">Declared, not counted: the PF figure is human-entered (\`adp estimate --pf\`), not machine-counted. Not proof.${state.estimate.lowFit ? ` APF measures ${esc(state.estimate.profile.appType)} poorly — treat this range as weaker evidence than usual.` : ''}</p>`
     : `<p class="note">This is a count, not an estimate. Effort and date numbers need Function Point estimation, which this tool does not implement yet (SCOPE-0.6.0.md PRD-003).</p>`
 }
