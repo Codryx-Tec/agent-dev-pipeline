@@ -1,9 +1,9 @@
 {
   "manifestVersion": 1,
   "algorithm": "sha256",
-  "fileCount": 49,
+  "fileCount": 50,
   "files": {
-    "AGENTS.md": "97c02f621d4e6539e89baa1a41fef61de32c0253957faf4b237169cfe7fc6dc4",
+    "AGENTS.md": "8f65b39cd35b2d9a6603cffe48fef32c5198f8d719337eb8c00e1a32ff1508c7",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/architect.md": "66dac301b9385f03a56ccf88d71a0879a0eb9d174b1829c7a7675b832c89e328",
     "claude/agents/backend.md": "75d5beec6dc3a4674f31e7e7e8d7816de9e3afd8ae5700806bba7abfd7001bd4",
@@ -39,6 +39,7 @@
     "claude/skills/worktree-cleanup/SKILL.md": "f1745b3a49d1f65beaed8933cd0bb5753850c55d93a83b7599a8447261eb46e0",
     "docs/DEPLOYMENT.md": "d401572304f2d4241fc537cad4beda026ac5db2e68b8f15cf8a2d6c994ae7a9e",
     "docs/USAGE.md": "9862a6f76c3d72b1eb75c280f28249f2ba6bb9f9778670094db8211fb9e8da14",
+    "metrics/hours-per-fp.default.json": "d3ae1262dc72b4ef1153fa1989f3ae73a9db907fe9be6ac7fc4bc8252986456d",
     "spec/BEST_PRACTICES.md": "24a1f22ef61c598c7c674381bf7a8071c96798e215d9e976589a10d9952ae0dc",
     "spec/CHANGELOG.md": "2a56d65d919cca08411617ec5be50ebcc791316cefd67a041388ac77074518f9",
     "spec/STACK.md": "671563c39109207a1a8b50f4c8eb4c809596984ea46f43d2361f1fdd3f2b130c",

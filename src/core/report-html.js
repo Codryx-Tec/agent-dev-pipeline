@@ -60,11 +60,18 @@ export function renderReportText(state) {
   out.push(`backlog   : ${state.backlog.present ? `${state.backlog.items} item(s)` : 'none (.spec/BACKLOG.md absent)'}`);
   out.push('');
   const dist = ceremonyDistribution(state.features);
-  out.push('shape of the work (counts, not an estimate):');
+  out.push('shape of the work:');
   out.push(`  ${state.features.length} feature(s) — ceremony: ${Object.entries(dist).map(([k, v]) => `${k} ${v}`).join(', ')}`);
-  out.push('  effort and date estimates need Function Point estimation, which does not exist yet (SCOPE-0.6.0.md PRD-003).');
+  if (state.estimate) {
+    const e = state.estimate;
+    out.push(`  effort: ${e.pf} PF x ${e.rowUsed} (source: ${e.source}) -> low ${e.hours.low}h · likely ${e.hours.likely}h · high ${e.hours.high}h`);
+    out.push('  declared, not counted — the PF figure above is human-entered (`adp estimate --pf`), not machine-counted. Not proof.');
+    if (e.lowFit) out.push(`  APF measures ${e.profile.appType} poorly — treat this range as weaker evidence than usual.`);
+  } else {
+    out.push('  no estimate yet — run `adp profile` then `adp estimate --pf <n>` for a real hours range.');
+  }
   out.push('');
-  out.push('scenario comparison: not available — needs the same PF estimation as above.');
+  out.push('scenario comparison: not available — needs the automated counting interview, which does not exist yet.');
   return out.join('\n');
 }
 
@@ -141,10 +148,15 @@ ${featureRows || '<tr><td colspan="6">none yet</td></tr>'}
 
 <h2>Shape of the work</h2>
 <p>${state.features.length} feature(s) — ceremony: ${Object.entries(dist).map(([k, v]) => `${esc(k)} ${v}`).join(', ')}</p>
-<p class="note">This is a count, not an estimate. Effort and date numbers need Function Point estimation, which this tool does not implement yet (SCOPE-0.6.0.md PRD-003).</p>
+${
+  state.estimate
+    ? `<p>Effort: <strong>${state.estimate.pf} PF</strong> × <code>${esc(state.estimate.rowUsed)}</code> (source: ${esc(state.estimate.source)}) &rarr; low <strong>${state.estimate.hours.low}h</strong> · likely <strong>${state.estimate.hours.likely}h</strong> · high <strong>${state.estimate.hours.high}h</strong></p>
+       <p class="note">Declared, not counted: the PF figure is human-entered (\`adp estimate --pf\`), not machine-counted. Not proof.${state.estimate.lowFit ? ` APF measures ${esc(state.estimate.profile.appType)} poorly — treat this range as weaker evidence than usual.` : ''}</p>`
+    : `<p class="note">This is a count, not an estimate. Effort and date numbers need Function Point estimation, which this tool does not implement yet (SCOPE-0.6.0.md PRD-003).</p>`
+}
 
 <h2>Scenario comparison</h2>
-<p class="note">Not available — comparing alternative scenarios needs the same Function Point estimation as above. Showing an invented number here would be exactly the false precision this tool exists to avoid.</p>
+<p class="note">Not available — comparing alternative scenarios needs the automated counting interview, which this tool does not implement yet. Showing an invented number here would be exactly the false precision this tool exists to avoid.</p>
 </body>
 </html>
 `;

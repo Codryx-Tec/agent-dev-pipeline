@@ -72,10 +72,27 @@ placement, backlog size — no server required, unlike `adp monitor`. It also
 reads `**Decision:**` from `SCOPE.md` (`pending`/`go`/`no-go`), the recorded
 answer to "do we build this?" Purely declarative: no gate checks it, and a
 `no-go` refuses nothing — the documents already written stay useful on
-their own, including to a different tool. What this does **not** show yet:
-an effort or date estimate, or a comparison of scenarios — both need
-Function Point estimation (`SCOPE-0.6.0.md` PRD-003), which does not exist
-in this version.
+their own, including to a different tool.
+
+### `adp estimate` — hours, from a Function Point count YOU declare
+
+`adp profile [--stack <s>] [--familiarity never|delivered|master] [--app-type
+business-crud|real-time|infra|mathematical] [--brownfield] [--tests]`
+declares the stack/team profile once (rerunnable); `adp estimate --pf <n>
+[--csv]` multiplies that count by the profile's row in
+`.spec/metrics/hours-per-fp.json` (seeded at `init`, hand-editable) and
+writes `.spec/ESTIMATE.md`. `adp report` shows the result once one exists.
+
+**The PF count is declared by a human, never machine-counted.** The full
+counting interview — the AI proposing ALI/AIE/EE/CE/SE classifications,
+citing their source in `SCOPE.md`/`PRD.md`, a human confirming item by item
+— is `SCOPE-0.6.0.md` PRD-003's fuller design and does not exist in this
+version. **Never claim `adp estimate`'s output is proof, and never invent a
+PF count on the AI's own authority** — same rule as `verification(gate)` in
+the constitution: declare, do not fabricate. When `appType` is
+`real-time`/`infra`/`mathematical`, say so: Function Point analysis measures
+those poorly, and the tool already prints that caveat — repeat it, don't
+drop it.
 
 ## Proof is written by `verify`, and by nothing else
 

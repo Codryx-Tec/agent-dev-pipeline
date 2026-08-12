@@ -36,7 +36,19 @@ import {
   describeVersionDrift,
 } from './core/upgrade.js';
 import { fileURLToPath } from 'url';
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
+import path from 'path';
+import {
+  profilePath,
+  estimateJsonPath,
+  loadProfile,
+  loadHoursTable,
+  computeEstimate,
+  renderEstimateMd,
+  renderEstimateCsv,
+  APP_TYPES,
+  FAMILIARITY_LEVELS,
+} from './core/estimate.js';
 
 const HELP = `agent-dev-pipeline — the specification that stays true
 
@@ -50,7 +62,12 @@ usage: adp <command> [options]
   status                    what exists and where the work stands
   report [--html <path>] [--json]
                             a portable viability snapshot — gates, ceremony,
-                            MVP/backlog, the recorded decision; no estimate yet
+                            MVP/backlog, the recorded decision, the estimate if one exists
+  profile [--stack <s>] [--familiarity <l>] [--app-type <t>] [--brownfield] [--tests]
+                            declare the stack/team profile that adp estimate reads
+  estimate --pf <n> [--csv]
+                            hours = declared Function Points x the profile's table row;
+                            never proof — PF count is human-declared, not auto-counted
   audit [--ci] [--json]     evaluate every gate and report the findings
   gates [--list] [--json]   the seven gates and their state, without the findings
   prompt [<gate>]           the paste-ready text for a red gate
@@ -91,6 +108,13 @@ options:
   --ci            escalate the softer findings to errors (use this in a pipeline)
   --json          machine-readable output
   --html <path>   write the viability snapshot as a self-contained file (report)
+  --stack <s>     free text, e.g. "node" (profile)
+  --familiarity <l>  ${FAMILIARITY_LEVELS.join(' | ')} (profile)
+  --app-type <t>  ${APP_TYPES.join(' | ')} (profile) — APF measures the last three poorly
+  --brownfield    existing codebase, not a fresh one (profile)
+  --tests         the codebase already has automated tests (profile)
+  --pf <n>        declared Function Point count (estimate) — never machine-counted
+  --csv           print CSV instead of Markdown (estimate)
   --port <n>      port for the monitor (default 7788)
   --host <addr>   bind address for the monitor (default 127.0.0.1, loopback)
   --yes           skip the confirmation prompt (trust, run, rerun)
@@ -375,6 +399,74 @@ export async function run(argv) {
 
   if (command === 'gates' && flags.list) {
     for (const g of GATES) console.log(`${g.id}  ${g.title.padEnd(26)} ${g.codes.join(', ')}`);
+    return 0;
+  }
+
+  // Neither `profile` nor `estimate` needs the full project walk — both read
+  // and write a couple of small JSON files under config.specDir. Ring 2.
+  if (command === 'profile') {
+    const p = profilePath(rootDir, config);
+    const existing = existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : {};
+    const appType = typeof flags['app-type'] === 'string' ? flags['app-type'] : existing.appType;
+    const familiarity = typeof flags.familiarity === 'string' ? flags.familiarity : existing.familiarity;
+    if (appType && !APP_TYPES.includes(appType)) {
+      console.error(`error: --app-type must be one of: ${APP_TYPES.join(', ')}`);
+      return 2;
+    }
+    if (familiarity && !FAMILIARITY_LEVELS.includes(familiarity)) {
+      console.error(`error: --familiarity must be one of: ${FAMILIARITY_LEVELS.join(', ')}`);
+      return 2;
+    }
+    const profile = {
+      stack: typeof flags.stack === 'string' ? flags.stack : existing.stack ?? 'unknown',
+      familiarity: familiarity ?? 'delivered',
+      appType: appType ?? 'business-crud',
+      brownfield: flags.brownfield !== undefined ? Boolean(flags.brownfield) : Boolean(existing.brownfield),
+      hasTests: flags.tests !== undefined ? Boolean(flags.tests) : Boolean(existing.hasTests),
+      declaredAt: new Date().toISOString(),
+    };
+    mkdirSync(path.dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify(profile, null, 2) + '\n');
+    console.log(`written ${path.relative(rootDir, p)}`);
+    console.log(JSON.stringify(profile, null, 2));
+    return 0;
+  }
+
+  if (command === 'estimate') {
+    if (typeof flags.pf !== 'string' || !Number.isFinite(Number(flags.pf))) {
+      console.error('error: --pf needs a number: adp estimate --pf <n>');
+      return 2;
+    }
+    const pf = Number(flags.pf);
+    const profile = loadProfile(rootDir, config);
+    if (!profile.declared) {
+      console.error('note: no profile declared — run `adp profile` first; using the generic default for now.');
+    }
+    const hoursTable = loadHoursTable(rootDir, config);
+    if (!hoursTable) {
+      console.error('error: no .spec/metrics/hours-per-fp.json — run `adp init` first (it seeds one).');
+      return 2;
+    }
+    let estimate;
+    try {
+      estimate = computeEstimate({ pf, profile, hoursTable });
+    } catch (err) {
+      console.error(`error: ${err.message}`);
+      return 2;
+    }
+    const projectName = path.basename(rootDir);
+    if (flags.csv) {
+      console.log(renderEstimateCsv(estimate, projectName).trimEnd());
+      return 0;
+    }
+    const md = renderEstimateMd(estimate, projectName);
+    const estimatePath = path.join(rootDir, config.specDir ?? '.spec', 'ESTIMATE.md');
+    const estimateJsonFile = estimateJsonPath(rootDir, config);
+    mkdirSync(path.dirname(estimatePath), { recursive: true });
+    writeFileSync(estimatePath, md);
+    writeFileSync(estimateJsonFile, JSON.stringify(estimate, null, 2) + '\n');
+    console.log(md);
+    console.log(`wrote ${path.relative(rootDir, estimatePath)}`);
     return 0;
   }
 

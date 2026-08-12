@@ -9,12 +9,13 @@
 // most expensive process on the machine (ASM-006).
 
 import { createHash } from 'crypto';
-import { statSync, existsSync, readdirSync } from 'fs';
+import { statSync, existsSync, readdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { loadProject } from '../core/project.js';
 import { auditProject } from '../core/audit.js';
 import { evaluateGates, GATES } from '../core/gates.js';
 import { projectCeremony } from '../core/ceremony.js';
+import { loadEstimate } from '../core/estimate.js';
 
 /** Files whose modification time decides whether the state could have changed. */
 function watchedPaths(config) {
@@ -108,6 +109,8 @@ export function buildState(config) {
       present: project.backlog?.present ?? false,
       items: project.backlog?.items?.length ?? 0,
     },
+    // PRD-003-core: the last `adp estimate` run, or null if none has run yet.
+    estimate: loadEstimate(project.rootDir, config),
     gates,
     firstRed: evaluation.firstRed,
     exitCode: evaluation.exitCode,

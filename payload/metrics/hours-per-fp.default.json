@@ -1,0 +1,20 @@
+{
+  "_comment": "Seed hours-per-Function-Point table (SCOPE-0.6.0.md PRD-003). Every row starts source:\"cold-start\" — the numbers are anchored to the market figures the scope document itself cites (Java ~8h/PF, COBOL ~15h/PF, ISBSG median ~14h/PF, a published 850-PF banking example at 10.2h/PF), but \"cold-start\" is about calibration history, not about where the starting number came from: this table has zero project closures behind it (PRD-003c) until yours adds one. Edit rows by hand as your own team's numbers come in; adp estimate always prints which row it used and its source.",
+  "rows": [
+    { "profile": "business-crud/never", "low": 14, "likely": 20, "high": 28, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "business-crud/delivered", "low": 8, "likely": 12, "high": 18, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "business-crud/master", "low": 5, "likely": 8, "high": 12, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+
+    { "profile": "real-time/never", "low": 20, "likely": 28, "high": 38, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "real-time/delivered", "low": 12, "likely": 17, "high": 24, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "real-time/master", "low": 8, "likely": 12, "high": 17, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+
+    { "profile": "infra/never", "low": 18, "likely": 26, "high": 36, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "infra/delivered", "low": 11, "likely": 16, "high": 22, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "infra/master", "low": 7, "likely": 11, "high": 16, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+
+    { "profile": "mathematical/never", "low": 22, "likely": 32, "high": 44, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "mathematical/delivered", "low": 14, "likely": 20, "high": 28, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null },
+    { "profile": "mathematical/master", "low": 9, "likely": 14, "high": 20, "source": "cold-start", "observations": 0, "updatedAt": null, "updatedBy": null }
+  ]
+}

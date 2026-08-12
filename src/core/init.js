@@ -161,6 +161,15 @@ export function initProject(rootDir, opts = {}) {
     fill(template('BACKLOG.md'), { PROJECT: project }),
     report
   );
+  // ---- the hours-per-FP table: seeded once from the shipped default, then
+  // it is the project's own editable copy (PRD-003-core) — same low-ceremony
+  // reasoning as BACKLOG.md, and not part of the generic install map for the
+  // same reason SCOPE.md isn't: this is a seed, not a payload hash to track ----
+  writeIfMissing(
+    path.join(rootDir, '.spec', 'metrics', 'hours-per-fp.json'),
+    readFileSync(path.join(PAYLOAD_DIR, 'metrics', 'hours-per-fp.default.json'), 'utf-8'),
+    report
+  );
   // git does not track empty directories; the placeholders are what make the
   // layout survive a clone. Not payload content, so not part of the install map.
   writeIfMissing(path.join(rootDir, '.spec', 'features', '.gitkeep'), '', report);
