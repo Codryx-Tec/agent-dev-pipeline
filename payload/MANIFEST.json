@@ -1,15 +1,16 @@
 {
   "manifestVersion": 1,
   "algorithm": "sha256",
-  "fileCount": 50,
+  "fileCount": 52,
   "files": {
-    "AGENTS.md": "8f65b39cd35b2d9a6603cffe48fef32c5198f8d719337eb8c00e1a32ff1508c7",
+    "AGENTS.md": "7583d3c91ad69ff65b1fe70282572c49ccdbd6bc618b079d10131f319e686f4a",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/architect.md": "66dac301b9385f03a56ccf88d71a0879a0eb9d174b1829c7a7675b832c89e328",
     "claude/agents/backend.md": "75d5beec6dc3a4674f31e7e7e8d7816de9e3afd8ae5700806bba7abfd7001bd4",
     "claude/agents/business-analyst.md": "7585369e813f23092d1c7f5dfff772e7fa24b16c2463f43c9b64a8ec47cb7550",
     "claude/agents/designer.md": "31fc297b2ee24fcf73fab81a1f7703004ab31ab1f44040f79c0916d89fd3e3cc",
     "claude/agents/frontend.md": "e838adfafc68d49dc31b39909cc935ab7d30813c25cb82736c19f28a4fdbff7c",
+    "claude/agents/researcher.md": "c02950f88b61be36b3734f72432e3594f2c3ccddae6ccbf7cd7ec053fa3b34a4",
     "claude/agents/security.md": "637dabcc773de84e5d83ae7e48b13ce8b6628daa32d0710838a58abb691fe2e9",
     "claude/agents/techlead.md": "cb0d15249d5c9f0723869d7dca4b7fc14c34439b7ae9663aa3c8e15ea53ccc01",
     "claude/agents/tester.md": "58004de178203df49640cf469884f5bdbaad3255bee6fb6810564360b14b1d45",
@@ -17,7 +18,7 @@
     "claude/hooks/context-persistence.sh": "e861b5c664f08406fb9905628f8ef5e10d28b49dba67e262205ce284e1f1c503",
     "claude/hooks/secrets-scanner.sh": "607a245d9b8b198f5a4b1ba9ecdb3554589aae460bef6951ba7b39bdb8ef4f96",
     "claude/settings.json": "f1e0dca95dd7cf42e2545c470a413e535281cf75f9bfd6cc29c86404d99ece7d",
-    "claude/skills/adp/SKILL.md": "7a6e7859e7e9b04bae499afdc95d4f1479c74399ed5bb44d374f356464f025d1",
+    "claude/skills/adp/SKILL.md": "3c7be48f302440c6389f3223bbdeec58e66ae6d6ddcb5fe8c32c0bca313519a6",
     "claude/skills/create-rfc/.skill-meta.json": "b3368039e2352688f48fc7aea068ac9dd9ff027a5165e645a3adeb79d0050e7e",
     "claude/skills/create-rfc/INTEGRATION.md": "8f415d7d8e88e2da73677caab82f97ec35ea0325927a4569b01248ff42c3ad4b",
     "claude/skills/create-rfc/LICENSE": "8cd58eae8e643a9d0f900d279f0b6f80a6db3f86f885b122b52e930d6bcd1264",
@@ -52,6 +53,7 @@
     "templates/RFC.md": "099b161f045001b91747e6140689f41f961a500c01b72eabc33199801c1bce36",
     "templates/SCOPE.md": "5ca2a56788a803ef707e2cf15631ddd62ba785c848f81758161c52c2a293ac9e",
     "templates/SPEC.md": "d988fc992a8444945bafb3337ce3a286071306a6b0675ed2aebbf4208de977f5",
-    "templates/adp.config.json": "c9f83536f04d550baacc93204fc282d0a2ee263fef91cfa1488d5a0635df8104"
+    "templates/adp.config.json": "c9f83536f04d550baacc93204fc282d0a2ee263fef91cfa1488d5a0635df8104",
+    "vocabulary/prd-forbidden.default.json": "a43b8dec8b94fe00aa3a7d5b8ef903378de2409c7588a6d2a821d862c9a575c3"
   }
 }
