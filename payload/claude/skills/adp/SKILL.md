@@ -1,9 +1,9 @@
 ---
 name: adp
-description: Spec-anchored development driven by six mechanical gates. Guides a project through SCOPE → PRD (what, for whom, why) → RFC (which path, among the possible ones) → TDD (how, in detail) → code → test → audit, with traceability from user story to acceptance criterion to task to test, an executable constitution whose regexes actually run, and a verdict that is an exit code rather than a claim. Use when specifying a feature, deciding an architecture with alternatives recorded, breaking work into parallelizable tasks, proving an implementation against its specification, checking whether documentation has gone stale, or answering "is this done?". Triggers: "specify this feature", "new feature", "write the PRD", "write the RFC", "break this into tasks", "audit against the spec", "is this done", "what has no test", "which gate is red", "the docs are out of date".
+description: Spec-anchored development driven by seven mechanical gates. Guides a project through SCOPE → PRD (what, for whom, why) → RFC (which path, when a decision is genuinely one-way) → DESIGN (how, in detail) → SPEC (the layer the machine confers) → code → test → audit, with traceability from user story to acceptance criterion to task to test, an executable constitution whose regexes actually run, a ceremony matrix that scales documentation to the size of the decision, and a verdict that is an exit code rather than a claim. Use when specifying a feature, deciding an architecture with alternatives recorded, breaking work into parallelizable tasks, proving an implementation against its specification, checking whether documentation has gone stale, estimating effort, or answering "is this done?". Triggers: "specify this feature", "new feature", "write the PRD", "write the RFC", "break this into tasks", "audit against the spec", "is this done", "what has no test", "which gate is red", "the docs are out of date", "how much ceremony does this need", "estimate this".
 license: MIT
 metadata:
-  version: 0.5.0
+  version: 0.6.0
   engine: agent-dev-pipeline
 ---
 
@@ -16,12 +16,23 @@ the time. You do not claim the work is done. **The machine decides, and it says 
 with an exit code.**
 
 ```
-SCOPE ──▶ PRD ──▶ RFC ──▶ TDD ──▶ code ──▶ test ──▶ audit
-  G0      G1      G2      G3               G4       G5
-what we   what,   which   how,             is it    do they
-agreed    whom,   path    in detail        proven   still agree
-          why
+SCOPE ──▶ PRD ──▶ RFC ──▶ DESIGN ──▶ SPEC ──▶ code ──▶ verify ──▶ audit
+  G0      G1      G2       G3         G4                 G5        G6
 ```
+
+`PRD.md` is prose only — what, for whom, why; it owns nothing a machine
+cross-references. `RFC.md` is flat and global (`.spec/rfc/RFC-<NNN>-<slug>.md`,
+not a fixed sibling file) and owns `D-xxx` decisions. `DESIGN.md` (called
+`TDD.md` in projects older than 0.6.0) is the technical blueprint a human
+reads — presence-only, no grammar of its own. `SPEC.md` is where `US-xxx`,
+`AC-xxx`, `ASM-xxx`, `Q-xxx` and `T-xxx` all live now — "the layer the
+machine confers."
+
+**Not every feature owes every document.** A PRD declares signals
+(`> signals: multiple-teams, hard-to-reverse, money-or-pii, new-tech,
+large-estimate`); the ceremony matrix computes a level from them and decides
+whether G2 (RFC) and G3 (DESIGN) are even due — see below. Gates read `n/a`,
+not red, when a document genuinely isn't required at this size.
 
 ## Talk to the human in their language, and in plain words
 
@@ -29,16 +40,16 @@ The files use short **traceability codes**, because that is what links the
 documents to the tests mechanically. With the person, always use the full name;
 the code goes in parentheses only when they need it.
 
-| Code | What you call it |
-|---|---|
-| US-xxx | **user story** — who needs it, what, and why |
-| AC-xxx | **acceptance criterion** — an observable result a test can check |
-| T-xxx | **task** — one step of implementation |
-| ASM-xxx | **assumption** — a gap you filled with a guess, not yet confirmed |
-| Q-xxx | **open question** — a decision the product owner still owes |
-| D-xxx | **decision** — a chosen path, with the alternatives recorded |
-| P-xxx | **principle** — a non-negotiable constraint from the constitution |
-| G0–G5 | **gate** — a mechanical checkpoint between phases |
+| Code | What you call it | Lives in |
+|---|---|---|
+| US-xxx | **user story** — who needs it, what, and why | `SPEC.md` |
+| AC-xxx | **acceptance criterion** — an observable result a test can check | `SPEC.md` |
+| ASM-xxx | **assumption** — a gap you filled with a guess, not yet confirmed | `SPEC.md` |
+| Q-xxx | **open question** — a decision the product owner still owes | `SPEC.md` |
+| T-xxx | **task** — one step of implementation | `SPEC.md` |
+| D-xxx | **decision** — a chosen path, with the alternatives recorded | `RFC-<NNN>-<slug>.md` |
+| P-xxx | **principle** — a non-negotiable constraint from the constitution | `CONSTITUTION.md` |
+| G0–G6 | **gate** — a mechanical checkpoint between phases | — |
 
 Say "the acceptance criterion AC-003 (late delivery warning) still has no test",
 never "AC-003 is missing its @spec tag". Never require the person to know the
@@ -58,7 +69,8 @@ shorthand for that invocation — the person will usually have it aliased.
 
 | Command | What it does |
 |---|---|
-| `status` | six lights, one line each — start here, every session |
+| `status` | seven lights, one line each, plus ceremony/backlog — start here, every session |
+| `report [--html <path>] [--json]` | a portable viability snapshot: gates, ceremony, MVP/backlog, the recorded decision, the estimate if one exists — no server needed |
 | `audit [--ci] [--json]` | every gate, with the findings behind the first red one |
 | `gates [--list]` | the gates and their state, without the findings |
 | `prompt [<gate>]` | the paste-ready text for a red gate |
@@ -69,16 +81,63 @@ shorthand for that invocation — the person will usually have it aliased.
 | `run [--lane <id>]` | execute pending tasks in isolated git worktrees |
 | `rerun <lane>` | re-run one lane, leaving merged work alone |
 | `monitor [--port <n>]` | a read-only page showing gates and progress |
-| `init` · `new <feature>` | scaffold a project · scaffold a feature |
+| `init` · `new <feature> [--signals <list>]` | scaffold a project · scaffold a feature (only the documents its ceremony level needs) |
+| `new --rfc <slug>` | a new global decision record at `.spec/rfc/RFC-<NNN>-<slug>.md` |
+| `profile [--stack] [--familiarity] [--app-type] [--brownfield] [--tests]` | declare the stack/team profile `estimate` reads |
+| `estimate --pf <n> [--csv]` | hours = a **declared** Function Point count × the profile's table row — never proof, never machine-counted |
 | `doctor` | verify this copy of the tool against its manifest |
 
-**The exit code is the failing gate.** `0` clean, `1`–`6` for G0–G5. You never
-have to parse output to learn where you are.
+**The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. You never
+have to parse output to learn where you are. A gate reading `n/a` never sets
+the exit code — it means the ceremony matrix decided that gate isn't due, not
+that it passed.
 
 **Graceful degradation.** If Node is not available, do the audit by hand — re-read
 the documents against the finding catalogue below — and label the result, in
 writing, as **`WEAK PROOF (manual audit)`**. Never present a manual reading as if
 it were the mechanical gate.
+
+## The ceremony matrix — not every feature owes the same documents
+
+A one-line config tweak and a payment-flow redesign do not owe the same
+paperwork. A PRD's `> signals:` line declares which of five things are true
+about it:
+
+| Signal | What it means |
+|---|---|
+| `multiple-teams` | the decision affects more than one team |
+| `hard-to-reverse` | expensive or risky to undo |
+| `money-or-pii` | payment or personal data involved |
+| `new-tech` | the team hasn't shipped on this stack before |
+| `large-estimate` | big enough that `adp estimate`'s threshold would flag it (today, declared by hand — auto-computation is not built yet) |
+
+The level is **computed**, never written by hand: `money-or-pii` → full chain,
+reviewed; `multiple-teams` (without money/PII) → RFC required, then DESIGN;
+any one softer signal alone → a light DESIGN, no RFC; none declared → SPEC and
+tasks direct, no RFC, no DESIGN. `adp new <feature> --signals <list>`
+scaffolds only what the computed level needs; `adp status` and `adp report`
+both show the level and which signals lit it — never just the verdict, always
+the reasoning behind it.
+
+## The MVP boundary, and `BACKLOG.md`
+
+Every PRD that exists must be named in `SCOPE.md`'s "MVP (prioritized)"
+checklist — `- [ ] <feature-slug> — description`, slug first. A PRD that
+exists but isn't named there is `PRD_UNPLACED` (G1): there is no third state
+between "building this now" and "not yet." What hasn't started belongs in
+`.spec/BACKLOG.md` instead — plain prose, one item per line, deliberately
+carrying **no tracking code**; only a promoted PRD earns one. An item that
+already looks like a real code (`AC-002`, `T-003`, ...) is
+`BACKLOG_ITEM_WITH_CODE`, a warning — it would otherwise be free to claim
+progress the audit can't see. To promote an item: remove its line, run
+`adp new <feature-slug>`, add the slug to the MVP checklist. No dedicated
+command exists for this — three ordinary actions are enough.
+
+`SCOPE.md` also carries `**Decision:** pending|go|no-go` — the recorded
+answer to "do we build this?", read by `adp report`. It is purely
+declarative: no gate checks it, and `no-go` refuses nothing. If the answer
+is "use another tool," the documents written up to that point are still the
+person's — that is the point of writing them first.
 
 ## Proof comes from `verify`, and from nothing else
 
@@ -92,7 +151,7 @@ criteria, and records what actually passed.
 
 ```sh
 adp verify        # runs the tests, writes .spec/verification/<feature>.json
-adp audit         # now G4 can be green
+adp audit         # now G5 can be green
 ```
 
 Until `verify` has run, every criterion reports `AC_WITHOUT_PROOF` — *has a test, but
@@ -116,10 +175,27 @@ so rather than re-approving.
 If the suite takes minutes, use `adp verify --background` and follow it with
 `adp verify --status`. The verdict is identical either way.
 
+## Estimation — hours from a declared count, never proof
+
+`adp profile` declares the stack/team profile once (rerunnable);
+`adp estimate --pf <n>` multiplies a **human-declared** Function Point count
+by that profile's row in `.spec/metrics/hours-per-fp.json` (seeded at `init`,
+hand-editable) and writes `.spec/ESTIMATE.md`. `adp report` shows the range
+once one exists.
+
+**Never present this as proof, and never invent a PF count on your own
+authority.** The count is something a human counts and tells the engine —
+the automated counting interview (an AI proposing function classifications
+and citing their source in the documents) is a larger, separate piece of
+work and does not exist in this version. When the app type is
+`real-time`/`infra`/`mathematical`, the tool prints a caveat that Function
+Point analysis measures those poorly — repeat it to the person, don't drop
+it silently.
+
 ## Running work in the background
 
-For a `TDD.md` with several pending tasks, the engine can run them in parallel,
-each in its own git worktree:
+For a `SPEC.md` with several pending tasks, the engine can run them in
+parallel, each in its own git worktree:
 
 ```sh
 adp plan          # shows the lanes — read this before running anything
@@ -147,14 +223,18 @@ after every task.
 person `adp plan` first and let them start it. It refuses on a dirty working
 tree, outside a git repository, and without a terminal to confirm at.
 
-## Two commands to offer, not to run unprompted
+## Commands to offer, not to run unprompted
 
-`adp monitor` serves a **read-only** page on loopback showing the six gates, the
+`adp monitor` serves a **read-only** page on loopback showing the seven gates, the
 findings behind the first red one, and each feature's progress. Offer it when the
 person is trying to see where things stand across several features — it is easier
 to read than repeated `status` calls. It has no write endpoints and cannot change
 their project. It holds a terminal until stopped, so suggest it rather than
 starting it in the middle of other work.
+
+`adp report --html <path>` is the offer when the person wants a document to
+hand to someone else, or wants to weigh viability before committing to code —
+it needs no running server and no other tool installed to open.
 
 `adp doctor` checks that this copy of the tool matches the manifest shipped with
 it. Reach for it when something behaves impossibly — a command that vanished, a
@@ -178,41 +258,54 @@ project is at fault.
    confirming? That is an assumption. Missing information? That is an open
    question. If there are truly none, write "None." and be suspicious of yourself.
 7. **A decision without at least two alternatives is not a decision.** Write down
-   what you rejected and why, or the RFC gate stays red.
+   what you rejected and why, or the RFC gate stays red — and only write an RFC
+   at all when the ceremony matrix says one is due.
 8. **The constitution rules.** `[MUST]` principles are executed. Never fix the
    principle to make the check pass — fix the code.
 9. **Never weaken, skip or delete a test to go green.** If the same finding
    survives **three attempts**, STOP and bring the findings to the person. Do not
    iterate forever and do not route around the gate.
+10. **A PRD is never presence alone.** It must be named in `SCOPE.md`'s MVP
+    checklist, or it is `PRD_UNPLACED` — nothing exists in limbo.
+11. **`adp estimate`'s number is a declared count times an editable table,
+    never proof and never machine-counted.** Say so every time you show it.
 
 ## Working the flow
 
-**Start every session by asking the machine where you are:** `adp status`. Six
+**Start every session by asking the machine where you are:** `adp status`. Seven
 lights come back. Work on the **first red one** — the ones after it are `blocked`,
-not broken, and fixing them first is wasted effort.
+not broken, and fixing them first is wasted effort. A light reading `n/a` is not
+broken either — the ceremony matrix decided that document isn't due.
 
 **G0 — Scope.** `.spec/SCOPE.md` must say `Approved`. Not approved means the work
-has not been agreed. Do not start; go get the agreement.
+has not been agreed. Do not start; go get the agreement. While you're there, the
+feature's slug belongs in the MVP checklist and the ceremony signals — if any —
+belong on the PRD.
 
-**G1 — PRD.** One `PRD.md` per feature in `.spec/features/<name>/`. Write the user
-stories, and for each one the acceptance criteria in Given/When/Then. A criterion
-must be observable — something a test asserts. "Must be fast" is not a criterion;
-"responds in under 300ms" is.
+**G1 — PRD.** One `PRD.md` per feature in `.spec/features/<name>/`, **prose
+only** — what, for whom, why. No stories, no criteria, no technology; those
+belong to `SPEC.md` and `RFC.md`. A PRD that names a database or a framework
+has drifted into being a spec in disguise.
 
-**G2 — RFC.** For each real decision, record the alternatives considered, the one
-you chose, why, and what it costs. Register every assumption and open question
-with an honest status. If the person is present, ask now, with concrete options,
-and record the answer. Mark a question **blocking** when the path genuinely cannot
-be chosen without it.
+**G2 — RFC.** Due only when the ceremony level says so (`rfc-first`/`full`) —
+otherwise this gate reads `n/a` and there is nothing to write. When it is due:
+for each real decision, record the alternatives considered, the one you chose,
+why, and what it costs, in a global `RFC-<NNN>-<slug>.md` (`adp new --rfc
+<slug>`), linked from the PRD's `rfcs:` line. Register every assumption and
+open question with an honest status — in `SPEC.md`, not here.
 
-**G3 — TDD.** Break the work into tasks. Every task declares `Refs:` (the stories
-and criteria it serves) and `Files:` (the files it will WRITE, comma-separated),
-and optionally `Reads:` (files it only reads) and `Depends on:` (tasks it runs after).
-The file list is not paperwork: it is what lets the planner compute which tasks can
-run at the same time. A task with no file list is never parallelized.
+**G3 — DESIGN.** Due at every level except the lightest — otherwise `n/a`.
+Presence-only: the technical blueprint a human reads, no grammar of its own
+beyond existing.
+
+**G4 — SPEC.** Write the user stories and, for each one, acceptance criteria
+in Given/When/Then — a criterion must be observable, something a test
+asserts. Break the work into tasks: `Refs:` (the stories and criteria it
+serves), `Files:` (what it WRITES, comma-separated), optionally `Reads:` and
+`Depends on:`. A task with no file list is never parallelized.
 
 **Implementation.** One task, one atomic commit whose message names the task.
-Update the status in `TDD.md` as you go: `[pending]` → `[in-progress]` →
+Update the status in `SPEC.md` as you go: `[pending]` → `[in-progress]` →
 `[in-test]` → `[done]`.
 
 `[in-test]` is the honest resting place: implemented, proof not yet granted.
@@ -220,11 +313,11 @@ Moving to `[done]` without proof is `TASK_DONE_WITHOUT_PROOF`, an error, and
 the audit will catch you. This is the rule the whole product rests on — you do not
 get to declare a task done.
 
-**G4 — proof.** Run `adp verify`. It executes the test command and records which
+**G5 — proof.** Run `adp verify`. It executes the test command and records which
 criteria actually passed. Skipped, pending and todo all count as **not proven**;
 a skip tells you nothing. Only now can `[done]` be honest.
 
-**G5 — the gate.** Run `adp audit --ci`, paste the output, translate it in one
+**G6 — aligned.** Run `adp audit --ci`, paste the output, translate it in one
 sentence. If it did not exit 0, it is not done.
 
 ## Explain yourself as you go
@@ -254,41 +347,47 @@ grepping for it must find the same string on every machine.
 | scope document missing (`SCOPE_MISSING`) | there is no `.spec/SCOPE.md` | run `adp init`, then fill it in |
 | scope not approved (`SCOPE_NOT_APPROVED`) | work was not agreed | get the approval before coding |
 | required scope field empty (`SCOPE_FIELD_EMPTY`) | the scope is a template, not an agreement | fill the field it names |
-| PRD / RFC / TDD missing (`PRD_MISSING`, `RFC_MISSING`, `TDD_MISSING`) | a feature is missing one of its three documents | `adp new <feature>` creates all three |
-| PRD has no user story (`SPEC_WITHOUT_US`) | a PRD with nothing in it | write the stories |
+| PRD missing (`PRD_MISSING`) | a feature has no `PRD.md` | `adp new <feature>` creates it |
+| duplicate traceability code (`ID_DUPLICATE`) | the same code defined twice | codes are unique across the WHOLE project |
+| traceability code too short (`ID_TOO_SHORT`) | `AC-1` instead of `AC-001` | codes are zero-padded to three digits |
+| unrecognized ceremony signal (`SIGNAL_UNKNOWN`) | `> signals:` names something not in the five | use one of the five recognized slugs |
+| PRD not declared in the MVP boundary (`PRD_UNPLACED`) | the PRD exists but isn't in `SCOPE.md`'s MVP checklist | add `- [ ] <slug>` there |
+| backlog item carries a real tracking code (`BACKLOG_ITEM_WITH_CODE`) | a `BACKLOG.md` line looks like a declared criterion | remove the code, or promote it to a real PRD |
+| RFC missing (`RFC_MISSING`) | this feature's ceremony level requires one and it's absent, or the `rfcs:` link doesn't resolve | `adp new --rfc <slug>`, then link it |
+| decision without alternatives (`DECISION_WITHOUT_ALTERNATIVE`) | a habit, not a decision | record what you rejected |
+| decision without a chosen option (`DECISION_WITHOUT_CHOICE`) | alternatives listed, none picked | say which one, and why |
+| DESIGN missing (`DESIGN_MISSING`) | this feature's ceremony level requires one and it's absent | write `DESIGN.md` |
+| SPEC missing (`SPEC_MISSING`) | a feature has no `SPEC.md` | `adp new <feature>` creates it |
+| SPEC has no user story (`SPEC_WITHOUT_US`) | a SPEC with nothing in it | write the stories |
 | user story without acceptance criterion (`US_WITHOUT_AC`) | a story nobody can check | write its criteria |
 | incomplete acceptance criterion (`AC_INCOMPLETE`) | missing Given, When or Then | complete the clause it names |
 | criterion outside any story (`AC_OUTSIDE_US`) | a criterion serving nothing | move it under its story |
-| traceability code too short (`ID_TOO_SHORT`) | `AC-1` instead of `AC-001` | codes are zero-padded to three digits |
-| duplicate traceability code (`ID_DUPLICATE`) | the same code defined twice | codes are unique across the WHOLE project |
-| decision without alternatives (`DECISION_WITHOUT_ALTERNATIVE`) | a habit, not a decision | record what you rejected |
-| decision without a chosen option (`DECISION_WITHOUT_CHOICE`) | alternatives listed, none picked | say which one, and why |
-| required section missing (`SECTION_MISSING`) | no assumptions or no open-questions section | add it; "None." is a valid answer, silence is not |
-| assumption or question without a code (`ASM_WITHOUT_CODE`) | written as prose, unreferenceable | code it `ASM-001` / `Q-001` |
-| invalid status (`STATUS_INVALID`) | not `open` or `answered` | use the exact word — **and no markdown around it**, `**answered**` does not parse |
-| blocking question still open (`Q_BLOCKING_OPEN`) | the path cannot be chosen yet | ask the person |
-| open question (`Q_OPEN`) | a decision still owed | answer it, or accept a red `--ci` |
 | acceptance criterion covered by no task (`AC_WITHOUT_TASK`) | a requirement nobody will build | add or extend a task |
 | broken reference (`REF_BROKEN`) | a task cites something that does not exist | fix the reference |
+| task references no criterion (`REF_WITHOUT_AC`) | refs resolve, but none is an AC — proof is impossible | reference at least one AC |
 | task without declared files (`TASK_WITHOUT_FILES`) | cannot be parallelized | declare the files it touches |
-| task maps a file that does not exist (`FILE_MISSING`) | declared but unwritten | expected while pending; an error once `[done]` |
 | invalid task status (`TASK_STATUS_INVALID`) | not one of the four words | `pending` · `in-progress` · `in-test` · `done` |
+| task maps a file that does not exist (`FILE_MISSING`) | declared but unwritten | expected while pending; an error once `[done]` |
+| blocking question still open (`Q_BLOCKING_OPEN`) | the path cannot be chosen yet | ask the person |
+| assumption or question without a code (`ASM_WITHOUT_CODE`) | written as prose, unreferenceable | code it `ASM-001` / `Q-001` |
+| required section missing (`SECTION_MISSING`) | no Assumptions or no Open questions section | add it; "None." is a valid answer, silence is not |
+| invalid status (`STATUS_INVALID`) | not `open`/`confirmed`/`invalidated`/`answered` | use the exact word, no markdown around it |
 | acceptance criterion without a test (`AC_WITHOUT_TEST`) | a requirement with no proof | write the test with `@spec:AC-xxx` in its title |
 | acceptance criterion without proof (`AC_WITHOUT_PROOF`) | the test exists but never passed, or was SKIPPED | run verify; a skip is never proof |
 | proof is out of date (`PROOF_STALE`) | code moved after the last proof | `adp verify` again |
-| weak proof (`PROOF_WEAK`) | proven only by the runner's global exit code | configure a per-test reporter — a green suite is not per-criterion proof |
+| weak proof (`PROOF_WEAK`) | proven only by the runner's global exit code | configure a per-test reporter |
 | orphan test (`TEST_ORPHAN`) | a test points at a criterion that is gone | the spec moved and the test did not — reconcile them |
 | task completed without proof (`TASK_DONE_WITHOUT_PROOF`) | `[done]` with unproven criteria | verify, or reopen the task |
 | open assumption (`ASM_OPEN`) | a guess in a feature declared done | confirm or invalidate it with the person |
+| open question (`Q_OPEN`) | a decision still owed | answer it, or accept a red `--ci` |
 | principle without executable verification (`PRINCIPLE_WITHOUT_VERIFICATION`) | a MUST nothing checks | give it a verification, or lower its level honestly |
-| invalid principle level (`LEVEL_INVALID`) | not MUST, SHOULD or MAY | use one of the three |
 | principle violated (`PRINCIPLE_VIOLATED`) | the constitution was broken | fix the code, never the principle |
+| invalid principle level (`LEVEL_INVALID`) | not MUST, SHOULD or MAY | use one of the three |
 | verification matches no file (`GLOB_WITHOUT_FILES`) | the check is inert | fix the glob — a check that cannot fail looks like one that passed |
 | malformed verification (`VERIFICATION_MALFORMED`) | invalid regex, or one that timed out | simplify the pattern |
 | source file mapped by no task (`FILE_ORPHAN`) | code nothing asked for | map it to a task, or question why it exists |
 | feature name diverges from its directory (`FEATURE_MISMATCH`) | the header and the folder disagree | make them match |
 | project could not be read (`PROJECT_INVALID`) | a document failed to parse | the message names the file |
-| duplicate traceability code (`ID_DUPLICATE`) | the same code defined twice | codes are unique across the whole project |
 
 ## Questions the engine answers for you
 
@@ -298,8 +397,11 @@ grepping for it must find the same string on every machine.
 "Which principle is decoration?" → `PRINCIPLE_WITHOUT_VERIFICATION`.
 "Which criteria are actually proven?" → `adp verify` → the proof record.
 "Which proof went stale?" → `PROOF_STALE`.
+"How much ceremony does this feature need?" → `adp status` / `adp new --signals`.
+"Is anything unaccounted for?" → `PRD_UNPLACED`.
 "What can run in parallel?" → `adp plan`.
 "Where are we?" → `adp status`.
+"Is this worth building, and can I hand the answer to someone else?" → `adp report --html <path>`.
 "What do I send back to fix this?" → `adp prompt`.
 
 ## The golden rule
