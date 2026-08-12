@@ -64,6 +64,19 @@ otherwise be free to claim progress the audit can't see. To promote an
 item: remove its line, run `adp new <feature-slug>`, add the slug to the
 MVP checklist.
 
+### `adp report` — a portable snapshot, before committing to code
+
+`adp report` prints (or, with `--html <path>`, writes as one self-contained
+file) what the engine already knows: gate states, ceremony per feature, MVP
+placement, backlog size — no server required, unlike `adp monitor`. It also
+reads `**Decision:**` from `SCOPE.md` (`pending`/`go`/`no-go`), the recorded
+answer to "do we build this?" Purely declarative: no gate checks it, and a
+`no-go` refuses nothing — the documents already written stay useful on
+their own, including to a different tool. What this does **not** show yet:
+an effort or date estimate, or a comparison of scenarios — both need
+Function Point estimation (`SCOPE-0.6.0.md` PRD-003), which does not exist
+in this version.
+
 ## Proof is written by `verify`, and by nothing else
 
 `adp audit` reads documents and tests. It can see that a criterion has a test

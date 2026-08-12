@@ -4,6 +4,7 @@
 **Approved on:** 2026-08-03
 **Gathering date:** 2026-08-02
 **Scope owner:** Tiago Tardelli
+**Decision:** go
 
 > While the status is not `Approved` and every required field is not filled in, development must not start.
 

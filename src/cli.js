@@ -17,6 +17,8 @@ import { initProject, newFeature, newRfc, renderReport, AGENT_SKILL_DIRS, PAYLOA
 import { verifyPayload, renderIntegrity } from './core/integrity.js';
 import { checkTrust, grantTrust, revokeTrust, renderRefusal, storePath, TRUST_ENV } from './core/trust.js';
 import { startMonitor } from './server/server.js';
+import { buildState } from './server/state.js';
+import { renderReportHtml, renderReportText } from './core/report-html.js';
 import { runVerification, writeRecords, summarise, VerifyRefused, makeLaneTestRunner } from './core/verify.js';
 import { buildPlan, renderPlan } from './core/plan.js';
 import { runLane, mergeLane, isGitRepo, cleanupLane, cleanWorktrees, listOurWorktrees } from './core/executor.js';
@@ -34,6 +36,7 @@ import {
   describeVersionDrift,
 } from './core/upgrade.js';
 import { fileURLToPath } from 'url';
+import { writeFileSync } from 'fs';
 
 const HELP = `agent-dev-pipeline — the specification that stays true
 
@@ -45,6 +48,9 @@ usage: adp <command> [options]
                             ceremony matrix says it is due (see --signals)
   new --rfc <slug>          create a new decision record at .spec/rfc/RFC-NNN-<slug>.md
   status                    what exists and where the work stands
+  report [--html <path>] [--json]
+                            a portable viability snapshot — gates, ceremony,
+                            MVP/backlog, the recorded decision; no estimate yet
   audit [--ci] [--json]     evaluate every gate and report the findings
   gates [--list] [--json]   the seven gates and their state, without the findings
   prompt [<gate>]           the paste-ready text for a red gate
@@ -84,6 +90,7 @@ options:
   --only-migrations  run pending .spec/** migrations without touching payload files (upgrade)
   --ci            escalate the softer findings to errors (use this in a pipeline)
   --json          machine-readable output
+  --html <path>   write the viability snapshot as a self-contained file (report)
   --port <n>      port for the monitor (default 7788)
   --host <addr>   bind address for the monitor (default 127.0.0.1, loopback)
   --yes           skip the confirmation prompt (trust, run, rerun)
@@ -790,6 +797,21 @@ export async function run(argv) {
     console.log('');
     console.log(renderGates(evaluation));
     return evaluation.exitCode;
+  }
+
+  if (command === 'report') {
+    const state = buildState(config);
+    if (flags.html !== undefined) {
+      if (typeof flags.html !== 'string') {
+        console.error('error: --html needs a path: adp report --html <path>');
+        return 2;
+      }
+      writeFileSync(flags.html, renderReportHtml(state));
+      console.log(`written ${flags.html}`);
+      return 0;
+    }
+    console.log(flags.json ? JSON.stringify(state, null, 2) : renderReportText(state));
+    return 0;
   }
 
   console.error(`unknown command: ${command}\n`);

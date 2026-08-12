@@ -3,9 +3,16 @@
 **Scope status:** Draft
 **Gathering date:** {{DATE}}
 **Scope owner:** {{OWNER}}
+**Decision:** pending
 
 > Gate G0 stays red until this line reads `**Scope status:** Approved`.
 > That is deliberate: development must not start on a scope nobody signed.
+>
+> `**Decision:**` is `pending`, `go` or `no-go` — the recorded answer to
+> "do we build this?", read by `adp report`. It is declarative only: no
+> gate checks it, nothing refuses to run because it says `no-go`. If the
+> answer is "use another tool," the documents up to here are still yours —
+> that is the point of writing them first.
 
 ---
 

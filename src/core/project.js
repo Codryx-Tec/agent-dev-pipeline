@@ -14,9 +14,15 @@ import { parseDesign } from '../parsers/design.js';
 import { parseConstitution } from '../parsers/constitution.js';
 import { parseBacklog } from '../parsers/backlog.js';
 import { scanAnnotations } from '../parsers/annotations.js';
+import { fold } from '../util/text.js';
 import { spawnSync } from 'child_process';
 
 const RE_SCOPE_STATUS = /^\*\*Scope status:\*\*\s*(.+)$/m;
+// The recorded GO/NO-GO ("adp report" and the viability question it answers)
+// — declarative only, like every other status token here: nothing gates on
+// it, nothing enforces it. "o motor não veta o projeto."
+const RE_SCOPE_DECISION = /^\*\*Decision:\*\*\s*(.+)$/m;
+const DECISIONS = ['pending', 'go', 'no-go'];
 // The MVP checklist (M2c-core, SCOPE-0.6.0.md §2.2): a line only counts once
 // it names a real feature slug as its first token after the checkbox — a
 // prose description ("`init` command that scaffolds...") starts with a
@@ -100,6 +106,11 @@ export function loadProject(config) {
       : [],
     // M2c-core: the feature slugs declared as in the MVP boundary.
     mvp: extractMvp(scopeRaw),
+    // The recorded viability decision — declarative, never enforced.
+    decision: (() => {
+      const raw = fold(scopeRaw?.match(RE_SCOPE_DECISION)?.[1] ?? '');
+      return DECISIONS.includes(raw) ? raw : 'pending';
+    })(),
   };
 
   // ---- features ----

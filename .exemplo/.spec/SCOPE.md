@@ -3,6 +3,7 @@
 **Scope status:** Approved
 **Gathering date:** 2026-08-03
 **Scope owner:** agent-dev-pipeline
+**Decision:** go
 
 > Gate G0 stays red until this line reads `**Scope status:** Approved`.
 > That is deliberate: development must not start on a scope nobody signed.

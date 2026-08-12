@@ -14,6 +14,7 @@ import path from 'path';
 import { loadProject } from '../core/project.js';
 import { auditProject } from '../core/audit.js';
 import { evaluateGates, GATES } from '../core/gates.js';
+import { projectCeremony } from '../core/ceremony.js';
 
 /** Files whose modification time decides whether the state could have changed. */
 function watchedPaths(config) {
@@ -75,7 +76,8 @@ export function buildState(config) {
   const project = loadProject(config);
   const audit = auditProject(project, { ci: false });
   const strict = auditProject(project, { ci: true });
-  const evaluation = evaluateGates(audit.findings);
+  const ceremony = projectCeremony(project.features);
+  const evaluation = evaluateGates(audit.findings, { ceremony });
 
   const gates = evaluation.gates.map((g) => {
     const meta = GATES.find((x) => x.id === g.id);
@@ -86,6 +88,7 @@ export function buildState(config) {
       errors: g.errors ?? 0,
       warnings: g.warnings ?? 0,
       blockedBy: g.blockedBy ?? null,
+      reason: g.reason ?? null,
       findings: (g.findings ?? []).map(shapeFinding),
     };
   });
@@ -98,11 +101,17 @@ export function buildState(config) {
     scope: {
       present: project.scope?.present ?? false,
       status: project.scope?.status ?? null,
+      decision: project.scope?.decision ?? 'pending',
+      mvp: project.scope?.mvp ?? [],
+    },
+    backlog: {
+      present: project.backlog?.present ?? false,
+      items: project.backlog?.items?.length ?? 0,
     },
     gates,
     firstRed: evaluation.firstRed,
     exitCode: evaluation.exitCode,
-    strictExitCode: evaluateGates(strict.findings).exitCode,
+    strictExitCode: evaluateGates(strict.findings, { ceremony }).exitCode,
     totals: {
       errors: audit.errors,
       warnings: audit.warnings,
@@ -111,7 +120,7 @@ export function buildState(config) {
       srcFiles: project.srcFiles.length,
       principles: project.constitution?.principles?.length ?? 0,
     },
-    features: project.features.map((f) => shapeFeature(f, project)),
+    features: project.features.map((f) => shapeFeature(f, project, ceremony)),
     errors: project.errors ?? [],
   };
 }
@@ -126,7 +135,7 @@ function shapeFinding(f) {
   };
 }
 
-function shapeFeature(f, project) {
+function shapeFeature(f, project, ceremony) {
   const tasks = (f.spec?.tasks ?? []).map((t) => ({
     code: t.id,
     title: t.title ?? '',
@@ -147,9 +156,13 @@ function shapeFeature(f, project) {
     // "proven" is the engine's word, never the document's: a criterion is proven
     // when a verification record says a test PASSED, not when someone typed it.
     // With no record at all, nothing is proven — the absence of evidence is
-    // read as absence of proof, which is the only safe direction.
-    proven: record?.criteria?.[c.id]?.verdict === 'pass',
+    // read as absence of proof, which is the only safe direction. The record's
+    // real shape is `results[id].status` (verify.js) — `criteria`/`verdict`
+    // never existed there; this always read as 0 proven for every real record.
+    proven: record?.results?.[c.id]?.status === 'pass',
   }));
+
+  const featureCeremony = ceremony?.perFeature?.get(f.name) ?? null;
 
   return {
     name: f.name,
@@ -161,6 +174,11 @@ function shapeFeature(f, project) {
     hasRfc: f.rfcRefs.length > 0,
     hasSpec: f.hasSpec,
     hasDesign: f.hasDesign,
+    ceremony: featureCeremony
+      ? { level: featureCeremony.level, signals: featureCeremony.signals }
+      : null,
+    // M2c-core: is this feature named in SCOPE.md's MVP checklist?
+    inMvp: project.scope?.mvp?.includes(f.name) ?? false,
     stories: (f.spec?.stories ?? []).map((s) => ({
       code: s.id,
       title: s.title ?? '',
