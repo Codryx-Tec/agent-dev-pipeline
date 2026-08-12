@@ -85,13 +85,21 @@ export function recordClosure({ hours, note, estimate }) {
  * handful of points to mean anything, so this blends toward the observed
  * data rather than claiming a P50/P75/P90 split with 3 observations:
  *
- *   1 observation  — `likely` nudges 30% toward it; `low`/`high` hold.
+ *   1 observation  — `likely` nudges 30% toward it; `low`/`high` hold,
+ *                     unless the observation itself falls outside them.
  *   2 observations — `likely` becomes a 50/50 blend with their mean.
  *   3–5            — `likely` becomes their mean; `low`/`high` widen
  *                     (never shrink) to include the observed min/max.
  *   6+             — `low`/`likely`/`high` become the observed set's own
  *                     min/mean/max — the row is this team's data now, not
  *                     the market's.
+ *
+ * Whatever branch computes `likely`, the band is widened afterward (never
+ * shrunk) to guarantee `low <= likely <= high` — a table row that excludes
+ * its own `likely` value, or the observation that produced it, is a worse
+ * bug than a wide range. The n=1/n=2 branches above only ever touched
+ * `likely`, so a single far-outlier closure could previously push it past
+ * `high` (or below `low`) while the bounds stood still; this closes that.
  */
 export function recalibrateRow(row, observedHoursPerFpList) {
   const n = observedHoursPerFpList.length;
@@ -112,13 +120,16 @@ export function recalibrateRow(row, observedHoursPerFpList) {
     likely = row.likely * 0.5 + mean * 0.5;
   } else if (n <= 5) {
     likely = mean;
-    low = Math.min(row.low, min);
-    high = Math.max(row.high, max);
   } else {
     low = min;
     likely = mean;
     high = max;
   }
+
+  // See the doc comment above: this is what actually enforces
+  // low <= likely <= high across every branch, not just n<=5's own widening.
+  low = Math.min(low, min, likely);
+  high = Math.max(high, max, likely);
 
   return {
     ...row,

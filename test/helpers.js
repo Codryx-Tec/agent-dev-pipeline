@@ -26,6 +26,10 @@ ${mvp.map((slug) => `  - [ ] ${slug}`).join('\n')}
 
 export const MINIMAL_RFC = `# RFC: t
 
+## Purpose
+
+Support tickets about this take 20 minutes to resolve.
+
 ### D-001 — A choice
 
 **Alternatives considered**

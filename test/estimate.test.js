@@ -70,6 +70,14 @@ test('a non-positive or non-numeric PF is refused @spec:AC-065', () => {
   assert.throws(() => computeEstimate({ pf: NaN, profile, hoursTable: DEFAULT_TABLE }), /positive/);
 });
 
+test('an implausibly large PF is refused before it can overflow into Infinity @spec:AC-065', () => {
+  // Number.isFinite(1.5e308) is true, but pf * row.high overflows to
+  // Infinity, and JSON.stringify(Infinity) silently writes "null" — this
+  // guard has to fire before that math ever runs.
+  const profile = { appType: 'business-crud', familiarity: 'delivered' };
+  assert.throws(() => computeEstimate({ pf: 1.5e308, profile, hoursTable: DEFAULT_TABLE }), /not plausible/);
+});
+
 test('real-time, infra and mathematical are flagged as poorly measured by APF; business-crud is not @spec:AC-066', () => {
   for (const appType of ['real-time', 'infra', 'mathematical']) {
     const est = computeEstimate({ pf: 1, profile: { appType, familiarity: 'delivered' }, hoursTable: DEFAULT_TABLE });

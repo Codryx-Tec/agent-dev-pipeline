@@ -83,9 +83,18 @@ export function loadHoursTable(rootDir, config) {
  * to `business-crud/delivered` — the middle of the table — when the exact
  * combination has no row, and says so rather than silently substituting.
  */
+// Not a real ceiling on project size — a guard against `pf * row.high`
+// overflowing into Infinity, which JSON.stringify silently turns into
+// `null` rather than erroring. The largest APF counts on record are in the
+// tens of thousands; a million is already an absurd input, not a real one.
+const MAX_PLAUSIBLE_PF = 1_000_000;
+
 export function computeEstimate({ pf, profile, hoursTable, hoursPerMonth = 160 }) {
   if (!Number.isFinite(pf) || pf <= 0) {
     throw new Error('--pf must be a positive number');
+  }
+  if (pf > MAX_PLAUSIBLE_PF) {
+    throw new Error(`--pf ${pf} is not plausible (over ${MAX_PLAUSIBLE_PF.toLocaleString('en-US')}) — check the count`);
   }
   const key = `${profile.appType}/${profile.familiarity}`;
   let row = hoursTable.find((r) => r.profile === key);

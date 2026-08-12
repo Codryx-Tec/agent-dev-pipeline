@@ -82,6 +82,21 @@ test('2 observations blend likely 50/50 with their mean @spec:AC-073', () => {
   assert.equal(row.likely, 12.3); // 12*0.5 + mean(15,10)*0.5 = 6 + 6.25 = 12.25 -> 12.3
 });
 
+test('an n=1 outlier that would otherwise push likely past high widens the band instead — low <= likely <= high always holds @spec:AC-073', () => {
+  const row = recalibrateRow(ROW, [100]); // way past ROW.high (18)
+  assert.equal(row.likely, 38.4); // 12*0.7 + 100*0.3, unchanged math
+  assert.ok(row.low <= row.likely, `low ${row.low} must be <= likely ${row.likely}`);
+  assert.ok(row.likely <= row.high, `likely ${row.likely} must be <= high ${row.high}`);
+  assert.equal(row.high, 100); // widened to include the observation itself
+});
+
+test('an n=2 outlier below the floor widens low downward too @spec:AC-073', () => {
+  const row = recalibrateRow(ROW, [100, 0.5]);
+  assert.ok(row.low <= row.likely && row.likely <= row.high);
+  assert.equal(row.low, 0.5);
+  assert.equal(row.high, 100);
+});
+
 test('3-5 observations set likely to the mean and widen low/high to include the extremes @spec:AC-073', () => {
   const row = recalibrateRow(ROW, [15, 13, 20]);
   assert.equal(row.likely, 16); // mean(15,13,20)

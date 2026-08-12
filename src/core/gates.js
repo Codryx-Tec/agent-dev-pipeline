@@ -211,8 +211,18 @@ export function evaluateGates(findings, { ceremony = null } = {}) {
       continue;
     }
 
+    // `own.length === 0` is load-bearing, not a style choice: audit.js's
+    // global RFC-completeness check runs on every RFC file that EXISTS,
+    // unconditionally — deliberately unrelated to which feature's ceremony
+    // requires one (an RFC a human wrote is checked for completeness
+    // regardless of who currently links it). So a stale or orphaned RFC can
+    // fail G2 even in a project where no feature currently needs G2 at all.
+    // Without this guard, n/a would silently swallow those real findings —
+    // reporting exit 0 (or skipping straight to a later gate) over an
+    // actual DECISION_WITHOUT_ALTERNATIVE. "Not due" and "clean" are not
+    // the same claim, and only the second one may ever suppress a finding.
     const ceremonyKey = CEREMONY_KEY[gate.id];
-    if (ceremony && ceremonyKey && !ceremony[ceremonyKey]) {
+    if (ceremony && ceremonyKey && !ceremony[ceremonyKey] && own.length === 0) {
       // n/a never sets blockedFrom — G4/G5/G6 are always evaluated regardless
       // of G2/G3's ceremony state (§12.1: "Duas fases nunca são puladas").
       results.push({ ...base, state: 'n/a', blockedBy: null, reason: ceremony.reason[gate.id] });

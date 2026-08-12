@@ -63,6 +63,31 @@ test('warnings alone never turn a gate red @spec:AC-004', () => {
   assert.equal(ev.exitCode, 0);
 });
 
+test('n/a never suppresses a real finding — a gate with its own errors turns red, not n/a @spec:AC-058', () => {
+  // audit.js's global RFC-completeness block runs on every RFC file that
+  // EXISTS, unconditionally — deliberately independent of which feature's
+  // ceremony requires one. A gate must not report "not applicable" when it
+  // is sitting on real error findings; "not due" and "clean" are different
+  // claims, and only "clean" may suppress anything.
+  const ceremony = {
+    g2Applicable: false,
+    g3Applicable: false,
+    reason: { G2: 'no feature is at rfc-first or full ceremony', G3: 'no feature is above light ceremony' },
+  };
+  const findings = [
+    { code: 'DECISION_WITHOUT_ALTERNATIVE', severity: 'error', message: 'x', file: 'RFC-001.md', line: 1 },
+  ];
+  const ev = evaluateGates(findings, { ceremony });
+  assert.equal(gate(ev, 'G2').state, 'red');
+  assert.equal(gate(ev, 'G2').errors, 1);
+  assert.equal(ev.firstRed, 'G2');
+  assert.equal(ev.exitCode, 3);
+  // G3 comes after G2 in gate order, so once G2 turns red it reads
+  // "blocked", same as any other gate downstream of a real red one — G2
+  // being red takes priority over G3's own ceremony n/a-ness.
+  assert.equal(gate(ev, 'G3').state, 'blocked');
+});
+
 test('gateOf resolves a known code and refuses an unknown one @spec:AC-024', () => {
   assert.equal(gateOf('AC_WITHOUT_TEST'), 'G5');
   assert.equal(gateOf('NOT_A_REAL_CODE'), null);
