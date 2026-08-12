@@ -14,19 +14,7 @@
 
 ## Technical
 
-- Catch up this repo's own self-audit (`.spec/features/agent-dev-pipeline/SPEC.md`)
-  with everything built since the M1→M2-core migration: the ceremony matrix
-  (M2b-core), the MVP boundary and `BACKLOG.md` (M2c-core), `adp report` and
-  the recorded decision, `adp profile`/`adp estimate` (PRD-003-core), and the
-  five antipattern checks (M3b-core). `adp audit --ci` currently reports 51
-  `TEST_ORPHAN` and 6 `FILE_ORPHAN` findings — every test written for that
-  work already carries a real `@spec:AC-xxx` tag and already has real
-  passing proof; what's missing is the `US-xxx`/`AC-xxx`/`T-xxx` entries in
-  `SPEC.md` for the tags to resolve against. Real, substantial writing (not
-  mechanical) — carving 51 test cases into coherent story/criterion
-  boundaries is a judgment call worth doing carefully, not rushed inside a
-  feature pass. Roughly the size of its own milestone.
-- Once the above lands, refresh `DESIGN.md`'s "Three rings" architecture
+- Refresh `DESIGN.md`'s "Three rings" architecture
   section to describe what actually exists now (ceremony.js, the MVP/
   backlog checks, report-html.js, estimate.js, the antipattern checks) —
   `DOC_FOSSIL` already reports it as older than the code it maps, correctly.

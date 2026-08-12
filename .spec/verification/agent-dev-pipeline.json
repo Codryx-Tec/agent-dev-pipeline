@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 5776,
-  "verifiedAt": "2026-08-10T11:49:17.698Z",
-  "gitRev": "8c404b6ed4af6866eea1f375bab9de04c2a54a69",
+  "durationMs": 8448,
+  "verifiedAt": "2026-08-12T19:56:26.184Z",
+  "gitRev": "23b62ecfd48f10834ab1ac4c0df55560c9e53bf7",
   "gitDirty": true,
-  "codeMtime": 1786352882143.4668,
+  "codeMtime": 1786554330425.544,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -43,6 +43,14 @@
         {
           "title": "--agent none installs no skill @spec:AC-001",
           "status": "pass"
+        },
+        {
+          "title": "PRD.md reports its own feature and status, and owns no stories or criteria @spec:AC-001",
+          "status": "pass"
+        },
+        {
+          "title": "DESIGN.md reports its feature and status, with no structure beyond that @spec:AC-001",
+          "status": "pass"
         }
       ]
     },
@@ -66,7 +74,7 @@
           "status": "pass"
         },
         {
-          "title": "new creates the three documents and does not renumber over existing codes @spec:AC-002",
+          "title": "new creates PRD and SPEC by default; DESIGN.md is not due at light ceremony @spec:AC-002 @spec:AC-058",
           "status": "pass"
         }
       ]
@@ -135,6 +143,34 @@
       "tests": [
         {
           "title": "a decision with fewer than two alternatives is a finding @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "a PRD declaring no RFC is a finding @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "a PRD referencing an RFC that does not exist is a finding @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "one RFC shared by two PRDs is checked once, not once per PRD @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "newRfc creates a numbered, global decision record, decoupled from any feature @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "newRfc refuses a slug the grammar cannot carry @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "PRD.md declares which RFCs it links, comma-separated @spec:AC-007",
+          "status": "pass"
+        },
+        {
+          "title": "an empty \"rfcs:\" field never swallows the prose on a later line @spec:AC-007",
           "status": "pass"
         },
         {
@@ -911,6 +947,62 @@
       "status": "pass",
       "tests": [
         {
+          "title": "this migration identifies itself as 0.6.0 @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "extraction moves US/AC, ASM/Q and T-xxx into one new SPEC.md, in order @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "PRD.md keeps its prose and loses only the extracted story @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "RFC un-nests to the global family, keeping its decision and losing only Assumptions/Open questions @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "PRD.md gains an rfcs: link pointing at the relocated RFC @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "RFC numbers are allocated globally across features, in directory order @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "a fresh number never collides with an RFC that already exists @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "TDD.md becomes DESIGN.md, keeping its prose and losing only the task @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "idempotent: a second run changes nothing @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "an existing SPEC.md section is never overwritten, and the gap is reported @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "a feature missing PRD or RFC is migrated from whatever exists @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "dry-run reports the plan without writing or deleting anything @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "check() is true only once every feature directory has lost its TDD.md and its nested RFC.md @spec:AC-056",
+          "status": "pass"
+        },
+        {
+          "title": "pendingMigrations includes 0.6.0 for a project still on 0.5.0 @spec:AC-056",
+          "status": "pass"
+        },
+        {
           "title": "the 0.5.0 migration rewrites every renamed family and leaves already-English documents untouched @spec:AC-056",
           "status": "pass"
         },
@@ -949,6 +1041,367 @@
       "tests": [
         {
           "title": "describeVersionDrift warns only when the lockfile is genuinely behind @spec:AC-057",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-058": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a light-ceremony feature with no declared signal is never checked for a missing RFC @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "no declared signal computes to light @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "money-or-pii wins regardless of what else is declared @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "multiple-teams reaches rfc-first when money-or-pii is absent @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "any lone softer signal reaches medium, not light — the divergence from the worked example @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "n/a never suppresses a real finding — a gate with its own errors turns red, not n/a @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "new creates PRD and SPEC by default; DESIGN.md is not due at light ceremony @spec:AC-002 @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "new --signals raises the ceremony level and scaffolds DESIGN.md too @spec:AC-058",
+          "status": "pass"
+        },
+        {
+          "title": "new --signals with an unrecognized slug quietly drops it — the parser leaves it for SIGNAL_UNKNOWN to catch @spec:AC-058",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-059": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "describeFeatureCeremony ties requiresRfc/requiresDesign to the computed level @spec:AC-059",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-060": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "projectCeremony reads n/a-applicability as \"does any feature need it\" @spec:AC-060",
+          "status": "pass"
+        },
+        {
+          "title": "one rfc-first feature among several light ones keeps G2 applicable, project-wide @spec:AC-060",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-061": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a PRD not named in the MVP checklist is unplaced @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "a PRD named in the MVP checklist is placed, whatever its checkbox state @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "a feature with no PRD at all is never reported as unplaced — PRD_MISSING already says so @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "a backlog item carrying a real tracking code is flagged, and stays a warning @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "no BACKLOG.md at all is a normal, clean state — nothing has been deferred yet @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "an absent BACKLOG.md parses as present:false with no items, never an error @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "BACKLOG.md reads bullet and numbered items as plain prose @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "an item that already carries a real tracking code is flagged, not silently accepted @spec:AC-061",
+          "status": "pass"
+        },
+        {
+          "title": "an example wrapped in an HTML comment is documentation, not a real item @spec:AC-061",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-062": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an absent Decision line defaults to pending @spec:AC-062",
+          "status": "pass"
+        },
+        {
+          "title": "go and no-go are read case-insensitively @spec:AC-062",
+          "status": "pass"
+        },
+        {
+          "title": "an unrecognized decision value falls back to pending, never throws @spec:AC-062",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-063": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "buildState carries the decision, ceremony and MVP placement @spec:AC-063",
+          "status": "pass"
+        },
+        {
+          "title": "a feature outside the MVP checklist is reported as such, not silently omitted @spec:AC-063",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-064": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "the HTML report is self-contained, with no external reference @spec:AC-064",
+          "status": "pass"
+        },
+        {
+          "title": "the HTML report never invents an effort or date estimate @spec:AC-064",
+          "status": "pass"
+        },
+        {
+          "title": "the text report shows the recorded decision and every gate @spec:AC-064",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-065": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "every default table row is one of the 4 app types x 3 familiarity levels @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "computeEstimate multiplies PF by the matching row @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "an unrecognized profile combination falls back, and says so @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "a non-positive or non-numeric PF is refused @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "an implausibly large PF is refused before it can overflow into Infinity @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "loadProfile returns the labelled default when adp profile never ran @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "loadProfile reads back what was declared @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "loadHoursTable is null when adp init never seeded it @spec:AC-065",
+          "status": "pass"
+        },
+        {
+          "title": "loadHoursTable reads the rows array back @spec:AC-065",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-066": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "real-time, infra and mathematical are flagged as poorly measured by APF; business-crud is not @spec:AC-066",
+          "status": "pass"
+        },
+        {
+          "title": "limiarPF is hoursPerMonth divided by the row's high figure @spec:AC-066",
+          "status": "pass"
+        },
+        {
+          "title": "renderEstimateMd says plainly this is not proof, and shows the applicability caveat when it applies @spec:AC-066",
+          "status": "pass"
+        },
+        {
+          "title": "renderEstimateCsv is one header row and one data row @spec:AC-066",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-067": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a PRD naming a real database is flagged, case-insensitively @spec:AC-067",
+          "status": "pass"
+        },
+        {
+          "title": "a PRD with clean, technology-free prose is left alone @spec:AC-067",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-068": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an RFC whose context has no measurable figure is flagged @spec:AC-068",
+          "status": "pass"
+        },
+        {
+          "title": "an RFC context grounded in a number is left alone @spec:AC-068",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-069": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a PRD over the configured line ceiling is flagged, as a warning @spec:AC-069",
+          "status": "pass"
+        },
+        {
+          "title": "a PRD under the ceiling is left alone @spec:AC-069",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-070": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a DESIGN.md older than the code it maps is flagged, past the tolerance window @spec:AC-070",
+          "status": "pass"
+        },
+        {
+          "title": "a small mtime gap inside the tolerance window is not flagged — copy jitter, not real drift @spec:AC-070",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-071": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a criterion with a vague adjective and no number is flagged @spec:AC-071",
+          "status": "pass"
+        },
+        {
+          "title": "a criterion with a number is not flagged, even with an adjective nearby @spec:AC-071",
+          "status": "pass"
+        },
+        {
+          "title": "a criterion with neither a vague adjective nor a number is not flagged @spec:AC-071",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-072": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "recordClosure computes observed h/PF and deviation against the estimate @spec:AC-072",
+          "status": "pass"
+        },
+        {
+          "title": "recordClosure works with no prior estimate — hours recorded alone @spec:AC-072",
+          "status": "pass"
+        },
+        {
+          "title": "recordClosure refuses a non-positive or non-numeric hours @spec:AC-072",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-073": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "0 observations leaves the row untouched @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "1 observation nudges likely 30% toward it, low/high hold @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "2 observations blend likely 50/50 with their mean @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "an n=1 outlier that would otherwise push likely past high widens the band instead — low <= likely <= high always holds @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "an n=2 outlier below the floor widens low downward too @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "3-5 observations set likely to the mean and widen low/high to include the extremes @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "3-5 observations never shrink the range, only widen it @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "6+ observations become the observed set's own min/mean/max @spec:AC-073",
+          "status": "pass"
+        },
+        {
+          "title": "calibrationLabel names each regime @spec:AC-073",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-074": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "loadClosures is empty when adp close never ran @spec:AC-074",
+          "status": "pass"
+        },
+        {
+          "title": "appendClosure then loadClosures round-trips @spec:AC-074",
+          "status": "pass"
+        },
+        {
+          "title": "a torn trailing line is skipped, not fatal — same tolerance as the ledger @spec:AC-074",
+          "status": "pass"
+        },
+        {
+          "title": "saveHoursTable preserves top-level fields like _comment, only rows change @spec:AC-074",
           "status": "pass"
         }
       ]

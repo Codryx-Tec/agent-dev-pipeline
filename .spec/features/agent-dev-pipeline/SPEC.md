@@ -548,6 +548,235 @@ someone has to apply by hand.
   upgrade` command to resolve it, and prints nothing when there is no
   lockfile at all or when the versions already match
 
+### US-018 — The captain does not write a document nobody needs
+
+As a captain building something small, I want the document chain to scale
+to the size of the decision, so that a one-line config tweak does not owe
+the same paperwork as a payment-flow redesign.
+
+#### AC-058 — The ceremony level is computed from declared signals, and decides what G2/G3 owe
+
+- **Given** a PRD's `> signals:` line naming zero or more of
+  `multiple-teams`, `hard-to-reverse`, `money-or-pii`, `new-tech`,
+  `large-estimate`
+- **When** the level is computed
+- **Then** `money-or-pii` alone reaches `full` regardless of anything else;
+  `multiple-teams` without it reaches `rfc-first`; any one of the three
+  softer signals alone reaches `medium`; no signal at all reaches `light` —
+  and G2 (RFC) is due only at `rfc-first`/`full`, G3 (DESIGN) at every
+  level but `light`. A gate not due for **any** feature project-wide reads
+  the new fourth gate state, `n/a`, with a printed reason — never `red`,
+  never silently `green`, and never allowed to set `blockedFrom`: a gate
+  reading `n/a` never blocks G4/G5/G6 from being evaluated, and — the
+  distinction a review caught after this criterion was first written — a
+  gate is never `n/a` if it already carries a real finding of its own; an
+  RFC that exists and is genuinely incomplete stays `red` regardless of
+  whether the current feature set happens to need one right now.
+
+#### AC-059 — Ceremony is per-feature, computed the same way for every caller
+
+- **Given** a feature's `PRD.md`
+- **When** its ceremony is described
+- **Then** the level, its signals, and whether it requires an RFC or a
+  DESIGN document are all derived from the same `computeLevel()`, so `adp
+  new`, `adp audit`, `adp status` and `adp report` can never disagree about
+  what one feature owes
+
+#### AC-060 — Applicability aggregates project-wide, worst case wins
+
+- **Given** several features at different ceremony levels in the same
+  project
+- **When** the project's gate applicability is computed
+- **Then** G2/G3 are due project-wide the moment **any** feature needs
+  them — one `rfc-first` feature among several `light` ones keeps G2
+  evaluated, and only the features that actually need it are checked; a
+  project where no feature needs a gate is the only case where it reads
+  `n/a`
+
+### US-019 — Nothing exists in limbo: every PRD is declared, or deferred without losing the reasoning
+
+As a captain, I want every feature that has a PRD to be named as in-scope,
+and everything else to have a place to live before it earns one, so that
+"we'll get to it" never becomes a feature nobody agreed to build.
+
+#### AC-061 — A PRD is in the MVP checklist, in the backlog, or `PRD_UNPLACED`
+
+- **Given** a feature whose `PRD.md` exists
+- **When** the audit runs
+- **Then** it is an error unless the feature's slug is named in `SCOPE.md`'s
+  MVP checklist (`- [ ] <slug>` — checkbox state tracks delivery, not
+  membership); separately, `.spec/BACKLOG.md` is optional (its absence
+  means nothing has been deferred yet, not an error) and holds only plain
+  prose — an item already carrying a real tracking code
+  (`US-xxx`/`AC-xxx`/`T-xxx`/`ASM-xxx`/`Q-xxx`/`D-xxx`) is
+  `BACKLOG_ITEM_WITH_CODE`, a warning, because a backlog entry that already
+  looks proven is a loophole, not a shortcut
+
+### US-020 — The captain gets a portable answer to "is this worth building"
+
+As a captain weighing whether to proceed, I want a snapshot of where the
+project stands that I can hand to someone else — or to a different tool
+entirely — so that writing the documents first is never wasted work, even
+when the answer turns out to be no.
+
+#### AC-062 — The viability decision is recorded, and never enforced
+
+- **Given** `SCOPE.md`'s `**Decision:**` line, one of `pending`/`go`/`no-go`
+  (read case-insensitively, and defaulting to `pending` when the line is
+  absent or unrecognized)
+- **When** it is read
+- **Then** nothing in the gate chain changes because of its value — the
+  same declare-don't-police posture ceremony signals already take
+
+#### AC-063 — The report carries the decision, the ceremony, and the MVP placement of every feature
+
+- **Given** a project with features at different ceremony levels, some in
+  the MVP checklist and some not
+- **When** the report's state is built
+- **Then** it names the recorded decision, and for every feature its
+  ceremony level, its signals, and whether it is in the MVP checklist —
+  a feature outside it is reported as such, not silently omitted
+
+#### AC-064 — The report is a portable, honest snapshot — no invented number
+
+- **Given** a project with no Function Point estimate on file
+- **When** `adp report` runs, printed or written with `--html <path>`
+- **Then** the HTML form is one self-contained file with no external
+  reference of any kind (no script src, no external stylesheet, no
+  network address), both forms show every gate, and neither ever invents
+  an effort or date figure — the "shape of the work" section says plainly
+  why one isn't there instead of estimating anyway
+
+### US-021 — The captain gets a real hours range from a Function Point count they already know
+
+As a captain who already knows roughly how big a feature is, I want an
+hours range grounded in a declared profile and an editable table, so that
+"how long will this take" has an answer better than a guess, without
+pretending the machine counted anything.
+
+#### AC-065 — Hours are declared PF times the matching profile row, never machine-counted
+
+- **Given** a declared or default stack/team profile (`appType` ×
+  `familiarity`) and a human-declared, positive, plausible Function Point
+  count
+- **When** `adp estimate --pf <n>` runs
+- **Then** the hours are that count times the exact matching row in
+  `.spec/metrics/hours-per-fp.json`, or the `business-crud/delivered`
+  fallback row with that substitution named out loud when no exact row
+  exists; an implausibly large count (large enough that the product could
+  overflow `Number` precision) is refused before the arithmetic runs, not
+  silently turned into `null` by `JSON.stringify(Infinity)`
+
+#### AC-066 — The applicability warning is not optional
+
+- **Given** a profile whose `appType` is `real-time`, `infra` or
+  `mathematical`
+- **When** the estimate is rendered, in Markdown or CSV
+- **Then** the Markdown form states plainly that Function Point analysis
+  measures that app type poorly and the range is weaker evidence than
+  usual; `business-crud` never carries that caveat
+
+### US-022 — The audit catches document quality, not just structure
+
+As a captain, I want the audit to notice when a document is technically
+present but substantively hollow — a PRD that names the database instead
+of the problem, a decision made with no evidence, a criterion nobody could
+test — so that passing every gate is closer to meaning the decision was
+actually good.
+
+#### AC-067 — A PRD naming a technical solution is flagged
+
+- **Given** a PRD whose prose names a term from the project's forbidden
+  vocabulary (`.spec/PRD_VOCABULARY.json`, seeded editable, checked
+  case-insensitively)
+- **When** the audit runs
+- **Then** it is an error naming the exact term and line — a PRD describes
+  the problem, never the technology; clean, technology-free prose is left
+  alone
+
+#### AC-068 — An RFC's context must be grounded in a number
+
+- **Given** an RFC's prose before its first decision heading
+- **When** the audit runs
+- **Then** it is an error unless that prose contains at least one
+  measurable figure (a count, a duration, a currency, a percentage) —
+  "our process has some problems" fails, "support tickets take 20 minutes"
+  passes
+
+#### AC-069 — A document over its configured length ceiling is flagged, as a warning
+
+- **Given** `PRD.md` or `DESIGN.md` longer than `docLengthLimits` in
+  config (`SPEC.md` is deliberately exempt — its length scales with real
+  content, not padding)
+- **When** the audit runs
+- **Then** it is a warning naming the line count and the ceiling; a
+  document under the ceiling is left alone
+
+#### AC-070 — A DESIGN document older than the code it maps is flagged, past a tolerance window
+
+- **Given** `DESIGN.md`'s modification time and the modification times of
+  the files its feature's tasks map
+- **When** the audit runs
+- **Then** it is a warning (an error under `--ci`) if the newest mapped
+  file is more than five minutes newer than the document — the tolerance
+  exists because copying or checking out a whole tree does not write every
+  file in the same instant, and real drift happens over hours or days, not
+  milliseconds of copy jitter; a gap inside the window is not flagged
+
+#### AC-071 — A criterion that reads like a feeling, not a measurement, is flagged
+
+- **Given** an acceptance criterion whose Given/When/Then text carries a
+  vague adjective (`fast`, `simple`, `robust`, and similar, in either
+  language) with no number anywhere in it
+- **When** the audit runs
+- **Then** it is an error; a criterion carrying a number is never flagged,
+  even next to the same adjective, and a criterion with neither is left
+  alone
+
+### US-023 — The captain closes the estimation loop with what actually happened
+
+As a captain who has just finished a feature, I want to record the real
+hours it took, so that the next estimate for the same kind of work is
+grounded in this team's own outcomes instead of a market figure nobody
+here has confirmed.
+
+#### AC-072 — Declared hours are recorded against the last estimate, deviation included
+
+- **Given** the last `.spec/metrics/estimate.json` on file (or none at
+  all) and a declared, positive hours figure
+- **When** `adp close --hours <n>` runs
+- **Then** the closure records the observed hours-per-Function-Point and
+  the deviation percentage against the estimate's `likely` figure when an
+  estimate exists, and records the hours alone, with no deviation to
+  report, when it does not
+
+#### AC-073 — The matching table row recalibrates toward what was observed, and never contradicts itself
+
+- **Given** zero or more prior closures against one profile row
+- **When** a new one is recorded
+- **Then** zero observations leaves the row untouched; one nudges `likely`
+  30% toward the observation; two blend `likely` 50/50 with their mean;
+  three to five set `likely` to the observed mean and widen `low`/`high`
+  to include the observed range; six or more replace `low`/`likely`/`high`
+  with the observed set's own min/mean/max — and at every count, the
+  final `low <= likely <= high` always holds, even when a single
+  observation would otherwise have pushed `likely` outside the row's
+  existing bounds; `calibrationLabel()` names the regime ("no calibration"
+  through "calibrated") for every observation count
+
+#### AC-074 — Closures persist locally, tolerant of a torn write, and never overwrite table metadata
+
+- **Given** `.spec/metrics/closures.jsonl` (possibly absent, possibly
+  carrying a torn trailing line from an interrupted write) and
+  `.spec/metrics/hours-per-fp.json`
+- **When** closures are read back, or the table is saved after
+  recalibration
+- **Then** an absent closures file reads as empty, a torn trailing line is
+  skipped rather than failing the read (the same tolerance the event
+  ledger already has for its own append-only log), and saving the table
+  changes only the `rows` field — any other top-level field the file
+  carries (`_comment`, seeded from the shipped default) survives untouched
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -990,5 +1219,49 @@ answered before G2 can pass.
 "No GitHub CLI" is asserted by planting a DECOY `gh` and `hub` on the PATH that log being called. Stripping them from the PATH instead is not portable — on some machines `git` and `gh` share a directory — and "works when gh is absent" is the weaker claim. Given every opportunity to call it, the chain does not.
 
 Using the shipped example as the fixture means this test also fails the day `.exemplo/` stops being a valid project, which is otherwise discovered months later by a user. Every test carries its `@spec:AC-xxx` annotation — the tool proves itself with its own mechanism.
+
+### Milestone M9 — 0.6.0: ceremony, MVP boundary, viability and estimation
+
+## T-045 — Ceremony matrix [done]
+
+- Refs: AC-058, AC-059, AC-060
+- Files: src/core/ceremony.js
+- Notes: `computeLevel()` reads a PRD's declared signals and returns the level plus which of G2/G3 it owes; `projectCeremony()` aggregates every feature's level project-wide, worst case wins, so one `rfc-first` feature keeps G2 evaluated even when every other feature is `light`. `gates.js` reads the aggregate to decide when a gate reads the new `n/a` state — but only when the gate carries no finding of its own; a gate sitting on a real error is never `n/a`, a distinction added after a review caught `n/a` silently suppressing a genuine `DECISION_WITHOUT_ALTERNATIVE` finding (regression test in `test/gates.test.js`, `@spec:AC-058`).
+
+## T-046 — MVP boundary and BACKLOG.md [done]
+
+- Refs: AC-061
+- Files: src/parsers/backlog.js
+- Notes: A PRD with no matching MVP-checklist entry in `SCOPE.md` is `PRD_UNPLACED`, an error — every feature that has a PRD is either declared in-scope or explicitly deferred, never left implicit. `parseBacklog()` reads `.spec/BACKLOG.md` as plain prose; a line already carrying a real tracking code is `BACKLOG_ITEM_WITH_CODE`, a warning, because a backlog entry that already looks proven is the loophole this check exists to close.
+
+## T-047 — Viability report and the recorded decision [done]
+
+- Refs: AC-062, AC-063, AC-064
+- Files: src/core/report-html.js
+- Notes: `SCOPE.md`'s `**Decision:**` field (`pending`/`go`/`no-go`, defaulting to `pending`) is read and rendered but never enforced — the same declare-don't-police posture ceremony signals and the backlog already take. The report's state carries every feature's ceremony level and MVP placement alongside it, so the snapshot answers "is this worth building" without requiring the reader to open `SCOPE.md` or `PRD.md` themselves. The HTML form is one self-contained file — no external script, stylesheet, or network address — so handing it to someone else, or to a different tool, costs nothing beyond the file itself.
+
+## T-048 — Function Point estimation, human-declared [done]
+
+- Refs: AC-065, AC-066
+- Files: src/core/estimate.js
+- Notes: `computeEstimate()` multiplies a human-declared PF count by the matching `appType`/`familiarity` row in `.spec/metrics/hours-per-fp.json` (or the `business-crud/delivered` fallback, named out loud), never counts anything itself. `real-time`/`infra`/`mathematical` app types carry an explicit applicability warning in the rendered Markdown, because Function Point analysis measures those poorly and the range is weaker evidence there than elsewhere. An implausibly large PF is refused before the multiplication can overflow into `Infinity` — `JSON.stringify(Infinity)` silently writes `null`, which would have made a corrupted estimate file look merely empty.
+
+## T-049 — Antipatterns as findings [done]
+
+- Refs: AC-067, AC-068, AC-069, AC-070, AC-071
+- Files: src/core/audit.js, src/parsers/rfc.js, src/parsers/design.js
+- Notes: Five of PRD-003b's eight antipattern codes: `PRD_WITH_SOLUTION` (a PRD naming a term from the editable `.spec/PRD_VOCABULARY.json` forbidden-vocabulary list), `CONTEXT_WITHOUT_NUMBERS` (an RFC's context prose with no measurable figure anywhere in it), `DOC_TOO_LONG` (a warning, `SPEC.md` deliberately exempt since its length tracks real content), `DOC_FOSSIL` (a DESIGN document older than the newest file its tasks map, past a five-minute tolerance window — the tolerance exists because copying a whole tree does not write every file in the same instant), and `AC_NOT_OBSERVABLE` (a criterion carrying a vague adjective with no number anywhere in its Given/When/Then text, extracted via a dedicated `gwtText()` helper rather than the AC's full body, since the last AC in a document has a body that runs to end-of-file and would otherwise pick up unrelated digits from later sections). `STRAW_OPTION`, `OPTION_DO_NOTHING_MISSING` and `DUPLICATE_PROSE` remain in `.spec/BACKLOG.md`, not built this pass.
+
+## T-050 — Closing the estimation loop [done]
+
+- Refs: AC-072, AC-073, AC-074
+- Files: src/core/closure.js
+- Notes: `adp close --hours <n>` is the local half of PRD-003c — one project's own outcomes feeding its own `hours-per-fp.json` row, with no cross-project history or gate integration (both left in `.spec/BACKLOG.md`, since `adp estimate` is project-wide in this codebase and a per-PRD `HOURS_UNDECLARED` finding has no clean home yet). `recalibrateRow()` blends the observed hours-per-Function-Point into the matching row by observation count — nudge at 1, 50/50 blend at 2, mean-plus-widen at 3–5, fully observed min/mean/max at 6+ — and at every count clamps so `low <= likely <= high` always holds, a guarantee added after a review reproduced a single extreme outlier pushing `likely` outside the row's own bounds. `loadClosures()` tolerates a torn trailing line the same way `ledger.js` already does for its own append-only log.
+
+## T-051 — The 0.6.0 migration [done]
+
+- Refs: AC-056
+- Files: src/migrations/0.6.0.js
+- Notes: Ships the RFC un-nesting and TDD.md→DESIGN.md/SPEC.md split this repo's own self-audit migrated by hand earlier in the 0.6.0 work, as an idempotent migration for every other project on an older layout — the same `AC-056` criterion T-042's 0.5.0 migration already proves ("a grammar rename ships as a migration"), general enough to cover this one too without a new criterion.
 
 ---
