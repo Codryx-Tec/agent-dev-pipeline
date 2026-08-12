@@ -41,19 +41,20 @@
 
   // ---- gates ----------------------------------------------------------------
 
-  var MARK = { green: '✔', red: '✘', blocked: '·' };
+  var MARK = { green: '✔', red: '✘', blocked: '·', 'n/a': '○' };
 
   function renderGates(gates) {
     var list = el('gates');
     clear(list);
     gates.forEach(function (g) {
-      var li = text('li', 'gate ' + g.state);
+      var li = text('li', 'gate ' + g.state.replace('/', ''));
       li.appendChild(text('span', 'mark', MARK[g.state] || '?'));
       li.appendChild(text('span', 'id', g.id));
       li.appendChild(text('span', 'title', g.title));
 
       var right = '';
       if (g.state === 'blocked') right = 'blocked by ' + g.blockedBy;
+      else if (g.state === 'n/a') right = g.reason || 'n/a';
       else if (g.errors) right = g.errors + ' error' + (g.errors === 1 ? '' : 's');
       else if (g.warnings) right = g.warnings + ' warning' + (g.warnings === 1 ? '' : 's');
       li.appendChild(text('span', 'count', right));
@@ -87,6 +88,36 @@
     });
   }
 
+  // ---- overview: decision, backlog, estimate ---------------------------------
+
+  function renderOverview(s) {
+    var host = el('overview');
+    clear(host);
+
+    if (s.scope) {
+      var decision = text('span', 'decision ' + (s.scope.decision || 'pending'),
+        s.scope.decision === 'go' ? 'GO' : s.scope.decision === 'no-go' ? 'NO-GO' : 'pending');
+      host.appendChild(decision);
+    }
+
+    if (s.backlog) {
+      var backlogFact = text('span', 'fact');
+      backlogFact.appendChild(document.createTextNode('backlog '));
+      backlogFact.appendChild(text('b', null, s.backlog.present ? s.backlog.items : '—'));
+      host.appendChild(backlogFact);
+    }
+
+    if (s.estimate) {
+      var e = s.estimate;
+      var estFact = text('span', 'fact');
+      estFact.appendChild(text('b', null, e.pf + ' PF'));
+      estFact.appendChild(document.createTextNode(
+        ' → ' + e.hours.low + '–' + e.hours.high + 'h (' + e.rowUsed + ')'
+      ));
+      host.appendChild(estFact);
+    }
+  }
+
   // ---- features -------------------------------------------------------------
 
   function bar(label, done, total) {
@@ -114,12 +145,34 @@
 
     features.forEach(function (f) {
       var card = text('div', 'feature');
-      card.appendChild(text('h3', null, f.name));
+      var titleRow = text('div');
+      titleRow.appendChild(text('h3', null, f.name));
+      if (f.inMvp === false) titleRow.appendChild(text('span', 'mvp-flag', 'not in MVP'));
+      card.appendChild(titleRow);
       card.appendChild(text('div', 'path', f.dir));
 
+      if (f.ceremony) {
+        var cer = text('div', 'ceremony');
+        cer.appendChild(text('span', 'level', f.ceremony.level));
+        if (f.ceremony.signals.length) {
+          cer.appendChild(document.createTextNode(f.ceremony.signals.join(', ')));
+        }
+        card.appendChild(cer);
+      }
+
+      // RFC/DESIGN read "n/a" instead of "absent" when this feature's
+      // ceremony level does not require them — a light feature with no RFC
+      // is not missing anything, and showing it as red would say otherwise.
       var docs = text('div', 'docs');
-      [['PRD', f.hasPrd], ['RFC', f.hasRfc], ['DESIGN', f.hasDesign], ['SPEC', f.hasSpec]].forEach(function (d) {
-        docs.appendChild(text('span', 'doc ' + (d[1] ? 'present' : 'absent'), d[0]));
+      var rfcState = f.hasRfc ? 'present' : (f.ceremony && !f.ceremony.requiresRfc ? 'na' : 'absent');
+      var designState = f.hasDesign ? 'present' : (f.ceremony && !f.ceremony.requiresDesign ? 'na' : 'absent');
+      [
+        ['PRD', f.hasPrd ? 'present' : 'absent'],
+        ['RFC', rfcState],
+        ['DESIGN', designState],
+        ['SPEC', f.hasSpec ? 'present' : 'absent'],
+      ].forEach(function (d) {
+        docs.appendChild(text('span', 'doc ' + d[1], d[0]));
       });
       card.appendChild(docs);
 
@@ -176,6 +229,7 @@
   function render(s) {
     state = s;
     renderVerdict(s);
+    renderOverview(s);
     renderGates(s.gates);
     renderFindings(s);
     renderFeatures(s.features);

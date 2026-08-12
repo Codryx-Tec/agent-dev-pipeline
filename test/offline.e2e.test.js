@@ -153,7 +153,7 @@ test('the full chain closes with no remote and no network @spec:AC-018', () => {
 
     assert.equal(result.gates.length, GATES.length, 'every gate must be evaluated');
     assert.ok(
-      result.gates.every((g) => ['green', 'red', 'blocked'].includes(g.state)),
+      result.gates.every((g) => ['green', 'red', 'blocked', 'n/a'].includes(g.state)),
       'every gate must reach a state'
     );
 

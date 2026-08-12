@@ -118,6 +118,36 @@ h2 {
 .gate.red .mark { color: var(--red); }
 .gate.blocked { border-left: 3px solid var(--blocked); opacity: 0.62; }
 .gate.blocked .mark { color: var(--blocked); }
+.gate.na { border-left: 3px solid var(--blocked); opacity: 0.62; }
+.gate.na .mark { color: var(--blocked); }
+
+/* ---- overview: decision, backlog, estimate ---- */
+
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.decision {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.decision.go { color: var(--green); border-color: var(--green); }
+.decision.no-go { color: var(--red); border-color: var(--red); }
+.overview .fact {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.overview .fact b { color: var(--ink); font-weight: 600; }
 
 /* ---- findings ---- */
 
@@ -169,6 +199,30 @@ h2 {
 }
 .doc.present { color: var(--green); border-color: var(--green); }
 .doc.absent  { color: var(--red); border-color: var(--red); }
+.doc.na      { color: var(--muted); border-color: var(--line); opacity: 0.7; }
+
+.ceremony {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.ceremony .level {
+  padding: 1px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+.mvp-flag {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--red);
+  color: var(--red);
+}
 
 .bars { display: grid; gap: 10px; margin-top: 14px; }
 .bar-row { display: grid; grid-template-columns: 130px 1fr 80px; gap: 10px; align-items: center; font-size: 13px; }

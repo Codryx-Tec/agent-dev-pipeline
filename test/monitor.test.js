@@ -119,7 +119,7 @@ test('the state reports gates and features @spec:AC-034', async () => {
   assert.equal(res.status, 200);
   const state = await res.json();
   assert.equal(state.gates.length, 7);
-  assert.ok(state.gates.every((g) => ['green', 'red', 'blocked'].includes(g.state)));
+  assert.ok(state.gates.every((g) => ['green', 'red', 'blocked', 'n/a'].includes(g.state)));
   assert.equal(state.features.length, 1);
   assert.equal(state.features[0].name, 'demo');
   assert.ok(typeof state.fingerprint === 'string' && state.fingerprint.length > 0);

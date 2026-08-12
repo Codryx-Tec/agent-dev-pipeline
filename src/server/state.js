@@ -178,7 +178,12 @@ function shapeFeature(f, project, ceremony) {
     hasSpec: f.hasSpec,
     hasDesign: f.hasDesign,
     ceremony: featureCeremony
-      ? { level: featureCeremony.level, signals: featureCeremony.signals }
+      ? {
+          level: featureCeremony.level,
+          signals: featureCeremony.signals,
+          requiresRfc: featureCeremony.requiresRfc,
+          requiresDesign: featureCeremony.requiresDesign,
+        }
       : null,
     // M2c-core: is this feature named in SCOPE.md's MVP checklist?
     inMvp: project.scope?.mvp?.includes(f.name) ?? false,
