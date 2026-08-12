@@ -13,11 +13,34 @@
 // feature's SPEC may legally reference a criterion defined in another
 // feature's SPEC. Reference resolution is therefore global — see RFC D-003.
 
-import { existsSync } from 'fs';
+import { existsSync, statSync, readFileSync } from 'fs';
 import path from 'path';
 import { CI_ESCALATES } from './gates.js';
 import { checkPrinciples } from './principles.js';
 import { SIGNALS, projectCeremony } from './ceremony.js';
+import { grepPattern } from '../parsers/annotations.js';
+
+// PRD_WITH_SOLUTION's default vocabulary (M3b) — used only when the project
+// has no `.spec/PRD_VOCABULARY.json` of its own yet (pre-`adp init`, or an
+// upgrade that hasn't seeded one). Kept tiny and unambiguous on purpose: the
+// full, editable list ships in payload/vocabulary/prd-forbidden.default.json.
+const FALLBACK_PRD_VOCABULARY = ['postgresql', 'mongodb', 'redis', 'docker', 'kubernetes', 'react', 'django'];
+
+// M3b, antipattern #7 (AI-review rule, not one of the six classics): a vague
+// adjective with no number attached is not something a test can check.
+// "responds quickly" fails; "responds in under 300ms" passes.
+const RE_VAGUE_ADJECTIVE =
+  /\b(r[áa]pid[oa]s?|f[áa]cil|f[áa]ceis|simples|eficiente|robust[oa]|amig[áa]vel|intuitiv[oa]|razo[áa]vel|aceit[áa]vel|adequad[oa]|respons[íi]v[oa]|escal[áa]vel|bo[am]|melhor|fast|easy|simple|efficient|robust|friendly|intuitive|reasonable|acceptable|appropriate|responsive|scalable|good|better)\b/i;
+const RE_HAS_NUMBER = /\d/;
+const RE_GWT_LINE = /^\s*[-*]\s*\*\*(?:Given|Dado|When|Quando|Then|Ent[ãa]o)\*\*.*$/gim;
+
+// `ac.body` runs to the next AC/US OR, for the last criterion in a document,
+// to end of file — which swallows unrelated trailing sections (Assumptions,
+// tasks, their own ASM-xxx/T-xxx codes). AC_NOT_OBSERVABLE only cares about
+// the Given/When/Then lines themselves, so it scopes to those, not the body.
+function gwtText(ac) {
+  return (ac.body.match(RE_GWT_LINE) || []).join(' ');
+}
 
 const RE_SHORT_ID = /^(US|AC|T|ASM|Q|P|RFC)-\d{1,2}$/;
 
@@ -32,6 +55,11 @@ const RE_SHORT_ID = /^(US|AC|T|ASM|Q|P|RFC)-\d{1,2}$/;
  * mtime is the fallback — for a project with no git, and for a dirty tree, where
  * the hash describes something other than what was tested.
  */
+/** How many lines a project-relative document has. Used by DOC_TOO_LONG. */
+function lineCount(rootDir, relPath) {
+  return readFileSync(path.join(rootDir, relPath), 'utf8').split('\n').length;
+}
+
 export function isProofStale(project, record) {
   if (record.gitRev && project.gitRev && record.gitDirty === false) {
     return record.gitRev !== project.gitRev;
@@ -125,6 +153,12 @@ export function auditProject(project, { ci = false } = {}) {
   // one finding, not two duplicates pointing at the same file.
   for (const [id, entry] of rfcs) {
     register(id, { file: entry.file, line: 1 }, null);
+    // M3b, antipattern #2: "our process has some problems" proves nothing.
+    if (!entry.rfc.contextHasNumbers) {
+      emit('CONTEXT_WITHOUT_NUMBERS', 'error',
+        `${entry.file} has no measurable figure before its first decision — ground the context in a number ("support tickets take 20 minutes"), not an impression ("the process has some problems")`,
+        { file: entry.file, line: 1 });
+    }
     for (const d of entry.rfc.decisions) {
       const noun = d.dialect === 'create-rfc' ? 'option' : 'alternative';
       if (d.alternatives < 2) {
@@ -156,6 +190,47 @@ export function auditProject(project, { ci = false } = {}) {
     }
   }
 
+  // -------------------------------------------------- PRD_WITH_SOLUTION (global, once)
+  // M3b, antipattern #4: "the PRD that became a spec." A PRD describes the
+  // problem, never the technical solution — reuses the same sandboxed,
+  // timeout-bounded regex primitive the constitution's verification(forbidden)
+  // already runs on, pointed at every PRD.md instead of at a human-declared
+  // principle, because this rule isn't optional per project the way a
+  // constitution principle is.
+  {
+    const vocabPath = path.join(project.rootDir, config.prdVocabularyFile ?? '.spec/PRD_VOCABULARY.json');
+    let terms = FALLBACK_PRD_VOCABULARY;
+    if (existsSync(vocabPath)) {
+      try {
+        const parsed = JSON.parse(readFileSync(vocabPath, 'utf8'));
+        if (Array.isArray(parsed.terms)) terms = parsed.terms;
+      } catch {
+        /* a malformed vocabulary file falls back rather than crashing the audit */
+      }
+    }
+    if (terms.length) {
+      const pattern = `\\b(${terms.join('|')})\\b`;
+      const glob = `${config.featuresDir}/**/${config.documents.prd}`;
+      // No ignoreGlobs here on purpose: the default list excludes `.spec/**`
+      // (kept out of test/src scanning elsewhere), but PRD.md lives exactly
+      // there — passing it through would silently exclude every file this
+      // check exists to look at.
+      const { error, hits } = grepPattern(project.rootDir, pattern, glob, [], 'i');
+      if (error) {
+        emit('PROJECT_INVALID', 'error', `PRD_WITH_SOLUTION check could not run: ${error}`);
+      } else {
+        for (const hit of hits.slice(0, 10)) {
+          emit('PRD_WITH_SOLUTION', 'error',
+            `${hit.file} names a technical solution — "${hit.text.slice(0, 120)}" — a PRD describes the problem, never the technology; that belongs in the RFC or DESIGN`,
+            { file: hit.file, line: hit.line });
+        }
+        if (hits.length > 10) {
+          emit('PRD_WITH_SOLUTION', 'error', `${hits.length - 10} further occurrence(s) not listed`);
+        }
+      }
+    }
+  }
+
   // -------------------------------------------------------------- per feature
   for (const f of features) {
     // ---- G1 PRD — prose only: what, for whom, why ----
@@ -177,6 +252,17 @@ export function auditProject(project, { ci = false } = {}) {
       if (!SIGNALS.includes(s)) {
         emit('SIGNAL_UNKNOWN', 'warning',
           `${f.prdPath} declares signal "${s}", which the ceremony matrix does not recognize — use one of: ${SIGNALS.join(', ')}`,
+          { feature: f.name, file: f.prdPath });
+      }
+    }
+    // M3b, antipattern #5: "the 40 pages." A PRD is meant to stay prose a
+    // product owner can read in one sitting — SPEC.md is exempt from this
+    // check on purpose (its length scales with real content, not padding).
+    if (f.hasPrd && config.docLengthLimits?.prd) {
+      const lines = lineCount(project.rootDir, f.prdPath);
+      if (lines > config.docLengthLimits.prd) {
+        emit('DOC_TOO_LONG', 'warning',
+          `${f.prdPath} is ${lines} lines, over the ${config.docLengthLimits.prd}-line PRD ceiling — a PRD this long has probably drifted into being a spec`,
           { feature: f.name, file: f.prdPath });
       }
     }
@@ -204,6 +290,38 @@ export function auditProject(project, { ci = false } = {}) {
       emit('DESIGN_MISSING', 'error', `${f.name} has no ${config.documents.design}`,
         { feature: f.name, file: f.designPath });
     }
+    if (f.hasDesign && config.docLengthLimits?.design) {
+      const lines = lineCount(project.rootDir, f.designPath);
+      if (lines > config.docLengthLimits.design) {
+        emit('DOC_TOO_LONG', 'warning',
+          `${f.designPath} is ${lines} lines, over the ${config.docLengthLimits.design}-line DESIGN ceiling`,
+          { feature: f.name, file: f.designPath });
+      }
+    }
+    // M3b, antipattern #6: "the fossil document" — PROOF_STALE applied to a
+    // document instead of a proof record. mtime, not git log per file: the
+    // same simplicity/precision trade the rest of this engine already makes
+    // when git isn't available or the tree is dirty (see isProofStale above).
+    // A tolerance window, not a bare ">" comparison, for the same reason
+    // isProofStale prefers a git rev when it can: "every modification time
+    // becomes now" after a clone or a tarball extraction, and copying a
+    // whole tree does not write every file in the same microsecond — real
+    // drift happens over hours or days, not milliseconds of copy jitter.
+    const DOC_FOSSIL_TOLERANCE_MS = 5 * 60 * 1000;
+    if (f.hasDesign) {
+      const designMtime = statSync(path.join(project.rootDir, f.designPath)).mtimeMs;
+      const mappedFilesForFeature = [...new Set((f.spec?.tasks ?? []).flatMap((t) => t.files))];
+      let newestMapped = 0;
+      for (const rf of mappedFilesForFeature) {
+        const full = path.join(project.rootDir, rf);
+        if (existsSync(full)) newestMapped = Math.max(newestMapped, statSync(full).mtimeMs);
+      }
+      if (newestMapped > designMtime + DOC_FOSSIL_TOLERANCE_MS) {
+        emit('DOC_FOSSIL', 'warning',
+          `${f.designPath} is older than the code it maps — the code moved and the blueprint did not; a document that lies is worse than no document`,
+          { feature: f.name, file: f.designPath });
+      }
+    }
 
     // ---- G4 SPEC — the layer the machine confers: US/AC, ASM/Q, T-xxx ----
     if (!f.hasSpec) {
@@ -224,6 +342,19 @@ export function auditProject(project, { ci = false } = {}) {
       if (!ac.complete) {
         emit('AC_INCOMPLETE', 'error',
           `${ac.id} (${ac.title}) is missing its ${ac.missingClauses.join(' and ')} clause`,
+          { feature: f.name, file: ac.file, line: ac.line });
+      }
+      // M3b (AI-review rule): a vague adjective with no number attached is
+      // not something a test can check. "responds quickly" fails;
+      // "responds in under 300ms" passes. A heuristic, not a proof — false
+      // positives are possible, same posture as every other lexical check
+      // in this file (ASM_WITHOUT_CODE, PRD_WITH_SOLUTION).
+      else if (
+        RE_VAGUE_ADJECTIVE.test(ac.title + ' ' + gwtText(ac)) &&
+        !RE_HAS_NUMBER.test(ac.title + ' ' + gwtText(ac))
+      ) {
+        emit('AC_NOT_OBSERVABLE', 'error',
+          `${ac.id} (${ac.title}) reads like a feeling, not a measurement — a criterion a test can check names a number ("in under 300ms"), not an adjective ("fast")`,
           { feature: f.name, file: ac.file, line: ac.line });
       }
     }

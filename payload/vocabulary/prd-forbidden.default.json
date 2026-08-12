@@ -1,0 +1,15 @@
+{
+  "_comment": "PRD_WITH_SOLUTION's starting vocabulary (SCOPE-0.6.0.md PRD-003b, antipattern #4: 'the PRD that became a spec'). A PRD describes the PROBLEM, never the technical solution — technology is engineering's call, later, in the RFC and DESIGN. This list is a default, not a verdict: an infrastructure project's forbidden vocabulary is not an e-commerce project's, and false positives (a legitimate business use of a generic word like 'queue') are expected — prune this file per project rather than working around a finding that doesn't fit.",
+  "terms": [
+    "postgresql", "postgres", "mysql", "mariadb", "mongodb", "mongo",
+    "redis", "sqlite", "dynamodb", "cassandra", "elasticsearch",
+    "react", "vue\\.js", "angular", "svelte", "django", "rails",
+    "express\\.js", "spring boot", "fastapi", "next\\.js", "laravel", "flask",
+    "docker", "kubernetes", "k8s", "nginx", "kafka", "rabbitmq",
+    "aws", "s3 bucket", "lambda function", "ec2", "azure", "gcp",
+    "microsservi[cç]o", "microservice", "monolito", "monolith",
+    "graphql", "websocket", "webhook",
+    "cache", "lock", "trava", "fila", "queue", "mutex", "semaphore",
+    "sql", "nosql", "orm"
+  ]
+}

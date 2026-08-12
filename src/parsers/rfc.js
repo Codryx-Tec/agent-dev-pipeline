@@ -32,6 +32,13 @@ const RE_DECISION = /^###\s+(D-\d+)\s*[—–-]\s*(.+?)\s*$/gm;
 const RE_NUMBERED = /^\s*\d+\.\s+/gm;
 const RE_DECIDED = /\*\*Decision:/;
 
+// M3b, antipattern #2: "our process has some problems" proves nothing;
+// "support tickets take 20 minutes" does. At least one measurable figure —
+// a count, a duration, a currency, a percentage — somewhere in the prose
+// BEFORE the first decision is what CONTEXT_WITHOUT_NUMBERS checks for.
+const RE_NUMERIC_CONTEXT =
+  /\d[\d.,]*\s*(ms|s|sec(?:onds?)?|segundos?|min(?:s|utos?|utes?)?|h(?:ours?|oras?)?|dias?|days?|semanas?|weeks?|meses?|months?|anos?|years?|%|r\$|us\$|\$|usu[áa]rios?|users?|clientes?|customers?|requests?|reqs?|rps|linhas?|lines?|registros?|records?|pedidos?|orders?|vendas?|sales?|vagas?|seats?|itens?|items?|casos?|cases?|decis(?:[ãa]o|[õo]es|ions?)|linha|pf|pontos? de fun[çc][ãa]o|vezes?|times?)\b/i;
+
 // dialect B
 const RE_OPTIONS_SECTION = /^##\s+(?:Options Considered|Op[çc][õo]es Consideradas)\s*$/m;
 const RE_OPTION = /^###\s+(?:Option|Op[çc][ãa]o)\s+(\d+)\s*[:.]?\s*(.+?)\s*$/gm;
@@ -99,11 +106,23 @@ export function parseRfc(content, file) {
   const optionsDecision = parseOptionsDecision(scan, content, file);
   if (optionsDecision) decisions.push(optionsDecision);
 
+  // The prose before the first decision — whichever dialect's marker comes
+  // first — is "context." Neither marker present means the whole file is
+  // context (or the file is empty either way).
+  const firstDecisionAt = Math.min(
+    ...[RE_DECISION, RE_OPTIONS_SECTION]
+      .map((re) => scan.search(re))
+      .filter((i) => i !== -1),
+    scan.length
+  );
+  const contextHasNumbers = RE_NUMERIC_CONTEXT.test(content.slice(0, firstDecisionAt));
+
   return {
     kind: 'rfc',
     file,
     dialect: optionsDecision ? (decisions.length > 1 ? 'mixed' : 'create-rfc') : 'native',
     decisions,
     hasOutcomeSection: RE_OUTCOME_SECTION.test(scan),
+    contextHasNumbers,
   };
 }

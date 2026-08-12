@@ -33,13 +33,13 @@ export const GATES = [
     id: 'G1',
     title: 'PRD complete',
     question: 'Is the PRD complete — what, for whom, why?',
-    codes: ['PRD_MISSING', 'ID_DUPLICATE', 'ID_TOO_SHORT', 'SIGNAL_UNKNOWN', 'PRD_UNPLACED', 'BACKLOG_ITEM_WITH_CODE'],
+    codes: ['PRD_MISSING', 'ID_DUPLICATE', 'ID_TOO_SHORT', 'SIGNAL_UNKNOWN', 'PRD_UNPLACED', 'BACKLOG_ITEM_WITH_CODE', 'PRD_WITH_SOLUTION'],
   },
   {
     id: 'G2',
     title: 'Path decided',
     question: 'Is the path decided, with alternatives recorded?',
-    codes: ['RFC_MISSING', 'DECISION_WITHOUT_ALTERNATIVE', 'DECISION_WITHOUT_CHOICE'],
+    codes: ['RFC_MISSING', 'DECISION_WITHOUT_ALTERNATIVE', 'DECISION_WITHOUT_CHOICE', 'CONTEXT_WITHOUT_NUMBERS'],
   },
   {
     id: 'G3',
@@ -67,6 +67,7 @@ export const GATES = [
       'ASM_WITHOUT_CODE',
       'SECTION_MISSING',
       'STATUS_INVALID',
+      'AC_NOT_OBSERVABLE',
     ],
   },
   {
@@ -92,6 +93,8 @@ export const GATES = [
       'FILE_ORPHAN',
       'FEATURE_MISMATCH',
       'PROJECT_INVALID',
+      'DOC_TOO_LONG',
+      'DOC_FOSSIL',
     ],
   },
 ];
@@ -106,6 +109,9 @@ export const CI_ESCALATES = new Set([
   'AC_WITHOUT_TASK',
   'FILE_ORPHAN',
   'PROOF_WEAK',
+  // M3b: "doc that lies is worse than no doc" — the same posture PROOF_STALE
+  // already takes toward a proof record, applied to a document.
+  'DOC_FOSSIL',
 ]);
 
 // Human-readable name first, stable code in parentheses (PRD AC-024).
@@ -128,8 +134,10 @@ export const LABELS = {
   SIGNAL_UNKNOWN: 'unrecognized ceremony signal',
   PRD_UNPLACED: 'PRD not declared in the MVP boundary',
   BACKLOG_ITEM_WITH_CODE: 'backlog item carries a real tracking code',
+  PRD_WITH_SOLUTION: 'PRD names a technical solution',
   DECISION_WITHOUT_ALTERNATIVE: 'decision without alternatives',
   DECISION_WITHOUT_CHOICE: 'decision without a chosen option',
+  CONTEXT_WITHOUT_NUMBERS: 'RFC context has no measurable figure',
   SECTION_MISSING: 'required section missing',
   Q_BLOCKING_OPEN: 'blocking question still open',
   Q_OPEN: 'open question',
@@ -141,6 +149,7 @@ export const LABELS = {
   TASK_WITHOUT_FILES: 'task without declared files',
   TASK_STATUS_INVALID: 'invalid task status',
   FILE_MISSING: 'task maps a file that does not exist',
+  AC_NOT_OBSERVABLE: 'acceptance criterion is not observable',
   AC_WITHOUT_TEST: 'acceptance criterion without a test',
   AC_WITHOUT_PROOF: 'acceptance criterion without proof',
   PROOF_STALE: 'proof is out of date',
@@ -156,6 +165,8 @@ export const LABELS = {
   FILE_ORPHAN: 'source file mapped by no task',
   FEATURE_MISMATCH: 'feature name diverges from its directory',
   PROJECT_INVALID: 'project could not be read',
+  DOC_TOO_LONG: 'document is over its length ceiling',
+  DOC_FOSSIL: 'document is older than the code it describes',
 };
 
 const GATE_OF = new Map();

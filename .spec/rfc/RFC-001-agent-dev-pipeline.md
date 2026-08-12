@@ -13,7 +13,9 @@ Flat and global (Q-001): this file is not owned by one feature. `agent-dev-pipel
 `PRD.md` fixed *what* Agent Dev Pipeline must do. This document fixes *how we will get
 there*, decision by decision, with the roads not taken written down beside the
 one we took. A decision recorded without its alternatives is indistinguishable
-from a habit, and habits are what nobody can revisit later.
+from a habit, and habits are what nobody can revisit later. This file alone
+now carries 16 decisions — a number that only means something because each
+one still names what lost and why, not just what won.
 
 Two upstream sources shape most of these decisions and are named throughout:
 

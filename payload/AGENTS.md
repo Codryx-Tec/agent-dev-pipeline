@@ -94,6 +94,27 @@ the constitution: declare, do not fabricate. When `appType` is
 those poorly, and the tool already prints that caveat — repeat it, don't
 drop it.
 
+### The audit also catches document quality, not just structure
+
+Passing G0–G6 proves a document exists and resolves — it never proved the
+*decision* behind it was any good. Five checks close part of that gap:
+
+| Finding | Fires when |
+|---|---|
+| `PRD_WITH_SOLUTION` (G1) | the PRD names a technical solution (a database, a framework) — that belongs in the RFC or DESIGN, never the PRD |
+| `CONTEXT_WITHOUT_NUMBERS` (G2) | an RFC's context has no measurable figure before its first decision — an impression, not evidence |
+| `AC_NOT_OBSERVABLE` (G4) | a criterion reads like a feeling ("fast", "simple") with no number a test could check |
+| `DOC_TOO_LONG` (G6, warning) | `PRD.md`/`DESIGN.md` is over its configured line ceiling (`docLengthLimits` in config) |
+| `DOC_FOSSIL` (G6, warning, error in `--ci`) | `DESIGN.md` is older than the code it maps, past a tolerance window — the blueprint stopped describing reality |
+
+`PRD_WITH_SOLUTION`'s vocabulary lives in `.spec/PRD_VOCABULARY.json` (seeded
+at `init`, editable) — false positives are expected on a generic word used
+legitimately in business prose; prune the list rather than fighting the
+finding. Three more antipatterns from the same source
+(`STRAW_OPTION`, `OPTION_DO_NOTHING_MISSING`, `DUPLICATE_PROSE`) are not
+built in this version — they need RFC grammar and a similarity check this
+release doesn't have yet.
+
 ## Proof is written by `verify`, and by nothing else
 
 `adp audit` reads documents and tests. It can see that a criterion has a test

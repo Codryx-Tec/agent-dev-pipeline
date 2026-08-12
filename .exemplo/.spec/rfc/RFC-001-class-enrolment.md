@@ -12,7 +12,9 @@ line, not nested under it.
 ## Purpose
 
 `PRD.md` fixed what to build. This fixes how we get there, with the roads not
-taken written down beside the one we took.
+taken written down beside the one we took. A class with 30 seats must never
+accept a 31st enrolment — that overbooking is the concrete failure this
+decision exists to prevent.
 
 ## Decisions
 

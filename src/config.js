@@ -21,6 +21,17 @@ export const DEFAULT_CONFIG = {
   // Optional and project-wide, like the constitution — its absence just
   // means nothing has been pushed out of the MVP yet (M2c-core).
   backlogFile: '.spec/BACKLOG.md',
+  // PRD_WITH_SOLUTION's forbidden-vocabulary list (M3b, PRD-003b antipattern
+  // #4) — seeded at init, hand-editable per project.
+  prdVocabularyFile: '.spec/PRD_VOCABULARY.json',
+  // DOC_TOO_LONG's ceilings (M3b, antipattern #5), in lines. PRD and DESIGN
+  // only: SPEC.md's length scales with real story/criterion/task count, not
+  // padding, so a cap on it would punish a large feature for being large;
+  // RFC is a flat, global family that legitimately accumulates many
+  // decisions over a project's life, so a whole-file cap doesn't fit it
+  // either — a per-decision check would, but that's more parser surface
+  // than this pass earns, deferred.
+  docLengthLimits: { prd: 200, design: 400 },
 
   // the four per-feature documents, each owning its own family of codes.
   // PRD is prose (what, for whom, why); RFC owns D-xxx decisions; SPEC owns
@@ -97,6 +108,7 @@ export function loadConfig(rootDir) {
       ...raw,
       documents: { ...DEFAULT_CONFIG.documents, ...(raw.documents || {}) },
       parallel: { ...DEFAULT_CONFIG.parallel, ...(raw.parallel || {}) },
+      docLengthLimits: { ...DEFAULT_CONFIG.docLengthLimits, ...(raw.docLengthLimits || {}) },
       rootDir,
       configPath,
     };

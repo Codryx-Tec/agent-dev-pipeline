@@ -272,7 +272,7 @@ test('an empty folder reaches every gate green once the documents are filled in 
     mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
     writeFileSync(
       path.join(root, '.spec', 'rfc', 'RFC-001-greet.md'),
-      '### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n'
+      '## Purpose\n\nSupport tickets about greeting format take 20 minutes to resolve.\n\n### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n'
     );
     writeFileSync(path.join(dir, 'DESIGN.md'), '# DESIGN\n\n## 1. Shape of the solution\n');
     writeFileSync(
