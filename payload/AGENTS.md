@@ -236,9 +236,13 @@ when something behaves impossibly, before blaming the project.
 | frontend | framework ↔ API integration |
 | security | all security; reviews code and principles |
 | tester | tests everything before techlead sign-off |
+| researcher | external research — market figures, library/API claims, technology comparisons; never writes to a tracked document itself |
 
 Pipeline: business-analyst → architect → techlead → designer/backend/frontend
-(security reviews) → tester → techlead.
+(security reviews) → tester → techlead. `researcher` is called in, not part
+of the line — by architect before an RFC decision, by business-analyst for
+a PRD's context number, or by anyone running `adp estimate` who wants the
+h/PF table checked against current data.
 
 Writing an `RFC.md`? It is flat and global, at `.spec/rfc/RFC-<NNN>-<slug>.md`
 — `adp new --rfc <slug>` creates one — and the PRD that needs it links it by
