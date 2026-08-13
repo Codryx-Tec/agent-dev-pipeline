@@ -86,6 +86,8 @@ shorthand for that invocation — the person will usually have it aliased.
 | `profile [--stack] [--familiarity] [--app-type] [--brownfield] [--tests]` | declare the stack/team profile `estimate` reads |
 | `estimate [--pf <n>] [--csv]` | hours = a PF count × the profile's table row — declared with `--pf`, or from a confirmed count; never proof |
 | `estimate --review` / `--confirm [--yes]` | show the draft count / lock it in — only a human confirms |
+| `close --hours <n> [--note]` | record what a feature actually took; recalibrates the table row from cross-project history |
+| `metrics import <file>` / `export [--csv]` | move the shared, anonymized calibration history between machines or teams |
 | `doctor` | verify this copy of the tool against its manifest |
 
 **The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. You never
@@ -204,6 +206,24 @@ formula this version derives from DET/RET/FTR counts. When the app type is
 `real-time`/`infra`/`mathematical`, the tool prints a caveat that Function
 Point analysis measures those poorly — repeat it to the person, don't drop
 it silently.
+
+**`adp close --hours <n> [--note "<s>"]`** closes the loop once a feature
+actually ships — the one field nothing else can supply, declared after the
+fact, never as a target. It recalibrates the profile's table row from
+**cross-project history**: `hours-history.jsonl`, kept in the state
+directory outside any repository (or at `config.metrics.historyPath` for a
+team-shared location), so a fourth project starts where the first three
+left off instead of every project beginning at cold start. The shared
+record never carries a project, feature or person name — only a profile,
+PF, hours, the derived h/PF, a deviation percentage, and a hash for dedup —
+"nada disso é necessário para calibrar." `adp metrics import <file>` /
+`adp metrics export [--csv]` move it between machines or teams; an
+imported record is always marked `imported: true`, regardless of what the
+file claims. `adp close` and `adp estimate` both print a composition line
+when observations exist (`N observations — M from this project, K other`).
+Not built this version: per-observation human/agent hour breakdown, ledger
+corroboration on each record, and `adp estimate --history`'s retrospective
+accuracy report — don't imply any of them exist.
 
 ## Running work in the background
 

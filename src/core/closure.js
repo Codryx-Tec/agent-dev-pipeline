@@ -5,13 +5,14 @@
 // "opinion imported from a market figure," forever, unless something
 // records the real outcome. `adp close --hours <n>` is that something.
 //
-// What this is NOT: cross-project history. PRD-003c's fuller design keeps
-// `hours-history.jsonl` outside any single repository, anonymized by
-// default, shared across projects via `adp metrics import/export`. This
-// file only ever reads and writes inside ONE project's own `.spec/` — the
-// closures recorded here recalibrate this project's own table, and travel
-// no further. Real, separate privacy-design surface, deliberately not
-// opened here.
+// This file only ever reads and writes inside ONE project's own `.spec/` —
+// what it records here is the local audit trail and `adp close`'s
+// deviation-from-estimate printout. The cross-project piece
+// (`hours-history.jsonl`, anonymized by construction, shared across
+// projects via `adp metrics import/export`, PRD-003c-history-core) lives in
+// `core/history.js`; recalibration itself now reads FROM that shared file,
+// not from the closures recorded here — see `history.js`'s own header for
+// why ("o histórico é a verdade; a tabela é cache").
 //
 // "Horas declaradas são declaração, não prova" — same category as
 // `verification(gate)` in the constitution. Nothing here is a gate.

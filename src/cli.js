@@ -51,7 +51,6 @@ import {
   FAMILIARITY_LEVELS,
 } from './core/estimate.js';
 import {
-  loadClosures,
   appendClosure,
   recordClosure,
   recalibrateRow,
@@ -68,6 +67,17 @@ import {
   confirmCount,
   currentAttribution,
 } from './core/count.js';
+import {
+  historyPath,
+  projectHash,
+  appendHistory,
+  loadHistory,
+  historyRecord,
+  observationsFor,
+  renderComposition,
+  parseImportFile,
+  renderHistoryCsv,
+} from './core/history.js';
 
 const HELP = `agent-dev-pipeline — the specification that stays true
 
@@ -94,7 +104,14 @@ usage: adp <command> [options]
                             lock in the draft count as .spec/metrics/count-confirmed.json
   close --hours <n> [--note "<s>"]
                             record the real hours a feature took; recalibrates the
-                            table row adp estimate last used toward what happened
+                            table row adp estimate last used, from the shared
+                            cross-project history (see metrics below)
+  metrics import <file>    bring another project's/team's hours-history.jsonl
+                            records into yours; each one is marked imported
+  metrics export [<path>] [--csv]
+                            write out the shared hours-history.jsonl — already
+                            anonymized (no project/feature/person name is ever
+                            stored in it)
   audit [--ci] [--json]     evaluate every gate and report the findings
   gates [--list] [--json]   the seven gates and their state, without the findings
   prompt [<gate>]           the paste-ready text for a red gate
@@ -533,6 +550,22 @@ export async function run(argv) {
       console.error('error: no .spec/metrics/hours-per-fp.json — run `adp init` first (it seeds one).');
       return 2;
     }
+    // Recalibrate from the shared cross-project history before computing —
+    // this is what lets a brand-new project's first estimate already come
+    // out calibrated, if the history already has matching observations.
+    // Silently skipped when no row matches this exact profile; computeEstimate
+    // falls back to the generic row in that case, same as always.
+    const rowKey = `${profile.appType}/${profile.familiarity}`;
+    const rowIdx = hoursTable.findIndex((r) => r.profile === rowKey);
+    let composition = null;
+    if (rowIdx !== -1) {
+      const obs = observationsFor(loadHistory(config), rowKey, projectHash(rootDir));
+      if (obs.values.length) {
+        hoursTable[rowIdx] = recalibrateRow(hoursTable[rowIdx], obs.values);
+        saveHoursTable(rootDir, config, hoursTable);
+        composition = renderComposition(obs);
+      }
+    }
     let estimate;
     try {
       estimate = computeEstimate({ pf, profile, hoursTable });
@@ -540,6 +573,7 @@ export async function run(argv) {
       console.error(`error: ${err.message}`);
       return 2;
     }
+    if (composition) console.error(`calibration: ${composition}`);
     // Only ever attached when this PF came from a confirmed count, never
     // from a bare --pf — even if a confirmed count exists on disk, an
     // explicit --pf on this call means the human chose not to use it here.
@@ -584,17 +618,30 @@ export async function run(argv) {
     console.log(`recorded : ${hours}h` + (closure.deviationPct !== null ? ` (estimate said ${closure.estimate.likely}h — ${closure.deviationPct > 0 ? '+' : ''}${closure.deviationPct}%)` : ''));
 
     if (closure.rowUsed && closure.observedHoursPerFp !== null) {
+      // Shared history first — this closure has to be in it before the
+      // recalibration read below, or it would calibrate against everyone
+      // else's data but not its own.
+      const thisHash = projectHash(rootDir);
+      appendHistory(config, historyRecord({
+        profile: closure.rowUsed,
+        pf: closure.pf,
+        hours,
+        observedHoursPerFp: closure.observedHoursPerFp,
+        deviationPct: closure.deviationPct,
+        projectHash: thisHash,
+        toolVersion: VERSION,
+      }));
+
       const hoursTable = loadHoursTable(rootDir, config);
       if (hoursTable) {
         const idx = hoursTable.findIndex((r) => r.profile === closure.rowUsed);
         if (idx !== -1) {
-          const priorClosures = loadClosures(rootDir, config)
-            .filter((c) => c.rowUsed === closure.rowUsed && c.observedHoursPerFp !== null)
-            .map((c) => c.observedHoursPerFp);
-          const updatedRow = recalibrateRow(hoursTable[idx], priorClosures);
+          const obs = observationsFor(loadHistory(config), closure.rowUsed, thisHash);
+          const updatedRow = recalibrateRow(hoursTable[idx], obs.values);
           hoursTable[idx] = updatedRow;
           saveHoursTable(rootDir, config, hoursTable);
-          console.log(`table    : ${closure.rowUsed} updated — ${calibrationLabel(updatedRow.observations)} (${updatedRow.observations} observation(s))`);
+          console.log(`table    : ${closure.rowUsed} updated — ${calibrationLabel(updatedRow.observations)}`);
+          console.log(`         : ${renderComposition(obs)}`);
         }
       }
     }
@@ -606,6 +653,50 @@ export async function run(argv) {
       console.log('has worked more than once, which a single closure cannot establish alone.');
     }
     return 0;
+  }
+
+  if (command === 'metrics') {
+    const sub = positional[1];
+
+    if (sub === 'import') {
+      const file = positional[2];
+      if (!file) {
+        console.error('error: adp metrics import <file>');
+        return 2;
+      }
+      let content;
+      try {
+        content = readFileSync(path.resolve(file), 'utf8');
+      } catch (err) {
+        console.error(`error: could not read ${file}: ${err.message}`);
+        return 2;
+      }
+      const { kept, skipped } = parseImportFile(content);
+      for (const record of kept) appendHistory(config, record);
+      console.log(`imported ${kept.length} record(s) into ${historyPath(config)}`);
+      if (skipped.length) {
+        console.log(`skipped ${skipped.length} invalid record(s):`);
+        for (const { problems } of skipped.slice(0, 10)) console.log(`  ${problems.join('; ')}`);
+        if (skipped.length > 10) console.log(`  ...${skipped.length - 10} more`);
+      }
+      return 0;
+    }
+
+    if (sub === 'export') {
+      const records = loadHistory(config);
+      const out = flags.csv ? renderHistoryCsv(records) : records.map((r) => JSON.stringify(r)).join('\n') + '\n';
+      const outPath = positional[2];
+      if (outPath) {
+        writeFileSync(path.resolve(outPath), out);
+        console.log(`wrote ${records.length} record(s) to ${outPath}`);
+      } else {
+        process.stdout.write(out);
+      }
+      return 0;
+    }
+
+    console.error('error: adp metrics import <file> | adp metrics export [<path>] [--csv]');
+    return 2;
   }
 
   // ---- ring 3 ----

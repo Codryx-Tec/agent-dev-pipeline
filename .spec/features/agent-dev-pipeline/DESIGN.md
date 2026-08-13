@@ -266,14 +266,21 @@ gate, matching the rest of this family. `real-time`/`infra`/`mathematical`
 app types carry an explicit applicability warning, since Function Point
 analysis measures them poorly.
 
-**Closing the estimation loop** (`core/closure.js`, `adp close --hours
-<n>`). Without this, the hours table never leaves cold start and every
-estimate stays opinion imported from a market figure, forever.
+**Closing the estimation loop** (`core/closure.js`, `core/history.js`, `adp
+close --hours <n>`). Without this, the hours table never leaves cold start
+and every estimate stays opinion imported from a market figure, forever.
 `recalibrateRow()` blends each real outcome into the matching table row —
 nudge at 1 observation, blend at 2, mean-plus-widen at 3–5, fully observed
-at 6+ — always clamped so `low ≤ likely ≤ high` holds. Local to one project
-only; cross-project history (`hours-history.jsonl`, anonymized,
-`adp metrics import/export`) is still `.spec/BACKLOG.md`.
+at 6+ — always clamped so `low ≤ likely ≤ high` holds. Its inputs now come
+from `hours-history.jsonl` in the state directory, shared across every
+project on the machine (or a team path via `config.metrics.historyPath`),
+never from the local project's own `closures.jsonl` alone — "o histórico é
+a verdade; a tabela é cache." The shared record carries no project, feature
+or person name by construction, only a profile, PF, hours and a dedup hash.
+`adp metrics import <file>` / `export [--csv]` move it between machines;
+imported records are always marked as such. Deferred: per-observation
+human/agent hour breakdown, ledger corroboration fields, and `adp estimate
+--history`'s retrospective accuracy report.
 
 **Antipatterns as findings** (`core/audit.js`, `parsers/rfc.js`,
 `parsers/design.js`). Five of PRD-003b's eight codes: `PRD_WITH_SOLUTION`

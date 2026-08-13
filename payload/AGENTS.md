@@ -134,11 +134,39 @@ can never establish; add it there by hand if it turns out to be one.
 `adp report` shows the resulting calibration label ("no calibration" /
 "partial calibration" / "calibrated") next to the estimate.
 
-**Still not cross-project.** This closes the loop inside one project's own
-`.spec/`. Sharing calibration data between projects
-(`~/.adp/metrics/hours-history.jsonl`, anonymized by default, `adp metrics
-import/export`) is `SCOPE-0.6.0.md` PRD-003c's fuller design and is not
-built in this version — don't imply it exists.
+### Cross-project history — a fourth project starts where the third left off
+
+`adp close` writes two records now: the local `.spec/metrics/closures.jsonl`
+entry (this project's own audit trail), and a minimal one into
+`hours-history.jsonl` in the **state directory** — outside any repository,
+shared by every project on the machine (or at `config.metrics.historyPath`,
+for a team-shared location). **That shared file, not the local one, is what
+actually recalibrates the table now** — "o histórico é a verdade; a tabela
+é cache." `adp estimate` reads it too, before computing: a brand-new
+project's *first* estimate can already come out calibrated if the shared
+history has matching observations.
+
+**The shared record never carries a project, feature or person name — by
+construction, not by stripping it later.** Only a profile, a PF count, the
+declared hours, the derived h/PF, a deviation percentage, and a
+`projectHash` (a hash for dedup, never the literal path or name). "Nada
+disso é necessário para calibrar" — the source document's own line — is
+why the identifying fields are simply never written, which is a stronger
+guarantee than writing them and stripping them at export.
+
+`adp metrics import <file>` brings another team's exported records in,
+forcing `imported: true` on every one regardless of what the file claims —
+provenance is not the importer's to assert. `adp metrics export [<path>]
+[--csv]` writes the shared file back out — already anonymous, so there is
+no un-anonymized form to opt into. Both `adp close` and `adp estimate`
+print a composition line when observations exist: `N observations — M from
+this project, K other`, with `(J imported)` appended only when `J > 0`.
+
+**Not built this version:** `actors[]` (human vs. agent hours) and
+`corroboration` (calendar days, lanes, reruns, red gates from the ledger)
+on each record; `adp estimate --history`'s retrospective cold-vs-calibrated
+accuracy report; keeping identifying fields at all (no `--with-names`, since
+nothing is ever written to strip). Don't imply any of these exist.
 
 ### The audit also catches document quality, not just structure
 
