@@ -777,6 +777,193 @@ here has confirmed.
   changes only the `rows` field — any other top-level field the file
   carries (`_comment`, seeded from the shipped default) survives untouched
 
+### US-024 — The captain gets a Function Point count the AI proposed, structurally honest before anyone confirms it
+
+As a captain, I want the count the AI proposes to be checked for shape and
+evidence before I ever see a total, so that a typo'd type code or a
+function with nothing backing it cannot quietly inflate the number I am
+about to confirm.
+
+#### AC-075 — Every entry is checked against the five function types and three complexity bands
+
+- **Given** a draft entry with a `type` and a `complexity`
+- **When** it is validated
+- **Then** `type` must be one of `ALI`/`AIE`/`EE`/`CE`/`SE` and
+  `complexity` one of `low`/`medium`/`high`, each named as a specific,
+  separate problem when wrong; a `name` is required too, and a valid entry
+  reports no problems at all
+
+#### AC-076 — A source citation must be real text, not just a present key
+
+- **Given** an entry's `source` field, absent, empty, or whitespace-only
+- **When** it is checked for a citation
+- **Then** all three read as having no source; only non-empty, non-whitespace
+  text counts as cited
+
+#### AC-077 — Only valid, sourced entries reach the PF total — a sourceless one is excluded and reported, never silently dropped or silently counted
+
+- **Given** a set of draft entries — some valid and sourced, one missing a
+  source, one with an unrecognized type
+- **When** the set is summarized against the Function Point weight table
+- **Then** the total counts only the valid, sourced entries' weights; the
+  sourceless entry is named in a separate list, excluded from the total;
+  the structurally invalid entry is named in its own list, also excluded;
+  an empty entry set totals zero, not an error
+
+#### AC-078 — The review summary names every excluded entry, not just the total
+
+- **Given** a summarized set with both a sourceless entry and a structurally
+  invalid one
+- **When** it is rendered for a human to read before confirming
+- **Then** the total is shown, every counted entry is listed with its
+  weight and source, and both the sourceless and the invalid entries are
+  named individually — a human reviewing the summary can see exactly what
+  was excluded and why, not just a total that quietly changed
+
+### US-025 — The captain's confirmed count becomes the number adp estimate trusts
+
+As a captain who has confirmed a function count, I want that confirmation
+to be the thing `adp estimate` actually uses, attributed to me, so that
+the PF number behind an estimate is either a plain declaration or a real,
+accountable count — never an unconfirmed draft treated as if it were one.
+
+#### AC-079 — The draft and the weight table load tolerantly, never crashing on an absent or malformed file
+
+- **Given** a project where `adp init` seeded `.spec/metrics/fp-weights.json`
+  but no one has written `count-draft.json` yet, and later a draft file
+  that is valid JSON but not an array
+- **When** the draft and the weight table are loaded
+- **Then** a missing or non-array draft reads as an empty list rather than
+  failing, and a missing weight table reads as `null`, distinctly, so the
+  caller can tell "nothing counted yet" from "never initialized"
+
+#### AC-080 — Confirming writes only the valid, sourced entries and their total, attributed and timestamped
+
+- **Given** a validated set of draft entries, some excluded for lacking a
+  source
+- **When** the count is confirmed
+- **Then** `count-confirmed.json` contains only the valid, sourced entries,
+  their summed PF total, who confirmed it, and when — reloading the file
+  returns exactly what was written, and before any confirmation exists the
+  loader reports `null`, not an empty record
+
+#### AC-081 — A confirmed count is named as such everywhere the estimate is shown, distinctly from a bare declaration
+
+- **Given** an estimate computed from a confirmed count versus one computed
+  from a bare `--pf`
+- **When** the estimate is rendered as Markdown or as CSV
+- **Then** the Markdown form names the confirmed count's function total, who
+  confirmed it and when, and marks the PF figure `(counted, confirmed)`; a
+  bare declaration is marked `(declared)` instead; the CSV form appends one
+  row per counted function, only when a confirmed count backs the figure
+
+### US-026 — The captain's calibration data leaves the project it was born in, without carrying anything identifying
+
+As a captain whose team ships several projects, I want a closed feature's
+calibration data to be usable by the next project, without that data ever
+naming which project, feature or person it came from, so that sharing a
+calibration history file never becomes a way client data leaks between
+projects.
+
+#### AC-082 — Every project has a stable, non-reversible identity for dedup
+
+- **Given** one project's root directory, asked for its identity twice, and
+  a second, different project's root directory
+- **When** the project hash is computed
+- **Then** the same project always produces the same hash, a different
+  project always produces a different one, and the hash never contains or
+  reveals the literal path it was computed from
+
+#### AC-083 — A shared history record never carries a project, feature or person name
+
+- **Given** a closure's profile, PF, hours, observed hours-per-Function-Point,
+  deviation and project hash
+- **When** the shared history record is built from them
+- **Then** its fields are exactly the schema version, timestamp, profile,
+  PF, hours, observed h/PF, deviation, tool version, project hash, and an
+  `imported` flag defaulting to `false` — no field for a project name, a
+  feature name, or a person's name exists to be filled in
+
+#### AC-084 — The shared history is append-only and tolerant of a torn write, the same as every other event log in this engine
+
+- **Given** a shared history file, absent, then containing one record, then
+  carrying a torn trailing line from an interrupted write
+- **When** it is read back after each state
+- **Then** absent reads as empty, one appended record round-trips exactly,
+  and a torn trailing line is skipped rather than failing the whole read
+
+#### AC-085 — The shared history location is configurable, for a team that wants one path instead of one per machine
+
+- **Given** `config.metrics.historyPath` pointing at a chosen file
+- **When** the shared history is written to or read from
+- **Then** that path is used instead of the default state-directory
+  location, and a record appended through it is the one read back from it
+
+### US-027 — The captain's estimate is calibrated by every project that came before it, on this machine or shared with the team
+
+As a captain starting a new project, I want its very first estimate to
+already reflect what past projects measured for the same profile, so that
+a team's fourth project does not start from the same cold-start guess its
+first one did.
+
+#### AC-086 — Observations for a profile split into what is this project's own and what is not, regardless of source file
+
+- **Given** a set of shared history records across several project hashes
+  and profiles, some marked `imported`
+- **When** observations are gathered for one specific profile and one
+  specific project's hash
+- **Then** only records matching that profile are considered; among those,
+  the ones matching the asked-for project hash count as the project's own,
+  everything else counts as other, and the subset of "other" marked
+  `imported` is counted separately; a profile with no matching records
+  returns an empty, all-zero result rather than an error
+
+#### AC-087 — The composition line always sums to the total, and never reports a misleading imported count
+
+- **Given** a profile's observation split, with and without any imported
+  observations, and with exactly one observation
+- **When** the composition is rendered
+- **Then** "from this project" plus "other" always equals the total shown;
+  the imported count is appended only when it is greater than zero, never
+  printed as a bare zero; a single observation uses the singular word, not
+  the plural; an empty observation set renders nothing
+
+### US-028 — The captain moves calibration history between machines and teams, without inventing a new provenance loophole
+
+As a captain who received another team's exported calibration data, I want
+every imported record to be marked as imported no matter what the file
+itself claims, so that "measured by us" and "handed to us by someone else"
+can never be confused in the table's own history.
+
+#### AC-088 — An imported record is checked for the fields calibration actually needs, and for a schema version this engine understands
+
+- **Given** a record with every required field present and correctly typed,
+  one missing a required field, and one declaring a schema version this
+  engine does not recognize
+- **When** each is validated
+- **Then** the well-formed record reports no problems, the incomplete one
+  names exactly which field is missing, and the unrecognized schema
+  version is rejected by name rather than accepted on faith
+
+#### AC-089 — Importing forces every kept record's `imported` flag to true, regardless of what the source file claims, and reports what was skipped
+
+- **Given** an import file containing a well-formed record whose own
+  `imported` field says `false`, one line that is not valid JSON, and one
+  record missing a required field
+- **When** the file is imported
+- **Then** the well-formed record is kept with `imported` forced to `true`
+  — the source file's own claim about its provenance is never trusted —
+  and both the malformed line and the incomplete record are reported as
+  skipped, with why, rather than silently dropped
+
+#### AC-090 — The shared history exports to CSV, one row per record, with every field a spreadsheet or a proposal would need
+
+- **Given** one or more shared history records
+- **When** they are exported as CSV
+- **Then** the output is one header row naming every field, followed by
+  exactly one row per record in the same order — the same shape every
+  other CSV this engine produces already takes
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1263,5 +1450,17 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 - Refs: AC-056
 - Files: src/migrations/0.6.0.js
 - Notes: Ships the RFC un-nesting and TDD.md→DESIGN.md/SPEC.md split this repo's own self-audit migrated by hand earlier in the 0.6.0 work, as an idempotent migration for every other project on an older layout — the same `AC-056` criterion T-042's 0.5.0 migration already proves ("a grammar rename ships as a migration"), general enough to cover this one too without a new criterion.
+
+## T-052 — Automated Function Point counting [done]
+
+- Refs: AC-075, AC-076, AC-077, AC-078, AC-079, AC-080, AC-081
+- Files: src/core/count.js
+- Notes: Closes PRD-003-full-core — the AI proposes a function count, citing a source per entry, into `.spec/metrics/count-draft.json`; `adp estimate --review` shows the total without recording anything; only a human's `adp estimate --confirm` locks it in, attributed to their `git config` identity. An entry with no source is excluded from the total and reported, never silently dropped or counted — `FUNCTION_WITHOUT_SOURCE`'s behavior, printed rather than gated, matching the declarative posture the whole estimate/report/close family already takes. Complexity is asserted directly by whoever counts, not derived from CPM 4.3.1's DET/RET/FTR formula — deferred, the same trust-the-declaration posture ceremony signals and MVP placement already extend elsewhere.
+
+## T-053 — Cross-project calibration history [done]
+
+- Refs: AC-082, AC-083, AC-084, AC-085, AC-086, AC-087, AC-088, AC-089, AC-090
+- Files: src/core/history.js
+- Notes: Closes PRD-003c-history-core. `adp close` now recalibrates from `hours-history.jsonl` in the state directory (or `config.metrics.historyPath`) instead of from one project's own closures alone — "o histórico é a verdade; a tabela é cache." Deliberately deviates from SCOPE-0.6.0.md's own text, not just narrows it: the source design stores project/feature/person identity and strips it at export by default; this never writes that identity in the first place, since a field never written cannot leak the way a field written-then-stripped can. `adp metrics import` forces `imported: true` on every incoming record regardless of what the source file claims — provenance is not the importer's to assert. Deferred: per-observation human/agent hour breakdown, ledger corroboration fields, and `adp estimate --history`'s retrospective accuracy report.
 
 ---

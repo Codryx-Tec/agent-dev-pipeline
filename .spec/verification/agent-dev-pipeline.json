@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8262,
-  "verifiedAt": "2026-08-13T12:09:52.036Z",
-  "gitRev": "24fa7330eb4be0568df87e43d159ab18e8685c4d",
+  "durationMs": 8208,
+  "verifiedAt": "2026-08-13T18:38:03.146Z",
+  "gitRev": "1074001be0384bb522bc6e053ccadf17d81726fc",
   "gitDirty": true,
-  "codeMtime": 1786622762932.8125,
+  "codeMtime": 1786638204901.4133,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -1402,6 +1402,218 @@
         },
         {
           "title": "saveHoursTable preserves top-level fields like _comment, only rows change @spec:AC-074",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-075": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "every function type and complexity is accepted @spec:AC-075",
+          "status": "pass"
+        },
+        {
+          "title": "an unknown type or complexity is a structural problem, not a silent pass @spec:AC-075",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-076": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "hasSource is false for absent, empty or whitespace-only source @spec:AC-076",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-077": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "weightFor looks up the exact type/complexity row @spec:AC-077",
+          "status": "pass"
+        },
+        {
+          "title": "summarize totals only valid, sourced entries — FUNCTION_WITHOUT_SOURCE excluded, reported @spec:AC-077",
+          "status": "pass"
+        },
+        {
+          "title": "summarize with no entries totals zero @spec:AC-077",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-078": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "renderCountSummary names every sourceless and invalid entry, not just the total @spec:AC-078",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-079": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "loadDraft is empty when the agent has not written one yet @spec:AC-079",
+          "status": "pass"
+        },
+        {
+          "title": "loadDraft ignores a non-array file rather than crashing @spec:AC-079",
+          "status": "pass"
+        },
+        {
+          "title": "loadWeights is null when adp init never seeded fp-weights.json @spec:AC-079",
+          "status": "pass"
+        },
+        {
+          "title": "loadWeights reads the rows array back @spec:AC-079",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-080": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "loadConfirmed is null before adp estimate --confirm ever ran @spec:AC-080",
+          "status": "pass"
+        },
+        {
+          "title": "confirmCount writes only the valid, sourced entries and their total @spec:AC-080",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-081": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "renderEstimateMd names the confirmed count instead, when one backs the PF @spec:AC-081",
+          "status": "pass"
+        },
+        {
+          "title": "renderEstimateCsv appends one row per counted function when a confirmed count backs it @spec:AC-081",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-082": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "projectHash is stable for the same project and never the literal path @spec:AC-082",
+          "status": "pass"
+        },
+        {
+          "title": "projectHash differs for two different projects @spec:AC-082",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-083": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "historyRecord never carries a project, feature or person name field @spec:AC-083",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-084": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "loadHistory is empty when nothing has been closed yet @spec:AC-084",
+          "status": "pass"
+        },
+        {
+          "title": "appendHistory then loadHistory round-trips @spec:AC-084",
+          "status": "pass"
+        },
+        {
+          "title": "a torn trailing line is skipped, not fatal @spec:AC-084",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-085": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "config.metrics.historyPath overrides the default state-dir location @spec:AC-085",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-086": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "observationsFor filters by profile and splits own/other/imported @spec:AC-086",
+          "status": "pass"
+        },
+        {
+          "title": "observationsFor with no matching profile returns an empty set @spec:AC-086",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-087": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "renderComposition is empty when there are no observations @spec:AC-087",
+          "status": "pass"
+        },
+        {
+          "title": "renderComposition always sums own + other to the total, imported noted only when > 0 @spec:AC-087",
+          "status": "pass"
+        },
+        {
+          "title": "renderComposition uses the singular for exactly one observation @spec:AC-087",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-088": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a well-formed record has no problems @spec:AC-088",
+          "status": "pass"
+        },
+        {
+          "title": "a record missing a required field is rejected @spec:AC-088",
+          "status": "pass"
+        },
+        {
+          "title": "a record from a future schema version is rejected, not silently accepted @spec:AC-088",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-089": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "parseImportFile forces imported:true regardless of what the source claims @spec:AC-089",
+          "status": "pass"
+        },
+        {
+          "title": "parseImportFile skips malformed and invalid lines, keeps the rest @spec:AC-089",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-090": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "renderHistoryCsv is one header row plus one row per record @spec:AC-090",
           "status": "pass"
         }
       ]
