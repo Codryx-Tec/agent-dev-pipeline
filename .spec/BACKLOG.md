@@ -14,20 +14,12 @@
 
 ## Technical
 
-- Refresh `DESIGN.md`'s "Three rings" architecture
-  section to describe what actually exists now (ceremony.js, the MVP/
-  backlog checks, report-html.js, estimate.js, the antipattern checks) —
-  `DOC_FOSSIL` already reports it as older than the code it maps, correctly.
-- Realign `payload/claude/agents/*.md` (architect, backend, business-analyst,
-  designer, frontend, security, techlead, tester — 8 files, ~766 lines) with
-  this engine's actual document chain. Found while writing `researcher.md`:
-  all eight still reference `spec.md`/`tasks.md`/`plan.md` (lowercase) and
-  `.spec/architecture/<slug>.md` — a different, older convention than this
-  tool's own `PRD.md`/`RFC.md`/`DESIGN.md`/`SPEC.md`, `.spec/rfc/RFC-<NNN>-
-  <slug>.md` for decisions. `architect.md` even defines its own inline ADR
-  format instead of pointing at the RFC family that already exists for
-  exactly that. Not urgent (these are used by name, when a session invokes
-  that role — they don't gate anything mechanically the way `SKILL.md`
-  does), but real: an agent handed one of these roles today would look for
-  files this project doesn't have. `researcher.md` was written fresh
-  against the current grammar and does not have this problem.
+- Rewrite or retire the `feature-spec` skill
+  (`payload/claude/skills/feature-spec/SKILL.md`). Found while realigning
+  the role agents with the current document chain: it still produces
+  `spec.md`/`plan.md`/`tasks.md` (lowercase, `FR1`/`FR2` requirements, no
+  Given/When/Then) — a separate, older grammar than `PRD.md`/`RFC.md`/
+  `SPEC.md`/`DESIGN.md`. `business-analyst.md` and `architect.md` no
+  longer point at it (fixed alongside the agent realignment), but the
+  skill itself still exists and would reintroduce the same staleness if
+  anything references it again.

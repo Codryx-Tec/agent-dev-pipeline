@@ -13,7 +13,7 @@ permissionMode: default
 
 ### 1. Understand the context
 
-Read `.spec/features/<feature-slug>/spec.md`. Identify:
+Read `.spec/features/<feature-slug>/PRD.md`. Identify:
 
 - Who uses this screen and what is the main goal?
 - What is the initial state, the happy path, and the error states?
@@ -82,7 +82,10 @@ Describe how each state appears to the user.
 
 ## Deliverable
 
-Document it in `.spec/features/<feature-slug>/design.md`:
+There is no separate design file for UX in the current document chain —
+document it in a `## UX flow` section of the feature's own `DESIGN.md`
+instead (prose only, no grammar of its own beyond existing; coordinate
+with **architect** if they're writing to the same file):
 
 - User flow (text)
 - Textual wireframe for each screen/state

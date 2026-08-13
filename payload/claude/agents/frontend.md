@@ -23,7 +23,7 @@ Use the `frontend-ui-engineering` skill for complex components.
 
 ### 1. Understand the issue
 
-Read the issue and `.spec/features/<feature-slug>/plan.md`. Identify:
+Read the issue, `.spec/features/<feature-slug>/SPEC.md` (tasks) and `DESIGN.md` (plan). Identify:
 
 - Pages/components to create or modify
 - Endpoints to consume (confirm the contract with **backend**)
