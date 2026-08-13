@@ -964,6 +964,46 @@ can never be confused in the table's own history.
   exactly one row per record in the same order — the same shape every
   other CSV this engine produces already takes
 
+### US-029 — The audit catches a hollow decision, not just a structurally complete one
+
+As a captain, I want the audit to notice when an RFC's options exist only
+to lose, or when nothing considers not acting at all, or when a document
+quietly copies another instead of pointing at it, so that passing the
+gates keeps meaning the decision behind them was real.
+
+#### AC-091 — An option propped up with weak or missing cons is flagged, only when a real favorite exists to compare it against
+
+- **Given** a `create-rfc`-dialect decision with a favorite option (the
+  recommended marker) that itself declares real cons, and a second option
+  declaring no cons at all, or cons far shorter than the favorite's
+- **When** the audit runs
+- **Then** the weak option is named as a warning; an option with
+  comparably real cons is left alone; when no option is marked the
+  favorite, or the favorite itself declares no cons, nothing is flagged —
+  there is no trustworthy baseline to compare against; the native dialect
+  (no Pros/Cons structure at all) is never checked by this rule
+
+#### AC-092 — A decision that never considers not acting is flagged, in both RFC dialects, as a warning that never escalates
+
+- **Given** a decision — native or `create-rfc` dialect — whose
+  alternatives never include one named "do nothing" (or its Portuguese
+  equivalent, "não fazer nada" / "status quo" / "manter como está")
+- **When** the audit runs
+- **Then** it is flagged as a warning, in every mode including `--ci`;
+  naming an explicit do-nothing alternative, in either language, clears
+  it
+
+#### AC-093 — A substantial passage repeated between a feature's own PRD, RFC and DESIGN is flagged; short or merely related prose is not
+
+- **Given** a feature's `PRD.md`, its linked RFC(s), and its `DESIGN.md`,
+  with one pair sharing a near-identical passage of at least 25 words
+- **When** the audit runs
+- **Then** the shared passage is flagged as a warning naming both
+  documents; a passage under the word-count floor, or two passages that
+  are merely related rather than substantially the same, are left alone —
+  the check is scoped to one feature's own document trio, never
+  project-wide
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1462,5 +1502,11 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 - Refs: AC-082, AC-083, AC-084, AC-085, AC-086, AC-087, AC-088, AC-089, AC-090
 - Files: src/core/history.js
 - Notes: Closes PRD-003c-history-core. `adp close` now recalibrates from `hours-history.jsonl` in the state directory (or `config.metrics.historyPath`) instead of from one project's own closures alone — "o histórico é a verdade; a tabela é cache." Deliberately deviates from SCOPE-0.6.0.md's own text, not just narrows it: the source design stores project/feature/person identity and strips it at export by default; this never writes that identity in the first place, since a field never written cannot leak the way a field written-then-stripped can. `adp metrics import` forces `imported: true` on every incoming record regardless of what the source file claims — provenance is not the importer's to assert. Deferred: per-observation human/agent hour breakdown, ledger corroboration fields, and `adp estimate --history`'s retrospective accuracy report.
+
+## T-054 — The last 3 of 8 M3b antipattern codes [done]
+
+- Refs: AC-091, AC-092, AC-093
+- Files: src/parsers/rfc.js
+- Notes: Closes M3b-remainder — `STRAW_OPTION`, `OPTION_DO_NOTHING_MISSING`, `DUPLICATE_PROSE`. `STRAW_OPTION` only checks the `create-rfc` dialect, since the native one has no Pros/Cons structure to weigh; `OPTION_DO_NOTHING_MISSING` checks both dialects by name match. Deliberate severity deviation from SCOPE-0.6.0.md's own "erro (G2)" for `OPTION_DO_NOTHING_MISSING`: building it that way first broke the shipped `.exemplo/` example's own RFC retroactively under `--ci` — shipped as a plain warning in every mode instead, recorded as accepted debt against this repo's own `RFC-001` in `.spec/BACKLOG.md` rather than retrofitted. `DUPLICATE_PROSE` is a word-set Jaccard similarity check across one feature's own PRD/RFC/DESIGN trio, ≥25-word paragraphs, ≥0.75 similarity.
 
 ---

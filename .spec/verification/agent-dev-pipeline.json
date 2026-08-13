@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8208,
-  "verifiedAt": "2026-08-13T18:38:03.146Z",
-  "gitRev": "1074001be0384bb522bc6e053ccadf17d81726fc",
+  "durationMs": 8355,
+  "verifiedAt": "2026-08-13T23:16:09.410Z",
+  "gitRev": "c2b65807a3576325e9ee61f4132ab4e30f74c648",
   "gitDirty": true,
-  "codeMtime": 1786638204901.4133,
+  "codeMtime": 1786648139868.13,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -1614,6 +1614,77 @@
       "tests": [
         {
           "title": "renderHistoryCsv is one header row plus one row per record @spec:AC-090",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-091": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an option with no declared cons at all is flagged, next to a favorite with real cons @spec:AC-091",
+          "status": "pass"
+        },
+        {
+          "title": "an option with cons far shorter than the favorite's is flagged @spec:AC-091",
+          "status": "pass"
+        },
+        {
+          "title": "an option with comparably real cons is not flagged @spec:AC-091",
+          "status": "pass"
+        },
+        {
+          "title": "with no favorite marked recommended, nothing is flagged — no baseline to compare against @spec:AC-091",
+          "status": "pass"
+        },
+        {
+          "title": "when the favorite itself declares no cons, nothing is flagged — the structure is not in use @spec:AC-091",
+          "status": "pass"
+        },
+        {
+          "title": "the native dialect is never checked for straw options — it has no Pros/Cons structure @spec:AC-091",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-092": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a native-dialect decision with no do-nothing alternative is flagged, as a warning @spec:AC-092",
+          "status": "pass"
+        },
+        {
+          "title": "a native-dialect decision naming a do-nothing alternative is not flagged @spec:AC-092",
+          "status": "pass"
+        },
+        {
+          "title": "a Portuguese \"não fazer nada\" alternative also counts @spec:AC-092",
+          "status": "pass"
+        },
+        {
+          "title": "a create-rfc-dialect decision with no do-nothing option is flagged @spec:AC-092",
+          "status": "pass"
+        },
+        {
+          "title": "a create-rfc-dialect \"Do Nothing\" option is not flagged @spec:AC-092",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-093": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a substantial passage repeated between PRD and DESIGN is flagged @spec:AC-093",
+          "status": "pass"
+        },
+        {
+          "title": "related but substantially different prose is not flagged @spec:AC-093",
+          "status": "pass"
+        },
+        {
+          "title": "a short shared line under the word-count floor is not flagged — boilerplate, not real duplication @spec:AC-093",
           "status": "pass"
         }
       ]

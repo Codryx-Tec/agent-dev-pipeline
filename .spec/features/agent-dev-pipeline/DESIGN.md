@@ -283,15 +283,22 @@ human/agent hour breakdown, ledger corroboration fields, and `adp estimate
 --history`'s retrospective accuracy report.
 
 **Antipatterns as findings** (`core/audit.js`, `parsers/rfc.js`,
-`parsers/design.js`). Five of PRD-003b's eight codes: `PRD_WITH_SOLUTION`
+`parsers/design.js`). All eight of PRD-003b's codes now: `PRD_WITH_SOLUTION`
 (a PRD naming a forbidden technical term), `CONTEXT_WITHOUT_NUMBERS` (an
 RFC's context with no measurable figure), `DOC_TOO_LONG` (a PRD or DESIGN
 over its configured line ceiling — `SPEC.md` is exempt, its length tracks
 real content), `DOC_FOSSIL` (a DESIGN older than the newest file its tasks
-map, past a five-minute copy-jitter tolerance), and `AC_NOT_OBSERVABLE` (a
+map, past a five-minute copy-jitter tolerance), `AC_NOT_OBSERVABLE` (a
 criterion with a vague adjective and no number anywhere in its
-Given/When/Then text). `STRAW_OPTION`, `OPTION_DO_NOTHING_MISSING` and
-`DUPLICATE_PROSE` remain in `.spec/BACKLOG.md`.
+Given/When/Then text), `STRAW_OPTION` (a `create-rfc`-dialect option with
+no cons, or cons far shorter than the favorite's — the native dialect has
+no Pros/Cons structure to weigh), `OPTION_DO_NOTHING_MISSING` (no
+alternative names "do nothing," in either dialect — a plain warning in
+every mode, deliberately not the always-on error PRD-003b specifies, since
+that broke the shipped `.exemplo/` example retroactively the moment it
+shipped), and `DUPLICATE_PROSE` (a substantial passage shared between a
+feature's own PRD/RFC/DESIGN, word-set Jaccard similarity ≥0.75 on
+paragraphs of at least 25 words).
 
 **The migration registry** (`migrations/index.js`, `0.5.0.js`, `0.6.0.js`,
 `adp upgrade`). `0.5.0.js` was the Portuguese-to-English token rename,
