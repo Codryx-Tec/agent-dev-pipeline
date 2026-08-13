@@ -390,15 +390,20 @@ grepping for it must find the same string on every machine.
 | traceability code too short (`ID_TOO_SHORT`) | `AC-1` instead of `AC-001` | codes are zero-padded to three digits |
 | unrecognized ceremony signal (`SIGNAL_UNKNOWN`) | `> signals:` names something not in the five | use one of the five recognized slugs |
 | PRD not declared in the MVP boundary (`PRD_UNPLACED`) | the PRD exists but isn't in `SCOPE.md`'s MVP checklist | add `- [ ] <slug>` there |
+| PRD names a technical solution (`PRD_WITH_SOLUTION`) | a database, framework or library name in `PRD.md` | describe the problem, not the technology — that belongs in the RFC or DESIGN |
 | backlog item carries a real tracking code (`BACKLOG_ITEM_WITH_CODE`) | a `BACKLOG.md` line looks like a declared criterion | remove the code, or promote it to a real PRD |
 | RFC missing (`RFC_MISSING`) | this feature's ceremony level requires one and it's absent, or the `rfcs:` link doesn't resolve | `adp new --rfc <slug>`, then link it |
+| RFC context has no measurable figure (`CONTEXT_WITHOUT_NUMBERS`) | the prose before the first decision is an impression, not evidence | ground it in a number |
 | decision without alternatives (`DECISION_WITHOUT_ALTERNATIVE`) | a habit, not a decision | record what you rejected |
 | decision without a chosen option (`DECISION_WITHOUT_CHOICE`) | alternatives listed, none picked | say which one, and why |
+| option propped up with weak or missing cons (`STRAW_OPTION`) | a `create-rfc`-dialect option next to a favorite has no cons, or far fewer than it | give the option real, comparable drawbacks — or drop it |
+| no option considers not doing this (`OPTION_DO_NOTHING_MISSING`) | every alternative assumes action; none names "do nothing" | add one, even if it's rejected in the same breath |
 | DESIGN missing (`DESIGN_MISSING`) | this feature's ceremony level requires one and it's absent | write `DESIGN.md` |
 | SPEC missing (`SPEC_MISSING`) | a feature has no `SPEC.md` | `adp new <feature>` creates it |
 | SPEC has no user story (`SPEC_WITHOUT_US`) | a SPEC with nothing in it | write the stories |
 | user story without acceptance criterion (`US_WITHOUT_AC`) | a story nobody can check | write its criteria |
 | incomplete acceptance criterion (`AC_INCOMPLETE`) | missing Given, When or Then | complete the clause it names |
+| criterion reads like a feeling (`AC_NOT_OBSERVABLE`) | a vague adjective ("fast", "simple") with no number a test could check | give it a number |
 | criterion outside any story (`AC_OUTSIDE_US`) | a criterion serving nothing | move it under its story |
 | acceptance criterion covered by no task (`AC_WITHOUT_TASK`) | a requirement nobody will build | add or extend a task |
 | broken reference (`REF_BROKEN`) | a task cites something that does not exist | fix the reference |
@@ -424,6 +429,9 @@ grepping for it must find the same string on every machine.
 | verification matches no file (`GLOB_WITHOUT_FILES`) | the check is inert | fix the glob — a check that cannot fail looks like one that passed |
 | malformed verification (`VERIFICATION_MALFORMED`) | invalid regex, or one that timed out | simplify the pattern |
 | source file mapped by no task (`FILE_ORPHAN`) | code nothing asked for | map it to a task, or question why it exists |
+| document is over its length ceiling (`DOC_TOO_LONG`) | `PRD.md`/`DESIGN.md` past its configured line ceiling | split it, or move detail to where it belongs |
+| document is older than the code it describes (`DOC_FOSSIL`) | `DESIGN.md` predates the newest file its tasks map | update it — a document that lies is worse than none |
+| substantial prose repeated across documents (`DUPLICATE_PROSE`) | a feature's own `PRD.md`/RFC/`DESIGN.md` share a near-identical passage | point at it from one document, don't copy it |
 | feature name diverges from its directory (`FEATURE_MISMATCH`) | the header and the folder disagree | make them match |
 | project could not be read (`PROJECT_INVALID`) | a document failed to parse | the message names the file |
 

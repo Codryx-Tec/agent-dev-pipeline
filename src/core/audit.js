@@ -60,6 +60,36 @@ function lineCount(rootDir, relPath) {
   return readFileSync(path.join(rootDir, relPath), 'utf8').split('\n').length;
 }
 
+// M3b, antipattern #6 (DUPLICATE_PROSE): "the documents point at each other,
+// they don't copy" — PRD ← RFC ← DESIGN. Paragraphs under 25 words are
+// skipped: short boilerplate and headers are expected to repeat and are not
+// what this check is for.
+const MIN_DUPLICATE_WORDS = 25;
+const DUPLICATE_SIMILARITY_THRESHOLD = 0.75;
+
+function paragraphsOf(rootDir, relPath) {
+  const full = path.join(rootDir, relPath);
+  if (!existsSync(full)) return [];
+  const raw = readFileSync(full, 'utf8');
+  return raw
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.split(/\s+/).length >= MIN_DUPLICATE_WORDS);
+}
+
+function wordSet(text) {
+  return new Set((text.toLowerCase().match(/[\p{L}\p{N}]+/gu) || []));
+}
+
+function jaccard(a, b) {
+  const setA = wordSet(a);
+  const setB = wordSet(b);
+  if (!setA.size || !setB.size) return 0;
+  let shared = 0;
+  for (const w of setA) if (setB.has(w)) shared++;
+  return shared / (setA.size + setB.size - shared);
+}
+
 export function isProofStale(project, record) {
   if (record.gitRev && project.gitRev && record.gitDirty === false) {
     return record.gitRev !== project.gitRev;
@@ -171,6 +201,24 @@ export function auditProject(project, { ci = false } = {}) {
           d.dialect === 'create-rfc'
             ? `${d.id}: no option is marked recommended and the Outcome still holds the template placeholder — nothing was decided yet`
             : `${d.id} (${d.title}) records no chosen option`,
+          { file: d.file, line: d.line });
+      }
+      // M3b, antipattern #3: not considering doing nothing at all is its
+      // own kind of unweighed decision. A plain warning, not the "erro
+      // (G2)" SCOPE-0.6.0.md's own text specifies — even CI_ESCALATES
+      // broke the shipped .exemplo/ example's own RFC retroactively under
+      // --ci, which is a stronger signal than this pass should ship with.
+      if (!d.hasDoNothing) {
+        emit('OPTION_DO_NOTHING_MISSING', 'warning',
+          `${d.id} (${d.title}) never considers not doing this — a "do nothing" ${noun} makes the case for acting explicit instead of assumed`,
+          { file: d.file, line: d.line });
+      }
+      // M3b, antipattern #1: a straw option exists to lose. Only checked
+      // when a favorite is identifiable and its own Cons are real — see
+      // rfc.js's parseOptionsDecision for exactly what that requires.
+      for (const opt of d.strawOptions ?? []) {
+        emit('STRAW_OPTION', 'warning',
+          `${d.id}: "${opt.name}" ${opt.consWords === 0 ? 'declares no cons at all' : `declares only ${opt.consWords} words of cons, far short of the favorite's`} — a real option has real drawbacks, or it isn't really being weighed`,
           { file: d.file, line: d.line });
       }
     }
@@ -320,6 +368,34 @@ export function auditProject(project, { ci = false } = {}) {
         emit('DOC_FOSSIL', 'warning',
           `${f.designPath} is older than the code it maps — the code moved and the blueprint did not; a document that lies is worse than no document`,
           { feature: f.name, file: f.designPath });
+      }
+    }
+
+    // M3b, antipattern #8 (AI-review rule, not one of the six classics): "the
+    // documents point at each other, they don't copy" — PRD ← RFC ← DESIGN.
+    // Scoped to this one feature's own trio, matching that framing exactly —
+    // not a project-wide or cross-feature scan.
+    {
+      const docs = [];
+      if (f.hasPrd) docs.push({ file: f.prdPath, paragraphs: paragraphsOf(project.rootDir, f.prdPath) });
+      for (const ref of f.rfcRefs) {
+        const entry = rfcs.get(ref);
+        if (entry) docs.push({ file: entry.file, paragraphs: paragraphsOf(project.rootDir, entry.file) });
+      }
+      if (f.hasDesign) docs.push({ file: f.designPath, paragraphs: paragraphsOf(project.rootDir, f.designPath) });
+
+      for (let i = 0; i < docs.length; i++) {
+        for (let j = i + 1; j < docs.length; j++) {
+          for (const pa of docs[i].paragraphs) {
+            for (const pb of docs[j].paragraphs) {
+              if (jaccard(pa, pb) >= DUPLICATE_SIMILARITY_THRESHOLD) {
+                emit('DUPLICATE_PROSE', 'warning',
+                  `${docs[i].file} and ${docs[j].file} share a substantial passage — point at it from one document instead of copying it, or the copy will drift`,
+                  { feature: f.name, file: docs[i].file });
+              }
+            }
+          }
+        }
       }
     }
 

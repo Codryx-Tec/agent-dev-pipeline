@@ -77,7 +77,7 @@ test('an incomplete criterion names the missing clause @spec:AC-006', () => {
 });
 
 test('a decision with fewer than two alternatives is a finding @spec:AC-007', () => {
-  const rfc = MINIMAL_RFC.replace('2. *Two.* second\n', '');
+  const rfc = MINIMAL_RFC.replace('2. *Two.* second\n', '').replace('3. *Do nothing.* keep the current process\n', '');
   const { audit, gates } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
   assert.ok(has(audit, 'DECISION_WITHOUT_ALTERNATIVE'));
   assert.equal(gate(gates, 'G2').state, 'red');
@@ -138,7 +138,7 @@ test('one RFC shared by two PRDs is checked once, not once per PRD @spec:AC-007'
   // about it (SPEC_MISSING etc.) don't affect what this test asserts.
   const { audit } = auditOf(
     base({
-      '.spec/rfc/RFC-001-t.md': MINIMAL_RFC.replace('2. *Two.* second\n', ''), // broken: only 1 alternative
+      '.spec/rfc/RFC-001-t.md': MINIMAL_RFC.replace('2. *Two.* second\n', '').replace('3. *Do nothing.* keep the current process\n', ''), // broken: only 1 alternative
       '.spec/features/g/PRD.md': PRD_OK,
     })
   );

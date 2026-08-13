@@ -3,7 +3,7 @@
   "algorithm": "sha256",
   "fileCount": 52,
   "files": {
-    "AGENTS.md": "05e6e1d7ad193a8f8fcd221e0eac36dd9e578166bab6ee550f38f247bd900d95",
+    "AGENTS.md": "90e65ed65f6c1ded2a4bed4d1be21f993e0d5925a360f1526fbad2be1593d60a",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/architect.md": "81a574edf6202910447510db173bc83972e9b3fdafc919042e65a5680d1d6f4e",
     "claude/agents/backend.md": "e1d2ac6eefb7c0e49f4be41c5779c5831e66048d747ae8b78e9ff004c7a8619b",
@@ -18,7 +18,7 @@
     "claude/hooks/context-persistence.sh": "e861b5c664f08406fb9905628f8ef5e10d28b49dba67e262205ce284e1f1c503",
     "claude/hooks/secrets-scanner.sh": "607a245d9b8b198f5a4b1ba9ecdb3554589aae460bef6951ba7b39bdb8ef4f96",
     "claude/settings.json": "f1e0dca95dd7cf42e2545c470a413e535281cf75f9bfd6cc29c86404d99ece7d",
-    "claude/skills/adp/SKILL.md": "f187f98635bc5eb7b210dfd0db51c9f53e0ccd25da27f98ab63e73b3d748cf6e",
+    "claude/skills/adp/SKILL.md": "dfbdf3bf1523df5d404ccfa447c89f4ce4cf16f8dd4d12457f04b4374d063928",
     "claude/skills/create-rfc/.skill-meta.json": "b3368039e2352688f48fc7aea068ac9dd9ff027a5165e645a3adeb79d0050e7e",
     "claude/skills/create-rfc/INTEGRATION.md": "8f415d7d8e88e2da73677caab82f97ec35ea0325927a4569b01248ff42c3ad4b",
     "claude/skills/create-rfc/LICENSE": "8cd58eae8e643a9d0f900d279f0b6f80a6db3f86f885b122b52e930d6bcd1264",

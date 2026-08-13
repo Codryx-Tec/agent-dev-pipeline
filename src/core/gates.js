@@ -39,7 +39,7 @@ export const GATES = [
     id: 'G2',
     title: 'Path decided',
     question: 'Is the path decided, with alternatives recorded?',
-    codes: ['RFC_MISSING', 'DECISION_WITHOUT_ALTERNATIVE', 'DECISION_WITHOUT_CHOICE', 'CONTEXT_WITHOUT_NUMBERS'],
+    codes: ['RFC_MISSING', 'DECISION_WITHOUT_ALTERNATIVE', 'DECISION_WITHOUT_CHOICE', 'CONTEXT_WITHOUT_NUMBERS', 'STRAW_OPTION', 'OPTION_DO_NOTHING_MISSING'],
   },
   {
     id: 'G3',
@@ -95,6 +95,7 @@ export const GATES = [
       'PROJECT_INVALID',
       'DOC_TOO_LONG',
       'DOC_FOSSIL',
+      'DUPLICATE_PROSE',
     ],
   },
 ];
@@ -138,6 +139,8 @@ export const LABELS = {
   DECISION_WITHOUT_ALTERNATIVE: 'decision without alternatives',
   DECISION_WITHOUT_CHOICE: 'decision without a chosen option',
   CONTEXT_WITHOUT_NUMBERS: 'RFC context has no measurable figure',
+  STRAW_OPTION: 'option propped up with weak or missing cons',
+  OPTION_DO_NOTHING_MISSING: 'no option considers not doing this',
   SECTION_MISSING: 'required section missing',
   Q_BLOCKING_OPEN: 'blocking question still open',
   Q_OPEN: 'open question',
@@ -167,6 +170,7 @@ export const LABELS = {
   PROJECT_INVALID: 'project could not be read',
   DOC_TOO_LONG: 'document is over its length ceiling',
   DOC_FOSSIL: 'document is older than the code it describes',
+  DUPLICATE_PROSE: 'substantial prose repeated across documents',
 };
 
 const GATE_OF = new Map();

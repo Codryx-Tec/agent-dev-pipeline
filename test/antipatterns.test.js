@@ -1,9 +1,11 @@
-// M3b — antipatterns as findings (SCOPE-0.6.0.md PRD-003b). Five of the
-// eight codes named there: PRD_WITH_SOLUTION, CONTEXT_WITHOUT_NUMBERS,
-// DOC_TOO_LONG, DOC_FOSSIL, AC_NOT_OBSERVABLE. STRAW_OPTION and
-// OPTION_DO_NOTHING_MISSING need RFC grammar (per-alternative pros/cons,
-// OPT-000) that doesn't exist yet; DUPLICATE_PROSE needs a similarity
-// algorithm of its own — both deferred, not built here.
+// M3b — antipatterns as findings (SCOPE-0.6.0.md PRD-003b). All eight codes
+// named there now: PRD_WITH_SOLUTION, CONTEXT_WITHOUT_NUMBERS, DOC_TOO_LONG,
+// DOC_FOSSIL, AC_NOT_OBSERVABLE from earlier in M3b; STRAW_OPTION,
+// OPTION_DO_NOTHING_MISSING and DUPLICATE_PROSE close out the set
+// (M3b-remainder). STRAW_OPTION only checks the create-rfc dialect (the
+// native one has no Pros/Cons structure to compare); OPTION_DO_NOTHING_MISSING
+// checks both by name match, and stays a plain warning rather than the
+// source text's "erro (G2)" — see rfc.js/audit.js for why.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -179,4 +181,172 @@ test('a criterion with a number is not flagged, even with an adjective nearby @s
 test('a criterion with neither a vague adjective nor a number is not flagged @spec:AC-071', () => {
   const { audit } = auditOf(base());
   assert.equal(has(audit, 'AC_NOT_OBSERVABLE'), false);
+});
+
+// ------------------------------------------------------------------ STRAW_OPTION
+
+const optionsRfc = ({ opt2Cons = '- Costs more\n- Takes longer to set up\n- Needs a new on-call rotation\n' } = {}) => `# RFC: t
+
+## Options Considered
+
+### Option 1: Real choice ⭐ (Recommended)
+
+**Pros**:
+- Fast
+- Cheap
+
+**Cons**:
+- Locks us into one vendor
+- Needs a migration later
+
+### Option 2: Weaker choice
+
+**Pros**:
+- Simple
+
+**Cons**:
+${opt2Cons}
+## Outcome
+
+**Decision**: Option 1 was chosen
+`;
+
+test('an option with no declared cons at all is flagged, next to a favorite with real cons @spec:AC-091', () => {
+  const rfc = `# RFC: t
+
+## Options Considered
+
+### Option 1: Real choice ⭐ (Recommended)
+
+**Pros**:
+- Fast
+
+**Cons**:
+- Locks us into one vendor
+- Needs a migration later
+
+### Option 2: Straw choice
+
+**Pros**:
+- Sounds nice
+
+## Outcome
+
+**Decision**: Option 1 was chosen
+`;
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  const finding = findingsFor(audit, 'STRAW_OPTION')[0];
+  assert.ok(finding);
+  assert.match(finding.message, /Straw choice/);
+  assert.equal(finding.severity, 'warning');
+});
+
+test('an option with cons far shorter than the favorite\'s is flagged @spec:AC-091', () => {
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': optionsRfc({ opt2Cons: '- Meh\n' }) }));
+  assert.ok(has(audit, 'STRAW_OPTION'));
+});
+
+test('an option with comparably real cons is not flagged @spec:AC-091', () => {
+  const { audit } = auditOf(
+    base({ '.spec/rfc/RFC-001-t.md': optionsRfc({ opt2Cons: '- Also locks us in, just to a smaller vendor\n- Support is slower to respond\n' }) })
+  );
+  assert.equal(has(audit, 'STRAW_OPTION'), false);
+});
+
+test('with no favorite marked recommended, nothing is flagged — no baseline to compare against @spec:AC-091', () => {
+  const rfc = optionsRfc().replace(' ⭐ (Recommended)', '').replace('**Decision**: Option 1 was chosen', '**Decision**: Option 2 was chosen');
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.equal(has(audit, 'STRAW_OPTION'), false);
+});
+
+test('when the favorite itself declares no cons, nothing is flagged — the structure is not in use @spec:AC-091', () => {
+  const rfc = `# RFC: t
+
+## Options Considered
+
+### Option 1: Real choice ⭐ (Recommended)
+
+**Pros**:
+- Fast
+
+### Option 2: Other choice
+
+**Pros**:
+- Simple
+
+## Outcome
+
+**Decision**: Option 1 was chosen
+`;
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.equal(has(audit, 'STRAW_OPTION'), false);
+});
+
+test('the native dialect is never checked for straw options — it has no Pros/Cons structure @spec:AC-091', () => {
+  const { audit } = auditOf(base()); // RFC_WITH_NUMBERS, native dialect
+  assert.equal(has(audit, 'STRAW_OPTION'), false);
+});
+
+// ----------------------------------------------------------- OPTION_DO_NOTHING_MISSING
+
+test('a native-dialect decision with no do-nothing alternative is flagged, as a warning @spec:AC-092', () => {
+  const { audit, gates } = auditOf(base()); // RFC_WITH_NUMBERS has no do-nothing alternative
+  const finding = findingsFor(audit, 'OPTION_DO_NOTHING_MISSING')[0];
+  assert.ok(finding);
+  assert.equal(finding.severity, 'warning');
+  assert.equal(gate(gates, 'G2').state, 'green', 'a warning must not turn the gate red');
+});
+
+test('a native-dialect decision naming a do-nothing alternative is not flagged @spec:AC-092', () => {
+  const rfc = RFC_WITH_NUMBERS.replace('2. *Two.* second', '2. *Two.* second\n3. *Do nothing.* keep the current process');
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.equal(has(audit, 'OPTION_DO_NOTHING_MISSING'), false);
+});
+
+test('a Portuguese "não fazer nada" alternative also counts @spec:AC-092', () => {
+  const rfc = RFC_WITH_NUMBERS.replace('2. *Two.* second', '2. *Two.* second\n3. *Não fazer nada.* manter como está');
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.equal(has(audit, 'OPTION_DO_NOTHING_MISSING'), false);
+});
+
+test('a create-rfc-dialect decision with no do-nothing option is flagged @spec:AC-092', () => {
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': optionsRfc() }));
+  assert.ok(has(audit, 'OPTION_DO_NOTHING_MISSING'));
+});
+
+test('a create-rfc-dialect "Do Nothing" option is not flagged @spec:AC-092', () => {
+  const rfc = optionsRfc().replace('### Option 2: Weaker choice', '### Option 2: Do Nothing');
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.equal(has(audit, 'OPTION_DO_NOTHING_MISSING'), false);
+});
+
+// -------------------------------------------------------------------- DUPLICATE_PROSE
+
+const SHARED_PARAGRAPH =
+  'The onboarding flow must collect the company legal name, the tax identification number, ' +
+  'the primary contact email, and a billing address before the account can be activated for use.';
+
+test('a substantial passage repeated between PRD and DESIGN is flagged @spec:AC-093', () => {
+  const prd = `# PRD\n\n> rfcs: RFC-001\n> signals: multiple-teams\n\n${SHARED_PARAGRAPH}\n`;
+  const design = `# DESIGN\n\n## 1. Shape of the solution\n\n${SHARED_PARAGRAPH}\n`;
+  const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd, '.spec/features/f/DESIGN.md': design }));
+  const finding = findingsFor(audit, 'DUPLICATE_PROSE')[0];
+  assert.ok(finding);
+  assert.equal(finding.severity, 'warning');
+});
+
+test('related but substantially different prose is not flagged @spec:AC-093', () => {
+  const prd = `# PRD\n\n> rfcs: RFC-001\n> signals: multiple-teams\n\n${SHARED_PARAGRAPH}\n`;
+  const design = `# DESIGN\n\n## 1. Shape of the solution\n\nThe billing service validates the tax id against ` +
+    `an external registry and rejects the request with a specific error code when the format does not match.\n`;
+  const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd, '.spec/features/f/DESIGN.md': design }));
+  assert.equal(has(audit, 'DUPLICATE_PROSE'), false);
+});
+
+test('a short shared line under the word-count floor is not flagged — boilerplate, not real duplication @spec:AC-093', () => {
+  const shared = 'This document is prose only, no stories, no criteria.\n';
+  const prd = `# PRD\n\n> rfcs: RFC-001\n> signals: multiple-teams\n\n${shared}`;
+  const design = `# DESIGN\n\n## 1. Shape of the solution\n\n${shared}`;
+  const { audit } = auditOf(base({ '.spec/features/f/PRD.md': prd, '.spec/features/f/DESIGN.md': design }));
+  assert.equal(has(audit, 'DUPLICATE_PROSE'), false);
 });
