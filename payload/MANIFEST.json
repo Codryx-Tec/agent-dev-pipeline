@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "algorithm": "sha256",
-  "fileCount": 52,
+  "fileCount": 51,
   "files": {
     "AGENTS.md": "2d6646a83d69437844201ae5477586ad449850652f7b8f5775ff4a4cd0393ece",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
@@ -26,7 +26,6 @@
     "claude/skills/create-rfc/SKILL.md": "8947fde8782d1632a96582e29ae05e43e4267155f56aa81a96312599f8d8bdca",
     "claude/skills/create-rfc/references/section-templates.md": "c4e82731e020e1ffe0195e516425ee2825287d09f3ea913f7ce91b4547866013",
     "claude/skills/debugging-and-error-recovery/SKILL.md": "be6b282fb8a272543ce1ee6796bee840d90929a7d41e7a47c0c5ab584dc4a3d2",
-    "claude/skills/feature-spec/SKILL.md": "960c7458ee34791b3cb092633d87421d13fcb7c02c54481eb96434997afd8c86",
     "claude/skills/frontend-ui-engineering/SKILL.md": "a86f3143319a62f8538aa184c20deb49a3e69187bf5db9b7f673fa76599d6af3",
     "claude/skills/github-flow/SKILL.md": "a8f396d0a51f46eafa430df19e269a91359d402e6a798681944f8165e81c8f0c",
     "claude/skills/grill-me/SKILL.md": "74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556",

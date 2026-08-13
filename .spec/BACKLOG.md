@@ -14,12 +14,3 @@
 
 ## Technical
 
-- Rewrite or retire the `feature-spec` skill
-  (`payload/claude/skills/feature-spec/SKILL.md`). Found while realigning
-  the role agents with the current document chain: it still produces
-  `spec.md`/`plan.md`/`tasks.md` (lowercase, `FR1`/`FR2` requirements, no
-  Given/When/Then) — a separate, older grammar than `PRD.md`/`RFC.md`/
-  `SPEC.md`/`DESIGN.md`. `business-analyst.md` and `architect.md` no
-  longer point at it (fixed alongside the agent realignment), but the
-  skill itself still exists and would reintroduce the same staleness if
-  anything references it again.
