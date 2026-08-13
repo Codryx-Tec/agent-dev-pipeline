@@ -98,7 +98,22 @@ test('renderEstimateMd says plainly this is not proof, and shows the applicabili
   const md = renderEstimateMd(est, 'demo');
   assert.match(md, /not proof/);
   assert.match(md, /measures this app type poorly/);
-  assert.match(md, /Function Points \(declared\)/);
+  assert.match(md, /Function Points: \*\*10\*\* \*\(declared\)\*/);
+  assert.match(md, /Declared directly with `--pf`/);
+});
+
+test('renderEstimateMd names the confirmed count instead, when one backs the PF @spec:AC-081', () => {
+  const est = computeEstimate({ pf: 4, profile: { appType: 'business-crud', familiarity: 'delivered' }, hoursTable: DEFAULT_TABLE });
+  const confirmed = {
+    entries: [{ name: 'Create invoice', type: 'EE', complexity: 'medium', pf: 4, source: 'PRD.md: "..."' }],
+    totalPf: 4,
+    confirmedBy: 'Ada <ada@example.com>',
+    confirmedAt: '2026-08-13T00:00:00.000Z',
+  };
+  const md = renderEstimateMd(est, 'demo', confirmed);
+  assert.match(md, /Function Points: \*\*4\*\* \*\(counted, confirmed\)\*/);
+  assert.match(md, /Counted from 1 function\(s\)/);
+  assert.match(md, /Ada <ada@example\.com>/);
 });
 
 test('renderEstimateCsv is one header row and one data row @spec:AC-066', () => {
@@ -107,6 +122,19 @@ test('renderEstimateCsv is one header row and one data row @spec:AC-066', () => 
   assert.equal(csv.length, 2);
   assert.match(csv[0], /^project,appType,familiarity,pf,lowHours,likelyHours,highHours,source$/);
   assert.match(csv[1], /^demo,business-crud,delivered,10,/);
+});
+
+test('renderEstimateCsv appends one row per counted function when a confirmed count backs it @spec:AC-081', () => {
+  const est = computeEstimate({ pf: 4, profile: { appType: 'business-crud', familiarity: 'delivered' }, hoursTable: DEFAULT_TABLE });
+  const entries = [
+    { name: 'Create invoice, "quoted"', type: 'EE', complexity: 'medium', pf: 4, source: 'PRD.md: "..."' },
+  ];
+  const csv = renderEstimateCsv(est, 'demo', entries);
+  const blocks = csv.trim().split('\n\n');
+  assert.equal(blocks.length, 2, 'project summary block, then the per-function block');
+  const fnLines = blocks[1].split('\n');
+  assert.equal(fnLines[0], 'name,type,complexity,pf,source');
+  assert.match(fnLines[1], /^"Create invoice, ""quoted""",EE,medium,4,/);
 });
 
 test('loadProfile returns the labelled default when adp profile never ran @spec:AC-065', () => {

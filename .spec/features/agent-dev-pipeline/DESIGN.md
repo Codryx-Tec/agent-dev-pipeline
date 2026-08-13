@@ -250,11 +250,19 @@ and MVP placement, and `SCOPE.md`'s `**Decision:**` field. Declared and
 rendered, never enforced; the same posture ceremony signals and the
 backlog already take.
 
-**Function Point estimation** (`core/estimate.js`, `adp profile` / `adp
-estimate --pf <n>`). Hours are a human-declared PF count times the
-matching row of `.spec/metrics/hours-per-fp.json` (seeded from
+**Function Point estimation** (`core/estimate.js`, `core/count.js`, `adp
+profile` / `adp estimate`). Hours are a PF count times the matching row of
+`.spec/metrics/hours-per-fp.json` (seeded from
 `payload/metrics/hours-per-fp.default.json`, every row `source:
-"cold-start"`) — never machine-counted. `real-time`/`infra`/`mathematical`
+"cold-start"`). The PF count itself is either declared directly
+(`--pf <n>`) or produced by the automated counting loop
+(`.spec/metrics/count-draft.json`, one entry per function classified
+`ALI`/`AIE`/`EE`/`CE`/`SE` at low/medium/high complexity, weighed against
+`.spec/metrics/fp-weights.json`): `adp estimate --review` shows the draft
+and its total, and only a human's `adp estimate --confirm` locks it in as
+`count-confirmed.json`. An entry with no cited source is excluded from the
+total and reported, never silently dropped or counted — none of this is a
+gate, matching the rest of this family. `real-time`/`infra`/`mathematical`
 app types carry an explicit applicability warning, since Function Point
 analysis measures them poorly.
 

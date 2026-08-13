@@ -170,6 +170,14 @@ export function initProject(rootDir, opts = {}) {
     readFileSync(path.join(PAYLOAD_DIR, 'metrics', 'hours-per-fp.default.json'), 'utf-8'),
     report
   );
+  // ---- the Function Point weight table: same seed-once shape, one level up
+  // the chain — this is what `adp estimate --review`/`--confirm` weighs a
+  // counted function against (PRD-003-full-core) ----
+  writeIfMissing(
+    path.join(rootDir, '.spec', 'metrics', 'fp-weights.json'),
+    readFileSync(path.join(PAYLOAD_DIR, 'metrics', 'fp-weights.default.json'), 'utf-8'),
+    report
+  );
   // ---- PRD_WITH_SOLUTION's forbidden-vocabulary list: same seed-once,
   // edit-forever shape (M3b) — the audit falls back to a small built-in
   // list when this file is absent, so an upgrade that predates it still

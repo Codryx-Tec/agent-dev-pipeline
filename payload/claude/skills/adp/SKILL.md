@@ -84,7 +84,8 @@ shorthand for that invocation — the person will usually have it aliased.
 | `init` · `new <feature> [--signals <list>]` | scaffold a project · scaffold a feature (only the documents its ceremony level needs) |
 | `new --rfc <slug>` | a new global decision record at `.spec/rfc/RFC-<NNN>-<slug>.md` |
 | `profile [--stack] [--familiarity] [--app-type] [--brownfield] [--tests]` | declare the stack/team profile `estimate` reads |
-| `estimate --pf <n> [--csv]` | hours = a **declared** Function Point count × the profile's table row — never proof, never machine-counted |
+| `estimate [--pf <n>] [--csv]` | hours = a PF count × the profile's table row — declared with `--pf`, or from a confirmed count; never proof |
+| `estimate --review` / `--confirm [--yes]` | show the draft count / lock it in — only a human confirms |
 | `doctor` | verify this copy of the tool against its manifest |
 
 **The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. You never
@@ -175,19 +176,31 @@ so rather than re-approving.
 If the suite takes minutes, use `adp verify --background` and follow it with
 `adp verify --status`. The verdict is identical either way.
 
-## Estimation — hours from a declared count, never proof
+## Estimation — hours from a Function Point count, never proof
 
 `adp profile` declares the stack/team profile once (rerunnable);
-`adp estimate --pf <n>` multiplies a **human-declared** Function Point count
-by that profile's row in `.spec/metrics/hours-per-fp.json` (seeded at `init`,
-hand-editable) and writes `.spec/ESTIMATE.md`. `adp report` shows the range
-once one exists.
+`adp estimate [--pf <n>]` multiplies a PF count by that profile's row in
+`.spec/metrics/hours-per-fp.json` (seeded at `init`, hand-editable) and
+writes `.spec/ESTIMATE.md`. `adp report` shows the range once one exists.
 
-**Never present this as proof, and never invent a PF count on your own
-authority.** The count is something a human counts and tells the engine —
-the automated counting interview (an AI proposing function classifications
-and citing their source in the documents) is a larger, separate piece of
-work and does not exist in this version. When the app type is
+**The PF count comes from `--pf <n>` by hand, or from counting and
+confirming.** `--pf` stays the fast path for a feature too small to bother
+formally counting. The fuller loop, now built: you write
+`.spec/metrics/count-draft.json` yourself — one entry per counted function
+(`{ name, type: ALI|AIE|EE|CE|SE, complexity: low|medium|high, source:
+"<the PRD.md/SCOPE.md line that justifies it>" }`) while reading the PRD —
+then `adp estimate --review` shows the draft and its PF total without
+recording anything, and **only a human's `adp estimate --confirm`** locks
+it in as `count-confirmed.json`, attributed to their `git config` identity.
+`adp estimate` then uses that total automatically. An entry with no
+`source` is excluded from the total and reported, never silently dropped
+or silently counted.
+
+**Never present any of this as proof, and never confirm a count on your own
+authority** — propose the draft, show `--review` to the human, let *them*
+run `--confirm` (or explicitly tell you to pass `--yes`, the same rule as
+`adp trust` and `adp run`). Complexity is a judgment call you cite, not a
+formula this version derives from DET/RET/FTR counts. When the app type is
 `real-time`/`infra`/`mathematical`, the tool prints a caveat that Function
 Point analysis measures those poorly — repeat it to the person, don't drop
 it silently.
@@ -251,7 +264,9 @@ project is at fault.
    passed. Run verify before you claim anything, and never mark a task
    `[done]` on a criterion the engine has not recorded as proven.
 4. **Never approve the test command for the person.** `adp trust` shows them what
-   will execute; that decision is theirs, and `--yes` is not yours to use.
+   will execute; that decision is theirs, and `--yes` is not yours to use. The
+   same goes for `adp estimate --confirm` — you propose the count, only they
+   confirm it.
 5. **The feature closes when `adp audit --ci` exits 0.** Running it and pasting
    the output is the last step, always.
 6. **Assumptions and open questions are mandatory.** Filled a gap without
@@ -267,8 +282,11 @@ project is at fault.
    iterate forever and do not route around the gate.
 10. **A PRD is never presence alone.** It must be named in `SCOPE.md`'s MVP
     checklist, or it is `PRD_UNPLACED` — nothing exists in limbo.
-11. **`adp estimate`'s number is a declared count times an editable table,
-    never proof and never machine-counted.** Say so every time you show it.
+11. **`adp estimate`'s number is a PF count times an editable table, never
+    proof.** The count itself is either declared by hand (`--pf`) or
+    proposed by you and confirmed by a human (`--review`/`--confirm`) —
+    never confirmed by you, and never presented as anything more certain
+    than a declared, editable estimate. Say so every time you show it.
 
 ## Working the flow
 

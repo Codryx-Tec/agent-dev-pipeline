@@ -1,9 +1,9 @@
 {
   "manifestVersion": 1,
   "algorithm": "sha256",
-  "fileCount": 51,
+  "fileCount": 52,
   "files": {
-    "AGENTS.md": "2d6646a83d69437844201ae5477586ad449850652f7b8f5775ff4a4cd0393ece",
+    "AGENTS.md": "e81e47bb77d5020e6e900bb1eade97b93c153f84760a9b343f36f697944c4530",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/architect.md": "81a574edf6202910447510db173bc83972e9b3fdafc919042e65a5680d1d6f4e",
     "claude/agents/backend.md": "e1d2ac6eefb7c0e49f4be41c5779c5831e66048d747ae8b78e9ff004c7a8619b",
@@ -18,7 +18,7 @@
     "claude/hooks/context-persistence.sh": "e861b5c664f08406fb9905628f8ef5e10d28b49dba67e262205ce284e1f1c503",
     "claude/hooks/secrets-scanner.sh": "607a245d9b8b198f5a4b1ba9ecdb3554589aae460bef6951ba7b39bdb8ef4f96",
     "claude/settings.json": "f1e0dca95dd7cf42e2545c470a413e535281cf75f9bfd6cc29c86404d99ece7d",
-    "claude/skills/adp/SKILL.md": "3c7be48f302440c6389f3223bbdeec58e66ae6d6ddcb5fe8c32c0bca313519a6",
+    "claude/skills/adp/SKILL.md": "e82595e993d336e70cc650abc8db81eb4f813d718188659bd52e9b2e9aefa034",
     "claude/skills/create-rfc/.skill-meta.json": "b3368039e2352688f48fc7aea068ac9dd9ff027a5165e645a3adeb79d0050e7e",
     "claude/skills/create-rfc/INTEGRATION.md": "8f415d7d8e88e2da73677caab82f97ec35ea0325927a4569b01248ff42c3ad4b",
     "claude/skills/create-rfc/LICENSE": "8cd58eae8e643a9d0f900d279f0b6f80a6db3f86f885b122b52e930d6bcd1264",
@@ -39,6 +39,7 @@
     "claude/skills/worktree-cleanup/SKILL.md": "f1745b3a49d1f65beaed8933cd0bb5753850c55d93a83b7599a8447261eb46e0",
     "docs/DEPLOYMENT.md": "d401572304f2d4241fc537cad4beda026ac5db2e68b8f15cf8a2d6c994ae7a9e",
     "docs/USAGE.md": "9862a6f76c3d72b1eb75c280f28249f2ba6bb9f9778670094db8211fb9e8da14",
+    "metrics/fp-weights.default.json": "158ac7ecd6e7a82d5871f7d6f36e0b66fdef445881ec04173beedf4a418d818e",
     "metrics/hours-per-fp.default.json": "d3ae1262dc72b4ef1153fa1989f3ae73a9db907fe9be6ac7fc4bc8252986456d",
     "spec/BEST_PRACTICES.md": "24a1f22ef61c598c7c674381bf7a8071c96798e215d9e976589a10d9952ae0dc",
     "spec/CHANGELOG.md": "2a56d65d919cca08411617ec5be50ebcc791316cefd67a041388ac77074518f9",

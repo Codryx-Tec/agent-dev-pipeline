@@ -58,6 +58,16 @@ import {
   calibrationLabel,
   saveHoursTable,
 } from './core/closure.js';
+import {
+  loadDraft,
+  loadWeights,
+  loadConfirmed,
+  countConfirmedPath,
+  summarize,
+  renderCountSummary,
+  confirmCount,
+  currentAttribution,
+} from './core/count.js';
 
 const HELP = `agent-dev-pipeline — the specification that stays true
 
@@ -74,9 +84,14 @@ usage: adp <command> [options]
                             MVP/backlog, the recorded decision, the estimate if one exists
   profile [--stack <s>] [--familiarity <l>] [--app-type <t>] [--brownfield] [--tests]
                             declare the stack/team profile that adp estimate reads
-  estimate --pf <n> [--csv]
-                            hours = declared Function Points x the profile's table row;
-                            never proof — PF count is human-declared, not auto-counted
+  estimate [--pf <n>] [--csv]
+                            hours = Function Points x the profile's table row; PF comes
+                            from a confirmed count (see --review/--confirm) or --pf by
+                            hand — never proof either way
+  estimate --review        show the draft count (.spec/metrics/count-draft.json) and
+                            its PF total without recording anything
+  estimate --confirm [--yes]
+                            lock in the draft count as .spec/metrics/count-confirmed.json
   close --hours <n> [--note "<s>"]
                             record the real hours a feature took; recalibrates the
                             table row adp estimate last used toward what happened
@@ -447,12 +462,68 @@ export async function run(argv) {
     return 0;
   }
 
-  if (command === 'estimate') {
-    if (typeof flags.pf !== 'string' || !Number.isFinite(Number(flags.pf))) {
-      console.error('error: --pf needs a number: adp estimate --pf <n>');
+  if (command === 'estimate' && (flags.review || flags.confirm)) {
+    const draft = loadDraft(rootDir, config);
+    if (!draft.length) {
+      console.error('error: no .spec/metrics/count-draft.json (or it is empty) — write one first.');
+      console.error('one entry per counted function: { "name", "type": ALI|AIE|EE|CE|SE,');
+      console.error('"complexity": low|medium|high, "source": "<PRD.md/SCOPE.md citation>" }');
       return 2;
     }
-    const pf = Number(flags.pf);
+    const weights = loadWeights(rootDir, config);
+    if (!weights) {
+      console.error('error: no .spec/metrics/fp-weights.json — run `adp init` first (it seeds one).');
+      return 2;
+    }
+    const summary = summarize(draft, weights);
+    console.log(renderCountSummary(summary));
+
+    if (flags.review) return 0;
+
+    // --confirm from here down.
+    console.log('');
+    if (!flags.yes) {
+      // Same refusal `trust`/`run` already use: a confirmation nobody can
+      // answer is not a confirmation, and a non-TTY silent yes would let
+      // any script confirm a count no human actually reviewed.
+      if (!process.stdin.isTTY) {
+        console.error('refusing to confirm without a human: stdin is not a terminal.');
+        console.error('use --yes deliberately, only once a human has actually reviewed the count above.');
+        return 2;
+      }
+      const answer = await ask('confirm this count? type the word yes: ');
+      if (answer.trim().toLowerCase() !== 'yes') {
+        console.log('not confirmed.');
+        return 1;
+      }
+    }
+    const record = confirmCount(rootDir, config, {
+      entries: draft,
+      table: weights,
+      confirmedBy: currentAttribution(rootDir),
+    });
+    console.log(`confirmed. ${record.totalPf} PF recorded by ${record.confirmedBy}.`);
+    console.log(`wrote ${path.relative(rootDir, countConfirmedPath(rootDir, config))}`);
+    return 0;
+  }
+
+  if (command === 'estimate') {
+    const confirmed = loadConfirmed(rootDir, config);
+    let pf;
+    if (typeof flags.pf === 'string') {
+      if (!Number.isFinite(Number(flags.pf))) {
+        console.error('error: --pf needs a number: adp estimate --pf <n>');
+        return 2;
+      }
+      pf = Number(flags.pf);
+    } else if (confirmed) {
+      pf = confirmed.totalPf;
+    } else {
+      console.error('error: no PF to estimate from. Either pass --pf <n> directly, or count first:');
+      console.error('  adp estimate --review    # see the draft count');
+      console.error('  adp estimate --confirm   # lock it in');
+      return 2;
+    }
     const profile = loadProfile(rootDir, config);
     if (!profile.declared) {
       console.error('note: no profile declared — run `adp profile` first; using the generic default for now.');
@@ -469,12 +540,16 @@ export async function run(argv) {
       console.error(`error: ${err.message}`);
       return 2;
     }
+    // Only ever attached when this PF came from a confirmed count, never
+    // from a bare --pf — even if a confirmed count exists on disk, an
+    // explicit --pf on this call means the human chose not to use it here.
+    const confirmedForRender = typeof flags.pf !== 'string' && confirmed ? confirmed : null;
     const projectName = path.basename(rootDir);
     if (flags.csv) {
-      console.log(renderEstimateCsv(estimate, projectName).trimEnd());
+      console.log(renderEstimateCsv(estimate, projectName, confirmedForRender?.entries).trimEnd());
       return 0;
     }
-    const md = renderEstimateMd(estimate, projectName);
+    const md = renderEstimateMd(estimate, projectName, confirmedForRender);
     const estimatePath = path.join(rootDir, config.specDir ?? '.spec', 'ESTIMATE.md');
     const estimateJsonFile = estimateJsonPath(rootDir, config);
     mkdirSync(path.dirname(estimatePath), { recursive: true });

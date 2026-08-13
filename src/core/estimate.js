@@ -127,15 +127,21 @@ export function computeEstimate({ pf, profile, hoursTable, hoursPerMonth = 160 }
   };
 }
 
-export function renderEstimateMd(estimate, project) {
+export function renderEstimateMd(estimate, project, confirmed = null) {
   const out = [`# Estimate — ${project}`, ''];
   out.push(`Generated: ${estimate.generatedAt}`);
   out.push('');
-  out.push('**This is not proof.** Nothing here is verified mechanically; it is a declared');
-  out.push('count multiplied by a declared, editable table. Function Points counted by hand,');
-  out.push('not by the automated interview — that part of PRD-003 is not built in this version.');
+  out.push('**This is not proof.** Nothing here is verified mechanically; it is a PF count');
+  out.push('multiplied by a declared, editable table.');
+  if (confirmed) {
+    out.push(`Counted from ${confirmed.entries.length} function(s), each classified and`);
+    out.push(`cited to a source, confirmed by ${confirmed.confirmedBy} on ${confirmed.confirmedAt}`);
+    out.push('(`adp estimate --review` / `--confirm`) — see `count-confirmed.json` for the full list.');
+  } else {
+    out.push('Declared directly with `--pf`, not counted function by function.');
+  }
   out.push('');
-  out.push(`- Function Points (declared): **${estimate.pf}**`);
+  out.push(`- Function Points: **${estimate.pf}**` + (confirmed ? ' *(counted, confirmed)*' : ' *(declared)*'));
   out.push(`- Profile: appType=${estimate.profile.appType}, familiarity=${estimate.profile.familiarity}, stack=${estimate.profile.stack}` + (estimate.profile.declared ? '' : ' *(no profile declared — run `adp profile`; using the generic default)*'));
   out.push(`- Table row used: \`${estimate.rowUsed}\` (source: ${estimate.source})` + (estimate.usedFallback ? ' — no row for this exact profile, fell back to the generic row' : ''));
   out.push('');
@@ -155,7 +161,12 @@ export function renderEstimateMd(estimate, project) {
   return out.join('\n') + '\n';
 }
 
-export function renderEstimateCsv(estimate, project) {
+// `confirmedEntries` is `count.js`'s `confirmCount()`'s `entries` array
+// (only ever passed when the PF came from a confirmed count, not a bare
+// `--pf`) — one extra row per counted function, appended after the
+// existing project-summary row so a spreadsheet still opens the same
+// header either way.
+export function renderEstimateCsv(estimate, project, confirmedEntries = null) {
   const header = 'project,appType,familiarity,pf,lowHours,likelyHours,highHours,source';
   const row = [
     project,
@@ -167,5 +178,12 @@ export function renderEstimateCsv(estimate, project) {
     estimate.hours.high,
     estimate.source,
   ].join(',');
-  return `${header}\n${row}\n`;
+  if (!confirmedEntries || !confirmedEntries.length) return `${header}\n${row}\n`;
+
+  const fnHeader = 'name,type,complexity,pf,source';
+  const csvField = (s) => `"${String(s).replace(/"/g, '""')}"`;
+  const fnRows = confirmedEntries
+    .map((e) => [csvField(e.name), e.type, e.complexity, e.pf, csvField(e.source)].join(','))
+    .join('\n');
+  return `${header}\n${row}\n\n${fnHeader}\n${fnRows}\n`;
 }

@@ -74,25 +74,49 @@ answer to "do we build this?" Purely declarative: no gate checks it, and a
 `no-go` refuses nothing — the documents already written stay useful on
 their own, including to a different tool.
 
-### `adp estimate` — hours, from a Function Point count YOU declare
+### `adp estimate` — hours, from a Function Point count
 
 `adp profile [--stack <s>] [--familiarity never|delivered|master] [--app-type
 business-crud|real-time|infra|mathematical] [--brownfield] [--tests]`
-declares the stack/team profile once (rerunnable); `adp estimate --pf <n>
-[--csv]` multiplies that count by the profile's row in
+declares the stack/team profile once (rerunnable); `adp estimate [--pf <n>]
+[--csv]` multiplies a PF count by the profile's row in
 `.spec/metrics/hours-per-fp.json` (seeded at `init`, hand-editable) and
 writes `.spec/ESTIMATE.md`. `adp report` shows the result once one exists.
 
-**The PF count is declared by a human, never machine-counted.** The full
-counting interview — the AI proposing ALI/AIE/EE/CE/SE classifications,
-citing their source in `SCOPE.md`/`PRD.md`, a human confirming item by item
-— is `SCOPE-0.6.0.md` PRD-003's fuller design and does not exist in this
-version. **Never claim `adp estimate`'s output is proof, and never invent a
-PF count on the AI's own authority** — same rule as `verification(gate)` in
-the constitution: declare, do not fabricate. When `appType` is
-`real-time`/`infra`/`mathematical`, say so: Function Point analysis measures
-those poorly, and the tool already prints that caveat — repeat it, don't
-drop it.
+**The PF count comes from one of two places — declared by hand, or counted
+and confirmed.** `--pf <n>` is the direct declaration: fastest, and fine for
+a feature small enough that formal counting is overkill. The fuller loop is
+`SCOPE-0.6.0.md` PRD-003's own design, now built: **you** (the agent)
+propose the count, citing evidence, and a **human** confirms it before
+anything is recorded.
+
+1. Write `.spec/metrics/count-draft.json` yourself, one entry per counted
+   function while reading the PRD/SCOPE: `{ "name", "type":
+   ALI|AIE|EE|CE|SE, "complexity": low|medium|high, "source": "<the exact
+   PRD.md/SCOPE.md line that justifies this classification>" }`. `ALI`/`AIE`
+   are data functions, `EE`/`CE`/`SE` are transactional. **The complexity
+   band is your judgment call, not a formula** — this version does not
+   derive it from CPM's DET/RET/FTR counts; the citation is what makes the
+   judgment call accountable, not a computation.
+2. `adp estimate --review` shows the draft and its PF total, without
+   recording anything. **Show this to the human before confirming anything**
+   — that is the entire point of the two-step split.
+3. Only the human's `adp estimate --confirm` (or your `--yes` **after** they
+   said so, never on your own authority) locks it in as
+   `.spec/metrics/count-confirmed.json`, attributed to whoever's `git
+   config user.name`/`user.email` confirmed it. `adp estimate` then uses
+   that total automatically.
+
+**An entry with no `source` is excluded from the total and reported, not
+silently dropped and not silently counted** — the engine's version of
+`FUNCTION_WITHOUT_SOURCE`. None of this is a gate: like `adp report`'s
+decision field and `adp close`, the whole family is declarative, never
+enforced, never escalated under `--ci`. **Never claim `adp estimate`'s
+output is proof, and never confirm a count on your own authority** — same
+rule as `verification(gate)` in the constitution: declare, do not fabricate.
+When `appType` is `real-time`/`infra`/`mathematical`, say so: Function Point
+analysis measures those poorly, and the tool already prints that caveat —
+repeat it, don't drop it.
 
 ### `adp close` — closing the loop, so the table stops being a guess
 
@@ -175,8 +199,10 @@ that came from a repo. `adp trust` shows the human that exact command and asks.
    passed. Run it before claiming anything.
 6. **Never approve the test command for the human.** `adp trust` is their
    decision; `--yes` is not yours to use. The same goes for `adp run`, which
-   invokes an AI whose work gets committed, and for `--allow-edits`, which lets
-   that AI write to the worktree without asking.
+   invokes an AI whose work gets committed, for `--allow-edits`, which lets
+   that AI write to the worktree without asking, and for `adp estimate
+   --confirm`, which locks in a Function Point count as if a human reviewed
+   it — you propose the draft, only they confirm it.
 7. **A decision without at least two alternatives is not a decision.** Write
    down what you rejected and why.
 8. **Assumptions and open questions are mandatory.** Filled a gap without
