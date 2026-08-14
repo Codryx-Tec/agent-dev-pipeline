@@ -32,9 +32,9 @@ code still do what the documents say?" — and the answer is an exit code.**
 | AC-xxx | acceptance criterion — an observable result a test can check |
 | ASM-xxx | assumption — a gap filled with a guess, not yet confirmed |
 | Q-xxx | open question — a decision the product owner still owes |
-| T-xxx | task — a step of implementation (lives in `TDD.md`) |
+| T-xxx | task — a step of implementation (lives in `SPEC.md`) |
 | P-xxx | principle — a non-negotiable constraint (lives in `CONSTITUTION.md`) |
-| G0–G5 | gate — a mechanical checkpoint between phases |
+| G0–G6 | gate — a mechanical checkpoint between phases |
 
 ---
 
@@ -51,10 +51,10 @@ code still do what the documents say?" — and the answer is an exit code.**
 
 ## Assumptions
 
-Assumptions are owned by `RFC.md`. This document records none of its own; where a
+Assumptions are owned by `SPEC.md`. This document records none of its own; where a
 gap was filled while writing these stories, it is registered there as an ASM-xxx.
 
 ## Open questions
 
-Open questions are owned by `RFC.md`. Q-001 through Q-003 raised in `SCOPE.md`
+Open questions are owned by `SPEC.md`. Q-001 through Q-003 raised in `SCOPE.md`
 are tracked there.
