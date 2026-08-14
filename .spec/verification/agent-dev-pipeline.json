@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8363,
-  "verifiedAt": "2026-08-14T00:21:36.016Z",
-  "gitRev": "ee33ea79f9086646ce79e95da92208d989c7c5b0",
+  "durationMs": 8384,
+  "verifiedAt": "2026-08-14T22:22:53.320Z",
+  "gitRev": "d1b2f1c90a9bb1ee473ee6b3f7bb20d22764ccb6",
   "gitDirty": true,
-  "codeMtime": 1786666676135.2827,
+  "codeMtime": 1786746046172.3203,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -1817,6 +1817,125 @@
         },
         {
           "title": "estimate.lastClosure is null before any adp close, and the declared hours after @spec:AC-101",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-102": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "parseDeferrals reads every field of a DEF-xxx block @spec:AC-102",
+          "status": "pass"
+        },
+        {
+          "title": "a second Until: line is a renewal, and the LAST one is the active deadline @spec:AC-102",
+          "status": "pass"
+        },
+        {
+          "title": "no DEFERRALS.md at all parses as absent, not an empty list mistaken for zero debt @spec:AC-102",
+          "status": "pass"
+        },
+        {
+          "title": "two DEF-xxx blocks are read independently @spec:AC-102",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-103": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a valid deferral suppresses its matching finding from the error/warning count @spec:AC-103",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-104": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "--ci still honors a valid deferral — the whole point is a pipeline that stays green on purpose @spec:AC-104",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-105": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "--strict ignores DEFERRALS.md entirely and shows the real state @spec:AC-105",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-106": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a deferral with no Owner is DEFERRAL_WITHOUT_OWNER, and defers nothing @spec:AC-106",
+          "status": "pass"
+        },
+        {
+          "title": "a deferral with no Reason is also DEFERRAL_WITHOUT_OWNER @spec:AC-106",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-107": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a deferral with no Until: line is DEFERRAL_WITHOUT_DEADLINE @spec:AC-107",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-108": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an Until: beyond the maxDays ceiling is DEFERRAL_TOO_LONG, and grants no protection @spec:AC-108",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-109": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "deferring a code that is not G5/G6 is DEFERRAL_NOT_ELIGIBLE @spec:AC-109",
+          "status": "pass"
+        },
+        {
+          "title": "deferring a never-deferrable G5 code (AC_WITHOUT_PROOF) is also DEFERRAL_NOT_ELIGIBLE @spec:AC-109",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-110": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a scope matching more than deferrals.maxMatches findings is DEFERRAL_TOO_BROAD @spec:AC-110",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-111": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "an expired deferral reverts its finding to full severity and reports DEFERRAL_EXPIRED @spec:AC-111",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-112": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a third renewal is DEFERRAL_RENEWED_REPEATEDLY, but still defers — it is a warning, not a refusal @spec:AC-112",
           "status": "pass"
         }
       ]

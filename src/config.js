@@ -21,6 +21,17 @@ export const DEFAULT_CONFIG = {
   // Optional and project-wide, like the constitution — its absence just
   // means nothing has been pushed out of the MVP yet (M2c-core).
   backlogFile: '.spec/BACKLOG.md',
+  // M5b — declared deferral (SCOPE-0.6.0.md §12.1, "camada 2"). Optional and
+  // project-wide, same shape as BACKLOG.md's absence: nothing has been
+  // deferred yet.
+  deferralsFile: '.spec/DEFERRALS.md',
+  // maxMatches: a deferral whose Scope matches more findings than this is
+  // DEFERRAL_TOO_BROAD — the rule (not good intentions) that keeps a
+  // deferral from becoming the gate-disable switch by the back door.
+  // maxDays: the ceiling on any single `Until:` date, measured from the
+  // moment the audit runs — a deferral with no ceiling is the finding
+  // deleted with extra steps.
+  deferrals: { maxMatches: 5, maxDays: 90 },
   // PRD_WITH_SOLUTION's forbidden-vocabulary list (M3b, PRD-003b antipattern
   // #4) — seeded at init, hand-editable per project.
   prdVocabularyFile: '.spec/PRD_VOCABULARY.json',
@@ -109,6 +120,7 @@ export function loadConfig(rootDir) {
       documents: { ...DEFAULT_CONFIG.documents, ...(raw.documents || {}) },
       parallel: { ...DEFAULT_CONFIG.parallel, ...(raw.parallel || {}) },
       docLengthLimits: { ...DEFAULT_CONFIG.docLengthLimits, ...(raw.docLengthLimits || {}) },
+      deferrals: { ...DEFAULT_CONFIG.deferrals, ...(raw.deferrals || {}) },
       rootDir,
       configPath,
     };

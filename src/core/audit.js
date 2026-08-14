@@ -15,10 +15,11 @@
 
 import { existsSync, statSync, readFileSync } from 'fs';
 import path from 'path';
-import { CI_ESCALATES } from './gates.js';
+import { CI_ESCALATES, isDeferrable } from './gates.js';
 import { checkPrinciples } from './principles.js';
 import { SIGNALS, projectCeremony } from './ceremony.js';
 import { grepPattern } from '../parsers/annotations.js';
+import { globToRegExp } from '../util/glob.js';
 
 // PRD_WITH_SOLUTION's default vocabulary (M3b) — used only when the project
 // has no `.spec/PRD_VOCABULARY.json` of its own yet (pre-`adp init`, or an
@@ -90,6 +91,24 @@ function jaccard(a, b) {
   return shared / (setA.size + setB.size - shared);
 }
 
+// M5b — DEFERRALS.md. `Scope:` is a path or an instance (§12.1): a glob
+// (containing `*` or `?`) is matched with the engine's one glob dialect,
+// same as every other glob in this project; a plain string matches only
+// that exact file, or — for a finding with no file, like most G6 project-
+// wide checks — the exact feature name. That is the whole idea of
+// "instance": a scope that names one thing, not a pattern.
+function scopeMatches(finding, scope) {
+  const target = finding.file ?? finding.feature ?? null;
+  if (target == null || !scope) return false;
+  return /[*?]/.test(scope) ? globToRegExp(scope).test(target) : target === scope;
+}
+
+function parseDeferralDate(s) {
+  if (!s) return null;
+  const d = new Date(`${s}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export function isProofStale(project, record) {
   if (record.gitRev && project.gitRev && record.gitDirty === false) {
     return record.gitRev !== project.gitRev;
@@ -98,7 +117,7 @@ export function isProofStale(project, record) {
   return project.codeMtime > record.codeMtime;
 }
 
-export function auditProject(project, { ci = false } = {}) {
+export function auditProject(project, { ci = false, strict = false, now = new Date() } = {}) {
   const findings = [];
   const { config, features, scope, rfcs, backlog, baseline } = project;
 
@@ -627,13 +646,88 @@ export function auditProject(project, { ci = false } = {}) {
   // ------------------------------------------------------------- constitution
   checkPrinciples(project, emit);
 
-  const errors = findings.filter((f) => f.severity === 'error').length;
-  const warnings = findings.length - errors;
+  // ------------------------------------------------------- deferrals (M5b)
+  // `strict` shows the real state: nothing here runs, so every finding sits
+  // at its own severity as if DEFERRALS.md did not exist — the "uma vez por
+  // mês" run, not the everyday one (§12.1).
+  const deferredSet = new Set();
+  if (!strict && project.deferrals?.present) {
+    const { maxMatches, maxDays } = config.deferrals;
+    const ceilingMs = now.getTime() + maxDays * 24 * 60 * 60 * 1000;
+
+    for (const item of project.deferrals.items) {
+      const loc = { file: item.file, line: item.line };
+      let valid = true;
+
+      if (!item.owner || !item.reason) {
+        emit('DEFERRAL_WITHOUT_OWNER', 'error',
+          `${item.id} names no ${!item.owner ? 'Owner' : 'Reason'} — deferred debt with no owner is debt nobody pays`,
+          loc);
+        valid = false;
+      }
+
+      const untilDate = item.until ? parseDeferralDate(item.until) : null;
+      if (!item.until) {
+        emit('DEFERRAL_WITHOUT_DEADLINE', 'error',
+          `${item.id} has no Until: date — a deferral with no deadline deletes the finding with extra steps`,
+          loc);
+        valid = false;
+      } else if (untilDate && untilDate.getTime() > ceilingMs) {
+        emit('DEFERRAL_TOO_LONG', 'error',
+          `${item.id}'s Until (${item.until}) is more than ${maxDays} days out — renew closer to the deadline instead of deferring past the ceiling`,
+          loc);
+        valid = false;
+      }
+
+      if (!item.finding || !isDeferrable(item.finding)) {
+        emit('DEFERRAL_NOT_ELIGIBLE', 'error',
+          `${item.id} defers ${item.finding ?? '(no Finding: code)'} — only a finding that belongs to G5 or G6, and is not on the never-deferrable list, can be deferred`,
+          loc);
+        valid = false;
+      }
+
+      if (item.renewals >= 3) {
+        emit('DEFERRAL_RENEWED_REPEATEDLY', 'warning',
+          `${item.id} has been renewed ${item.renewals} times — this is not deferred anymore, it is accepted; move it to BASELINE.md or BACKLOG.md`,
+          loc);
+      }
+
+      const expired = untilDate ? untilDate.getTime() < now.getTime() : false;
+      if (expired) {
+        emit('DEFERRAL_EXPIRED', 'warning',
+          `${item.id} expired on ${item.until} — the finding it covered is back at full severity`,
+          loc);
+      }
+
+      if (!valid || expired) continue;
+
+      const matches = findings.filter(
+        (f) => f.code === item.finding && !deferredSet.has(f) && scopeMatches(f, item.scope)
+      );
+      if (matches.length > maxMatches) {
+        emit('DEFERRAL_TOO_BROAD', 'error',
+          `${item.id}'s scope "${item.scope}" matches ${matches.length} finding(s), over the ${maxMatches}-match ceiling — deferring this broadly is the same as turning the gate off`,
+          loc);
+        continue;
+      }
+      for (const f of matches) {
+        f.deferred = true;
+        f.deferredBy = item.id;
+        deferredSet.add(f);
+      }
+    }
+  }
+
+  const activeFindings = findings.filter((f) => !f.deferred);
+  const errors = activeFindings.filter((f) => f.severity === 'error').length;
+  const warnings = activeFindings.length - errors;
+  const deferredCount = deferredSet.size;
 
   return {
     findings,
     errors,
     warnings,
+    deferredCount,
     summary: {
       features: features.length,
       stories: knownUs.size,

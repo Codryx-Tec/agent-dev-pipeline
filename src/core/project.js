@@ -14,6 +14,7 @@ import { parseDesign } from '../parsers/design.js';
 import { parseConstitution } from '../parsers/constitution.js';
 import { parseBacklog } from '../parsers/backlog.js';
 import { parseBaseline } from '../parsers/baseline.js';
+import { parseDeferrals } from '../parsers/deferrals.js';
 import { scanAnnotations } from '../parsers/annotations.js';
 import { fold } from '../util/text.js';
 import { spawnSync } from 'child_process';
@@ -198,6 +199,10 @@ export function loadProject(config) {
   const backlogPath = path.join(rootDir, config.backlogFile);
   const backlog = parseBacklog(readIfExists(backlogPath), rel(rootDir, backlogPath));
 
+  // ---- deferrals: project-wide, optional (M5b) ----
+  const deferralsPath = path.join(rootDir, config.deferralsFile);
+  const deferrals = parseDeferrals(readIfExists(deferralsPath), rel(rootDir, deferralsPath));
+
   // ---- files and annotations ----
   const testFiles = walkFiles(rootDir, {
     includeGlobs: config.testGlobs,
@@ -234,6 +239,7 @@ export function loadProject(config) {
     rfcs,
     constitution,
     backlog,
+    deferrals,
     testFiles,
     srcFiles,
     annotations,

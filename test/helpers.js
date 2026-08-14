@@ -65,11 +65,11 @@ export function makeProject(files, configOverrides = {}) {
   return root;
 }
 
-export function auditOf(files, { ci = false, config = {} } = {}) {
+export function auditOf(files, { ci = false, strict = false, now = undefined, config = {} } = {}) {
   const root = makeProject(files, config);
   try {
     const project = loadProject(loadConfig(root));
-    const audit = auditProject(project, { ci });
+    const audit = auditProject(project, { ci, strict, ...(now ? { now } : {}) });
     const ceremony = projectCeremony(project.features);
     return { audit, gates: evaluateGates(audit.findings, { ceremony }), ceremony, project, root };
   } finally {

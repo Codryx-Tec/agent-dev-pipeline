@@ -162,7 +162,7 @@ completeness, independent of who currently links it).
 | G3 | Is the design written? | `DESIGN_MISSING` — n/a-eligible, presence-only |
 | G4 | Is the spec complete and implementable? | `SPEC_MISSING`, `SPEC_WITHOUT_US`, `US_WITHOUT_AC`, `AC_INCOMPLETE`, `AC_OUTSIDE_US`, `AC_WITHOUT_TASK`, `REF_BROKEN`, `REF_WITHOUT_AC`, `TASK_WITHOUT_FILES`, `TASK_STATUS_INVALID`, `FILE_MISSING`, `Q_BLOCKING_OPEN`, `ASM_WITHOUT_CODE`, `SECTION_MISSING`, `STATUS_INVALID`, `AC_NOT_OBSERVABLE` |
 | G5 | Is every acceptance criterion proven by a passing test? | `AC_WITHOUT_TEST`, `AC_WITHOUT_PROOF`, `PROOF_STALE`, `PROOF_WEAK` |
-| G6 | Do the documents, the code and the constitution still agree? | `TEST_ORPHAN`, `TASK_DONE_WITHOUT_PROOF`, `ASM_OPEN`, `Q_OPEN`, `PRINCIPLE_WITHOUT_VERIFICATION`, `PRINCIPLE_VIOLATED`, `LEVEL_INVALID`, `VERIFICATION_MALFORMED`, `GLOB_WITHOUT_FILES`, `FILE_ORPHAN`, `FEATURE_MISMATCH`, `PROJECT_INVALID`, `DOC_TOO_LONG`, `DOC_FOSSIL` |
+| G6 | Do the documents, the code and the constitution still agree? | `TEST_ORPHAN`, `TASK_DONE_WITHOUT_PROOF`, `ASM_OPEN`, `Q_OPEN`, `PRINCIPLE_WITHOUT_VERIFICATION`, `PRINCIPLE_VIOLATED`, `LEVEL_INVALID`, `VERIFICATION_MALFORMED`, `GLOB_WITHOUT_FILES`, `FILE_ORPHAN`, `FEATURE_MISMATCH`, `PROJECT_INVALID`, `DOC_TOO_LONG`, `DOC_FOSSIL`, `DUPLICATE_PROSE`, `DEFERRAL_TOO_BROAD`, `DEFERRAL_WITHOUT_OWNER`, `DEFERRAL_WITHOUT_DEADLINE`, `DEFERRAL_TOO_LONG`, `DEFERRAL_NOT_ELIGIBLE`, `DEFERRAL_EXPIRED`, `DEFERRAL_RENEWED_REPEATEDLY` |
 
 `gates.js` holds this map as data, and a test asserts that **every code the
 audit can emit is assigned to exactly one gate**. Without that test, a new
@@ -353,7 +353,37 @@ close`'s declared hours beside the estimate, human hours only —
 wall-clock stays off this page, the same "two clocks never mix" rule
 that keeps it out of `hours-per-fp.json`. Deferred: SSE (polling already
 works and already fails honestly; this pass changes what's visible, not
-the transport), and `DEFERRALS.md`-based active-deferral tracking (M5b,
-not built) — both left out rather than half-built.
+the transport) — left out rather than half-built.
+
+**Declared deferral** (`parsers/deferrals.js`, `core/audit.js`,
+M5b). SCOPE-0.6.0.md §12.1's "camada 2": the honest way to live with a
+real finding on purpose, instead of a finding either blocking everything
+or a gate getting turned off entirely. `.spec/DEFERRALS.md` is
+project-wide and optional, owner of the `DEF-xxx` family — one file, so
+scattered debt stays summable. Each entry names the finding code, a
+`Scope:` (a glob against the finding's file, or an exact match against a
+fileless finding's feature name — "path or instance"), an `Owner:`, a
+`Reason:`, and one or more `Until:` lines; renewing is a second `Until:`
+line, never an edit of the first — the file's own grammar was
+underspecified in the source prose and settled by asking rather than
+guessing, so a human hand-editing this file later is not guessing either.
+Six rules keep it from becoming the gate-off switch by the back door: only
+G5/G6 findings are eligible, and ten of those (`NEVER_DEFERRABLE` in
+`gates.js`) never are — proof and decisions, never; a `Scope:` matching
+more than `deferrals.maxMatches` (default 5) findings is
+`DEFERRAL_TOO_BROAD`; an `Until:` past `deferrals.maxDays` (default 90)
+from the moment the audit runs is `DEFERRAL_TOO_LONG`; a missing `Owner:`
+or `Reason:` is `DEFERRAL_WITHOUT_OWNER`; a missing `Until:` is
+`DEFERRAL_WITHOUT_DEADLINE`; an expired `Until:` returns the finding to
+full severity and reports `DEFERRAL_EXPIRED`; a third renewal is
+`DEFERRAL_RENEWED_REPEATEDLY` — a warning, not a refusal, since at that
+point the debt is accepted, not deferred, and belongs in `BASELINE.md` or
+`BACKLOG.md` instead. A deferred finding is marked, never removed:
+`evaluateGates()` excludes it from both the error and the warning tally
+per gate, but every renderer still prints the active count next to green
+and red — hidden debt is the only kind that grows unseen. `--ci` still
+honors a valid deferral (the whole point is a pipeline that can stay
+green on purpose); `adp audit --strict` ignores `DEFERRALS.md` entirely,
+the monthly run that shows the real state regardless.
 
 ---

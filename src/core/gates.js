@@ -96,6 +96,16 @@ export const GATES = [
       'DOC_TOO_LONG',
       'DOC_FOSSIL',
       'DUPLICATE_PROSE',
+      // M5b — declared deferral (§12.1). All four here because deferring is
+      // itself a claim about G5/G6 ("do mundo mudando debaixo do
+      // documento") — the same question G6 already asks.
+      'DEFERRAL_TOO_BROAD',
+      'DEFERRAL_WITHOUT_OWNER',
+      'DEFERRAL_WITHOUT_DEADLINE',
+      'DEFERRAL_TOO_LONG',
+      'DEFERRAL_NOT_ELIGIBLE',
+      'DEFERRAL_EXPIRED',
+      'DEFERRAL_RENEWED_REPEATEDLY',
     ],
   },
 ];
@@ -171,7 +181,41 @@ export const LABELS = {
   DOC_TOO_LONG: 'document is over its length ceiling',
   DOC_FOSSIL: 'document is older than the code it describes',
   DUPLICATE_PROSE: 'substantial prose repeated across documents',
+  DEFERRAL_TOO_BROAD: 'deferral matches more findings than allowed',
+  DEFERRAL_WITHOUT_OWNER: 'deferral without an owner or a reason',
+  DEFERRAL_WITHOUT_DEADLINE: 'deferral without an Until date',
+  DEFERRAL_TOO_LONG: 'deferral deadline beyond the allowed ceiling',
+  DEFERRAL_NOT_ELIGIBLE: 'deferral of a finding that cannot be deferred',
+  DEFERRAL_EXPIRED: 'deferral past its deadline',
+  DEFERRAL_RENEWED_REPEATEDLY: 'deferral renewed three times or more',
 };
+
+// The ten codes SCOPE-0.6.0.md §12.1 names as never-deferrable, regardless of
+// gate: "não se adia decidir, e não se adia a recusa sobre a qual tudo se
+// apoia." Several of these (RFC_REQUIRED, DOOR_UNDECLARED, MVP_WIDENED,
+// BASELINE_WIDENED, HOURS_IMPLAUSIBLE) are not implemented yet — kept here
+// anyway so the day they land they are excluded from birth, not by a second
+// patch someone has to remember to write.
+export const NEVER_DEFERRABLE = new Set([
+  'TASK_DONE_WITHOUT_PROOF',
+  'AC_WITHOUT_PROOF',
+  'PROOF_WEAK',
+  'PROOF_STALE',
+  'SCOPE_NOT_APPROVED',
+  'RFC_REQUIRED',
+  'DOOR_UNDECLARED',
+  'MVP_WIDENED',
+  'BASELINE_WIDENED',
+  'HOURS_IMPLAUSIBLE',
+]);
+
+// "Adiável só o que pertence a G5 e G6" — the gates that describe the world
+// changing under the document, never the ones that describe a decision not
+// yet made.
+export function isDeferrable(code) {
+  const gate = GATE_OF.get(code);
+  return (gate === 'G5' || gate === 'G6') && !NEVER_DEFERRABLE.has(code);
+}
 
 const GATE_OF = new Map();
 for (const gate of GATES) for (const code of gate.codes) GATE_OF.set(code, gate.id);
@@ -206,9 +250,20 @@ export function evaluateGates(findings, { ceremony = null } = {}) {
 
   for (const gate of GATES) {
     const own = findings.filter((f) => gateOf(f.code) === gate.id);
-    const errors = own.filter((f) => f.severity === 'error');
-    const warnings = own.filter((f) => f.severity === 'warning');
-    const base = { ...gate, findings: own, errors: errors.length, warnings: warnings.length };
+    // M5b: a validly deferred finding counts toward neither bucket — it is
+    // shown, not hidden, but it does not turn the gate red and it is not a
+    // plain warning either. "A contagem ativa é sempre impressa" (§12.1) is
+    // the `deferred` field below, not folded into warnings.
+    const deferred = own.filter((f) => f.deferred);
+    const errors = own.filter((f) => f.severity === 'error' && !f.deferred);
+    const warnings = own.filter((f) => f.severity === 'warning' && !f.deferred);
+    const base = {
+      ...gate,
+      findings: own,
+      errors: errors.length,
+      warnings: warnings.length,
+      deferred: deferred.length,
+    };
 
     if (blockedFrom) {
       results.push({ ...base, state: 'blocked', blockedBy: blockedFrom, reason: null });

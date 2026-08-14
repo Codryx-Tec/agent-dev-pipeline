@@ -1102,6 +1102,115 @@ happening right now" and not only "did it pass."
   under the estimate; the closed case reports that closure's declared
   hours — wall-clock is never present anywhere in this response
 
+### US-032 — The captain lives with a real finding on purpose, without turning the gate off
+
+As a captain who has decided today is not the day to fix a real finding, I
+want a dated, owned decision to exist instead of the finding either
+blocking everything or silently vanishing, so that the debt stays counted
+and visible until the deadline, and the mechanism cannot become a second
+way to disable a gate.
+
+#### AC-102 — `DEFERRALS.md` reads Finding/Scope/Owner/Reason/Opened/Until, and a repeated `Until:` line is a renewal
+
+- **Given** a `DEF-xxx` block with one `Until:` line, and separately one
+  with two
+- **When** the file is parsed
+- **Then** every field is read by name; the block with two `Until:` lines
+  reports the LAST one as the active deadline and one renewal, never an
+  edit of the first line; a project with no `DEFERRALS.md` at all reports
+  absent, not an empty list
+
+#### AC-103 — A valid deferral removes its matching finding from the error/warning count, without deleting the finding
+
+- **Given** a finding whose code and file match a `DEFERRALS.md` entry that
+  names a real owner, a reason, and a future `Until:` within the
+  configured ceiling
+- **When** the audit runs
+- **Then** the finding is still present in the report, marked with the
+  entry that deferred it, and counted in neither the error nor the
+  warning tally — the active deferred count is printed alongside them,
+  never folded in silently
+
+#### AC-104 — `--ci` still honors a valid deferral
+
+- **Given** the same valid deferral as AC-103, covering a finding whose
+  severity would otherwise escalate under `--ci`
+- **When** the audit runs with `--ci`
+- **Then** the gate stays exactly as clean as without `--ci` — a deferral
+  that only worked outside `--ci` would leave every pipeline red forever,
+  which is the one outcome this mechanism exists to prevent
+
+#### AC-105 — `--strict` ignores `DEFERRALS.md` entirely
+
+- **Given** the same valid deferral as AC-103
+- **When** the audit runs with `--strict`
+- **Then** the finding is reported at full, undeferred severity and none
+  of `DEFERRALS.md`'s own entries are even validated — the monthly run
+  that shows the real state, deferred or not
+
+#### AC-106 — A deferral with no `Owner:` or no `Reason:` is `DEFERRAL_WITHOUT_OWNER`, and defers nothing
+
+- **Given** a `DEF-xxx` block missing `Owner:`, and separately one missing
+  `Reason:`
+- **When** the audit runs
+- **Then** both are `DEFERRAL_WITHOUT_OWNER`, and neither suppresses the
+  finding it names — anonymous debt is debt nobody pays
+
+#### AC-107 — A deferral with no `Until:` line at all is `DEFERRAL_WITHOUT_DEADLINE`
+
+- **Given** a `DEF-xxx` block with every field but `Until:`
+- **When** the audit runs
+- **Then** `DEFERRAL_WITHOUT_DEADLINE` fires and the named finding keeps
+  its original severity — a deferral with no deadline deletes the finding
+  with extra steps
+
+#### AC-108 — An `Until:` beyond `deferrals.maxDays` from today is `DEFERRAL_TOO_LONG`, and grants no protection
+
+- **Given** a `DEF-xxx` block whose `Until:` is further out than
+  `deferrals.maxDays` (default 90) from the moment the audit runs
+- **When** the audit runs
+- **Then** `DEFERRAL_TOO_LONG` fires and the named finding keeps its
+  original severity
+
+#### AC-109 — Deferring a finding outside G5/G6, or on the never-deferrable list, is `DEFERRAL_NOT_ELIGIBLE`
+
+- **Given** a `DEF-xxx` block naming a code that belongs to a gate other
+  than G5 or G6, and separately one naming a G5/G6 code on the
+  never-deferrable list (for example `AC_WITHOUT_PROOF`)
+- **When** the audit runs
+- **Then** both are `DEFERRAL_NOT_ELIGIBLE`, and the underlying finding —
+  when it exists — keeps its original severity; only findings describing
+  the world changing under the document can be deferred, never a decision
+  not yet made or the proof the rest of the chain rests on
+
+#### AC-110 — A `Scope:` matching more findings than `deferrals.maxMatches` is `DEFERRAL_TOO_BROAD`
+
+- **Given** a `DEF-xxx` block whose `Scope:` glob matches more currently
+  open findings than `deferrals.maxMatches` (default 5) allows
+- **When** the audit runs
+- **Then** `DEFERRAL_TOO_BROAD` fires and none of the matched findings are
+  deferred — the rule, not good intentions, that keeps a deferral from
+  becoming the gate-off switch by the back door
+
+#### AC-111 — An expired `Until:` returns its finding to full severity and reports `DEFERRAL_EXPIRED`
+
+- **Given** a `DEF-xxx` block whose active `Until:` date is in the past
+- **When** the audit runs
+- **Then** `DEFERRAL_EXPIRED` fires and the finding it used to cover is
+  reported at its original severity, escalating under `--ci` like any
+  other — nobody has to remember to notice
+
+#### AC-112 — A third renewal is `DEFERRAL_RENEWED_REPEATEDLY`, and still defers
+
+- **Given** a `DEF-xxx` block carrying four `Until:` lines (three
+  renewals)
+- **When** the audit runs
+- **Then** `DEFERRAL_RENEWED_REPEATEDLY` fires as a warning, and the
+  finding stays deferred — the renewal itself is the smell, not grounds
+  by itself to stop protecting the finding; a project that keeps renewing
+  the same entry is told what is actually happening, not blocked from
+  doing it
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1618,5 +1727,11 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 - Refs: AC-098, AC-099, AC-100, AC-101
 - Files: src/core/ledger.js
 - Notes: Closes M5-monitor-core. Most of PRD-004 already existed by the time this pass started (the per-feature document trail, the raw findings behind the first red gate — both from the earlier "Monitor UI parity" pass); this closes what genuinely didn't: live lanes (`ledger.js`'s `latestRunId()` plus its own already-existing `progress()`, no new domain logic), the paste-ready prompt (`prompts.js:buildPrompt()` reused, not reimplemented, so the page and `adp prompt` can never say two different things), and a debt panel (baseline file count — never the file list — next to the backlog count, and the last `adp close`'s declared hours next to the estimate). Deliberately deferred: SSE (polling already works and already fails honestly; RFC-001's own `D-006` named SSE and the shipped implementation is polling regardless) and wall-clock next to the actual-hours fact — the same "two clocks never mix" rule already kept out of `hours-per-fp.json`, now kept out of this page too.
+
+## T-057 — Declared deferral: `DEFERRALS.md` and `audit --strict` [done]
+
+- Refs: AC-102, AC-103, AC-104, AC-105, AC-106, AC-107, AC-108, AC-109, AC-110, AC-111, AC-112
+- Files: src/parsers/deferrals.js, src/config.js, src/core/project.js, src/core/gates.js, src/core/audit.js, src/core/report.js, src/cli.js
+- Notes: Closes M5b's "camada 2" (§12.1) — the n/a gate state it names as "camada 1" was already built in M2b, and camada 3 (baseline) in M4; this is what was left. `DEFERRALS.md` is project-wide and optional, parsed the same way `BACKLOG.md` is. Renewal grammar was underspecified in SCOPE-0.6.0.md's prose ("acrescenta linha, não edita a anterior") and resolved by asking rather than guessing: a second `Until:` line in the same block, never an edited first line — the last line is always the active deadline. Two codes beyond the four SCOPE-0.6.0.md names outright (`DEFERRAL_TOO_BROAD`, `DEFERRAL_WITHOUT_OWNER`, `DEFERRAL_EXPIRED`, `DEFERRAL_RENEWED_REPEATEDLY`) were added by the same necessity `SPEC_MISSING` and `RFC_EXEMPTION_UNDECLARED` were: the source text names a required `Until:` and a day ceiling without ever naming what fires when either is violated — `DEFERRAL_WITHOUT_DEADLINE` and `DEFERRAL_TOO_LONG` fill that gap. `DEFERRAL_NOT_ELIGIBLE` covers both "not G5/G6" and "on the never-deferrable list" as one condition, since both mean the same thing: this cannot be deferred. `isDeferrable()`/`NEVER_DEFERRABLE` in gates.js name five codes (`RFC_REQUIRED`, `DOOR_UNDECLARED`, `MVP_WIDENED`, `BASELINE_WIDENED`, `HOURS_IMPLAUSIBLE`) that are not implemented anywhere yet, kept in the set anyway so they are excluded from birth. A deferred finding is marked, not removed — `evaluateGates` excludes it from both the error and warning tallies but keeps it in `findings`, and every renderer (`terminal`, `gates`, `json`) prints the active deferred count next to green and red, per §12.1's own rule that hidden debt is the only kind that grows unseen.
 
 ---

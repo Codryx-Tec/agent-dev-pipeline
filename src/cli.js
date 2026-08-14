@@ -115,7 +115,9 @@ usage: adp <command> [options]
                             write out the shared hours-history.jsonl — already
                             anonymized (no project/feature/person name is ever
                             stored in it)
-  audit [--ci] [--json]     evaluate every gate and report the findings
+  audit [--ci] [--strict] [--json]
+                            evaluate every gate and report the findings;
+                            --strict ignores DEFERRALS.md and shows the real state
   gates [--list] [--json]   the seven gates and their state, without the findings
   prompt [<gate>]           the paste-ready text for a red gate
   verify [--background]     run the project's tests and record what they prove
@@ -154,6 +156,7 @@ options:
   --apply         write what upgrade would otherwise only report (upgrade)
   --only-migrations  run pending .spec/** migrations without touching payload files (upgrade)
   --ci            escalate the softer findings to errors (use this in a pipeline)
+  --strict        ignore every entry in DEFERRALS.md — the real state, deferred or not (audit, gates, status)
   --json          machine-readable output
   --html <path>   write the viability snapshot as a self-contained file (report)
   --stack <s>     free text, e.g. "node" (profile)
@@ -709,7 +712,7 @@ export async function run(argv) {
 
   // ---- ring 3 ----
   const project = loadProject(config);
-  const audit = auditProject(project, { ci: Boolean(flags.ci) });
+  const audit = auditProject(project, { ci: Boolean(flags.ci), strict: Boolean(flags.strict) });
   const ceremony = projectCeremony(project.features);
   const evaluation = evaluateGates(audit.findings, { ceremony });
 
@@ -1113,6 +1116,9 @@ export async function run(argv) {
     console.log(`codes     : ${allMappedCodes().size} mapped across ${GATES.length} gates`);
     console.log(
       `backlog   : ${project.backlog.present ? `${project.backlog.items.length} item(s)` : 'none (.spec/BACKLOG.md absent)'}`
+    );
+    console.log(
+      `deferrals : ${project.deferrals.present ? `${project.deferrals.items.length} item(s), ${audit.deferredCount} active` : 'none (.spec/DEFERRALS.md absent)'}`
     );
     if (project.features.length) {
       console.log('');
