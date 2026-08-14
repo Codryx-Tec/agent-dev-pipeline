@@ -13,6 +13,7 @@ import { parseSpec } from '../parsers/spec.js';
 import { parseDesign } from '../parsers/design.js';
 import { parseConstitution } from '../parsers/constitution.js';
 import { parseBacklog } from '../parsers/backlog.js';
+import { parseBaseline } from '../parsers/baseline.js';
 import { scanAnnotations } from '../parsers/annotations.js';
 import { fold } from '../util/text.js';
 import { spawnSync } from 'child_process';
@@ -85,6 +86,33 @@ function loadRfcs(rootDir, config) {
 function currentGitRev(rootDir) {
   const p = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' });
   return p.status === 0 ? (p.stdout ?? '').trim() : null;
+}
+
+// The brownfield ratchet (M4-readonly-core, SCOPE-0.6.0.md PRD-002): a
+// finding tied to a file present at adoption time, and untouched since,
+// stays a warning instead of escalating under --ci. `touchedSet` is built
+// from ONE `git diff` call against the working tree (not `..HEAD`, so an
+// uncommitted edit to a baselined file counts as "touched" too) — not one
+// spawn per file. No git, or the diff fails: no discount, same as an
+// unbaselined file — deliberately simpler than a per-file mtime fallback,
+// since brownfield adoption already assumes a git repository everywhere
+// else in the source design (the deferred archiving step refuses without
+// one).
+function loadBaseline(rootDir, config) {
+  const baselinePath = path.join(rootDir, config.specDir, 'BASELINE.md');
+  const raw = readIfExists(baselinePath);
+  if (!raw) return { present: false, commit: null, files: new Set(), touchedSet: new Set() };
+
+  const parsed = parseBaseline(raw, rel(rootDir, baselinePath));
+  const files = new Set(parsed.files.map((f) => f.path));
+  let touchedSet = new Set();
+  if (parsed.commit) {
+    const diff = spawnSync('git', ['diff', '--name-only', parsed.commit], { cwd: rootDir, encoding: 'utf8' });
+    if (diff.status === 0) {
+      touchedSet = new Set((diff.stdout ?? '').split('\n').map((s) => s.trim()).filter(Boolean));
+    }
+  }
+  return { present: true, commit: parsed.commit, files, touchedSet };
 }
 
 export function loadProject(config) {
@@ -212,6 +240,7 @@ export function loadProject(config) {
     verification,
     codeMtime: latestMtime(rootDir, [...testFiles, ...srcFiles]),
     gitRev: currentGitRev(rootDir),
+    baseline: loadBaseline(rootDir, config),
     errors,
   };
 }

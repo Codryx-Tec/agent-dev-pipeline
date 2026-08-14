@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8355,
-  "verifiedAt": "2026-08-13T23:16:09.410Z",
-  "gitRev": "c2b65807a3576325e9ee61f4132ab4e30f74c648",
+  "durationMs": 8377,
+  "verifiedAt": "2026-08-13T23:33:58.353Z",
+  "gitRev": "f7bad1c2f87b61f6a0fb5b60bbcbfc1175ac6182",
   "gitDirty": true,
-  "codeMtime": 1786648139868.13,
+  "codeMtime": 1786663823792.545,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -1685,6 +1685,78 @@
         },
         {
           "title": "a short shared line under the word-count floor is not flagged — boilerplate, not real duplication @spec:AC-093",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-094": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "parseBaseline reads the commit, generated timestamp and file list @spec:AC-094",
+          "status": "pass"
+        },
+        {
+          "title": "a \"none\" commit (no git repository at generation time) parses as null @spec:AC-094",
+          "status": "pass"
+        },
+        {
+          "title": "renderBaselineMd names every file as its own bullet, in order @spec:AC-094",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-095": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "project.baseline is absent, with empty sets, when there is no BASELINE.md @spec:AC-095",
+          "status": "pass"
+        },
+        {
+          "title": "a baselined file untouched since the recorded commit is not in touchedSet @spec:AC-095",
+          "status": "pass"
+        },
+        {
+          "title": "a baselined file edited (even uncommitted) after the recorded commit is in touchedSet @spec:AC-095",
+          "status": "pass"
+        },
+        {
+          "title": "outside a git repository, BASELINE.md is still read but touchedSet stays empty — no discount without git @spec:AC-095",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-096": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a baselined, untouched file's FILE_ORPHAN stays a warning even under --ci @spec:AC-096",
+          "status": "pass"
+        },
+        {
+          "title": "a baselined file touched since the recorded commit escalates under --ci like any other @spec:AC-096",
+          "status": "pass"
+        },
+        {
+          "title": "a file never in the baseline escalates under --ci, unaffected by an unrelated baseline @spec:AC-096",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-097": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "--brownfield finds doc-shaped files and reports them, without moving or rewriting anything @spec:AC-097",
+          "status": "pass"
+        },
+        {
+          "title": "--brownfield writes BASELINE.md listing the pre-existing srcGlobs files @spec:AC-097",
+          "status": "pass"
+        },
+        {
+          "title": "without --brownfield, no BASELINE.md is written and no recognition scan runs @spec:AC-097",
           "status": "pass"
         }
       ]

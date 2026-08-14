@@ -1,10 +1,11 @@
 {
   "manifestVersion": 1,
   "algorithm": "sha256",
-  "fileCount": 52,
+  "fileCount": 54,
   "files": {
-    "AGENTS.md": "90e65ed65f6c1ded2a4bed4d1be21f993e0d5925a360f1526fbad2be1593d60a",
+    "AGENTS.md": "b6ea3ee410d952c8e49b7c5a4603b181d8df123243d464c0ba51904210c70487",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+    "claude/agents/archaeologist.md": "4b4511e7fb84825e0ceb7bcddf21714e68429b0ee3729a30491f268f66fd1f0d",
     "claude/agents/architect.md": "81a574edf6202910447510db173bc83972e9b3fdafc919042e65a5680d1d6f4e",
     "claude/agents/backend.md": "e1d2ac6eefb7c0e49f4be41c5779c5831e66048d747ae8b78e9ff004c7a8619b",
     "claude/agents/business-analyst.md": "4eb93701df9f489bb7a12993183be3d07f4f690748336df28d86e1a3f775bc89",
@@ -31,6 +32,7 @@
     "claude/skills/grill-me/SKILL.md": "74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556",
     "claude/skills/incremental-implementation/SKILL.md": "2d9a9d15e1b764c40b9bc1836f8c72da6b7bd0ddd45e88353a6b3d10ef8c11a4",
     "claude/skills/memory-files/SKILL.md": "1de7ed2c5cd93c799348f43bc7ca55c8532b44ad6f6efc4c5b67d35b93c7f249",
+    "claude/skills/project-archaeology/SKILL.md": "6a45cbb2631d95ea90cab7215e5ddb9357e4191bbafc5d91f52f0ec609b0b3ab",
     "claude/skills/project-bootstrap/SKILL.md": "3fc39f377827394846567c5fc2e7a8bcee53c1a1fac0353d6d39176d875ce3ca",
     "claude/skills/project-docs/SKILL.md": "ea1c42fa3d5f8f6fb27796fc2a128bbcdb57f375e2be71ae440c2c33d2a010a3",
     "claude/skills/project-kickoff/SKILL.md": "4c806bb69f8d5c5ee314c6464983f17924eddb7ed1b4169edcefbb2ad3daf4a5",

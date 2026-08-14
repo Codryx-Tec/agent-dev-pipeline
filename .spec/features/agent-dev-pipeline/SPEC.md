@@ -1004,6 +1004,56 @@ gates keeps meaning the decision behind them was real.
   the check is scoped to one feature's own document trio, never
   project-wide
 
+### US-030 — The captain adopts an existing project without a wall of findings drowning out the real ones
+
+As a captain bringing this tool into a codebase with years of history, I
+want the first audit to be legible — old debt visible but not blocking,
+new debt held to the normal standard — so that the tool earns trust on a
+legacy project the same way it does on a fresh one.
+
+#### AC-094 — `BASELINE.md` records the commit and the file list, and reads back exactly what was written
+
+- **Given** a baseline document naming a commit, a generation timestamp,
+  and a list of file paths — including the case where no git repository
+  existed at generation time
+- **When** it is rendered and then read back
+- **Then** every field round-trips exactly; a commit of `none` reads back
+  as no commit at all, distinctly from a real one
+
+#### AC-095 — Whether a baselined file has been touched since the recorded commit is computed once, correctly, with and without git
+
+- **Given** a project with `BASELINE.md` naming a commit and a file that
+  is untouched since it, another file edited (even without a commit)
+  since it, and a project with no `BASELINE.md` at all
+- **When** the project is loaded
+- **Then** the untouched file is absent from the touched set, the edited
+  file is present in it — an uncommitted edit counts, since the diff runs
+  against the working tree, not `HEAD` — the absent-baseline case reports
+  present:false with both sets empty, and outside a git repository
+  entirely the baseline still reads back but the touched set stays empty
+  rather than guessing
+
+#### AC-096 — A finding tied to a baselined, untouched file never escalates under `--ci`; every other file is unaffected
+
+- **Given** a project with a baseline naming one file untouched since its
+  commit, a second file touched since, and a third file never named in
+  the baseline at all
+- **When** the audit runs under `--ci`
+- **Then** the untouched baselined file's finding stays a warning; the
+  touched baselined file's and the never-baselined file's findings both
+  escalate to error, identically to a project with no baseline at all
+
+#### AC-097 — `adp init --brownfield` recognizes existing documentation and records the baseline, without moving or rewriting a single file
+
+- **Given** a project with a `README.md`, an ADR under `docs/adr/`, and a
+  pre-existing source file, and a second run with the flag omitted
+- **When** `adp init --brownfield` runs
+- **Then** it reports how many doc-shaped files it found and groups them
+  by the pattern that matched, every recognized file is byte-for-byte
+  unchanged afterward, no `project_old_artifacts/` directory is created,
+  and `.spec/BASELINE.md` names the pre-existing source file; without the
+  flag, neither the recognition report nor `BASELINE.md` appears at all
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1508,5 +1558,11 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 - Refs: AC-091, AC-092, AC-093
 - Files: src/parsers/rfc.js
 - Notes: Closes M3b-remainder — `STRAW_OPTION`, `OPTION_DO_NOTHING_MISSING`, `DUPLICATE_PROSE`. `STRAW_OPTION` only checks the `create-rfc` dialect, since the native one has no Pros/Cons structure to weigh; `OPTION_DO_NOTHING_MISSING` checks both dialects by name match. Deliberate severity deviation from SCOPE-0.6.0.md's own "erro (G2)" for `OPTION_DO_NOTHING_MISSING`: building it that way first broke the shipped `.exemplo/` example's own RFC retroactively under `--ci` — shipped as a plain warning in every mode instead, recorded as accepted debt against this repo's own `RFC-001` in `.spec/BACKLOG.md` rather than retrofitted. `DUPLICATE_PROSE` is a word-set Jaccard similarity check across one feature's own PRD/RFC/DESIGN trio, ≥25-word paragraphs, ≥0.75 similarity.
+
+## T-055 — Brownfield recognition and the baseline ratchet [done]
+
+- Refs: AC-094, AC-095, AC-096, AC-097
+- Files: src/parsers/baseline.js
+- Notes: Closes M4-readonly-core — the read-only half of PRD-002, deliberately split from the archiving step (`git mv` to `project_old_artifacts/`), the single highest-risk item in the whole 0.6.0 scope (`W-002`, `Reversible: no`). `adp init --brownfield` scans for doc-shaped files and writes `.spec/BASELINE.md`, both purely additive. `project.js` computes the ratchet's touched-set with one `git diff --name-only <commit>` call against the working tree, not one spawn per file; `audit.js`'s `emit()` exempts a baselined-and-untouched file's findings from `--ci` escalation generally, not `FILE_ORPHAN`-specifically. The new `archaeologist` role (`payload/claude/agents/archaeologist.md`, skill `project-archaeology`) proposes a `Draft` `SCOPE.md` from the recognition inventory and the code, every claim cited. Archiving, `BASELINE_WIDENED`, and a no-git mtime fallback all remain in `.spec/BACKLOG.md`.
 
 ---

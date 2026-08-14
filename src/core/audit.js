@@ -100,7 +100,7 @@ export function isProofStale(project, record) {
 
 export function auditProject(project, { ci = false } = {}) {
   const findings = [];
-  const { config, features, scope, rfcs, backlog } = project;
+  const { config, features, scope, rfcs, backlog, baseline } = project;
 
   // The ceremony matrix (M2b, SCOPE-0.6.0.md §2.5): what each feature's
   // declared signals say G2/G3 are due, and whether the gate is due at all,
@@ -110,8 +110,15 @@ export function auditProject(project, { ci = false } = {}) {
   const ceremony = projectCeremony(features);
 
   const emit = (code, severity, message, extra = {}) => {
+    // The brownfield ratchet (M4-readonly-core): a finding tied to a file
+    // present at adoption time, and untouched since, never escalates under
+    // --ci — general, not FILE_ORPHAN-specific, matching the source text's
+    // own framing ("findings são warning", not one particular code). A
+    // project with no BASELINE.md sees no change: baseline.files is empty.
+    const baselineExempt =
+      baseline?.present && extra.file && baseline.files.has(extra.file) && !baseline.touchedSet.has(extra.file);
     const finalSeverity =
-      ci && severity === 'warning' && CI_ESCALATES.has(code) ? 'error' : severity;
+      ci && severity === 'warning' && CI_ESCALATES.has(code) && !baselineExempt ? 'error' : severity;
     findings.push({ code, severity: finalSeverity, message, ...extra });
   };
 

@@ -331,3 +331,49 @@ test('the agent contract carries what an agent needs to obey it @spec:AC-050', (
   // Consent is the human's to give, in both places it can be asked for.
   assert.match(skill, /Never approve on the person's behalf/i);
 });
+
+// -------------------------------------------------------- --brownfield (M4)
+
+test('--brownfield finds doc-shaped files and reports them, without moving or rewriting anything @spec:AC-097', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, 'docs', 'adr'), { recursive: true });
+    writeFileSync(path.join(root, 'README.md'), '# Legacy project\n');
+    writeFileSync(path.join(root, 'docs', 'adr', '0001-x.md'), '# ADR 1\n');
+    writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n');
+
+    const report = initProject(root, { brownfield: true }, { srcGlobs: ['src/**'], ignoreGlobs: [] });
+
+    // Nothing about the recognized files themselves changed.
+    assert.equal(readFileSync(path.join(root, 'README.md'), 'utf8'), '# Legacy project\n');
+    assert.ok(existsSync(path.join(root, 'docs', 'adr', '0001-x.md')));
+    assert.equal(existsSync(path.join(root, 'project_old_artifacts')), false, 'nothing is archived by this pass');
+
+    const note = report.notes.find((n) => n.includes('brownfield recognition found'));
+    assert.ok(note);
+    assert.match(note, /3 existing doc-like file/);
+  });
+});
+
+test('--brownfield writes BASELINE.md listing the pre-existing srcGlobs files @spec:AC-097', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'src', 'legacy.js'), 'module.exports = 1;\n');
+
+    initProject(root, { brownfield: true }, { srcGlobs: ['src/**'], ignoreGlobs: [] });
+
+    const baselinePath = path.join(root, '.spec', 'BASELINE.md');
+    assert.ok(existsSync(baselinePath));
+    const content = readFileSync(baselinePath, 'utf8');
+    assert.match(content, /- src\/legacy\.js/);
+    assert.match(content, /commit: none/, 'no git repository here, so the commit field says so honestly');
+  });
+});
+
+test('without --brownfield, no BASELINE.md is written and no recognition scan runs @spec:AC-097', () => {
+  fresh((root) => {
+    writeFileSync(path.join(root, 'README.md'), '# A project\n');
+    const report = initProject(root, {}, { srcGlobs: ['src/**'], ignoreGlobs: [] });
+    assert.equal(existsSync(path.join(root, '.spec', 'BASELINE.md')), false);
+    assert.equal(report.notes.some((n) => n.includes('brownfield recognition')), false);
+  });
+});

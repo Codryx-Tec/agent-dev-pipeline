@@ -190,6 +190,32 @@ at `init`, editable) — false positives are expected on a generic word used
 legitimately in business prose; prune the list rather than fighting the
 finding.
 
+### Adopting an existing project — `adp init --brownfield`
+
+A four-year-old repository does not start from nothing, and the audit
+should not treat it as if it did. `adp init --brownfield` adds two
+read-only steps to normal `init` — nothing here moves or rewrites a file
+of the user's:
+
+- **Recognition.** Scans for `README*`, `docs/**`, `adr/**`, `rfc/**`,
+  `wiki/**`, OpenAPI/Swagger specs, migrations, `CHANGELOG*`, and
+  `CONTRIBUTING*`, and prints what it found. That inventory is the
+  **archaeologist** role's starting point — invoke it next, and it
+  proposes a `SCOPE.md` draft (always `Draft`, never `Approved`) with
+  every claim cited to the file it came from.
+- **`.spec/BASELINE.md`** records the commit and the pre-existing
+  `srcGlobs` files at adoption time. A finding tied to one of those files
+  stays a **warning** — it never escalates under `--ci` — for as long as
+  the file is untouched since that commit; touch it again, or write a
+  task that maps it, and it owes the same full-strength check as any new
+  file. This is what keeps the first `adp audit` on a legacy codebase
+  readable instead of a wall of `FILE_ORPHAN`.
+
+**Not built yet:** the archiving step (`git mv` old documentation into
+`project_old_artifacts/`) and `BASELINE_WIDENED` (catching an attempt to
+re-grow the baseline after it shrinks) — both named in `.spec/BACKLOG.md`.
+Don't imply either exists.
+
 ## Proof is written by `verify`, and by nothing else
 
 `adp audit` reads documents and tests. It can see that a criterion has a test
@@ -314,12 +340,14 @@ when something behaves impossibly, before blaming the project.
 | security | all security; reviews code and principles |
 | tester | tests everything before techlead sign-off |
 | researcher | external research — market figures, library/API claims, technology comparisons; never writes to a tracked document itself |
+| archaeologist | reads an existing codebase's own history and proposes a `Draft` `SCOPE.md`; only for a project adopting this tool mid-life, only once, right after `adp init --brownfield` |
 
 Pipeline: business-analyst → architect → techlead → designer/backend/frontend
 (security reviews) → tester → techlead. `researcher` is called in, not part
 of the line — by architect before an RFC decision, by business-analyst for
 a PRD's context number, or by anyone running `adp estimate` who wants the
-h/PF table checked against current data.
+h/PF table checked against current data. `archaeologist` runs once, before
+the pipeline starts, only on a brownfield adoption.
 
 Writing an `RFC.md`? It is flat and global, at `.spec/rfc/RFC-<NNN>-<slug>.md`
 — `adp new --rfc <slug>` creates one — and the PRD that needs it links it by

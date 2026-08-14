@@ -59,6 +59,7 @@ what the tool *installs* lives in `payload/`; nothing is both:
 │   │   ├── spec.js                  US/AC/ASM/Q/T — "the layer the machine confers"
 │   │   ├── design.js                thin — DESIGN.md is presence-checked, not parsed
 │   │   ├── backlog.js               what fell outside the MVP boundary
+│   │   ├── baseline.js              brownfield: pre-existing files, the ratchet's own record
 │   │   ├── constitution.js          P-xxx, levels, declared verifications
 │   │   └── annotations.js           @spec / @principle scanner + sandboxed grep
 │   ├── core/
@@ -116,6 +117,7 @@ what the tool *installs* lives in `payload/`; nothing is both:
 | RFC link | `PRD.md` header | `> rfcs: RFC-001, RFC-004` — one PRD may point at several |
 | backlog item | `BACKLOG.md`, project-wide, optional | one prose line per item, no tracking code — a line that already looks like one (`US-001`, `T-003`, …) is `BACKLOG_ITEM_WITH_CODE` |
 | decision field | `SCOPE.md` | `**Decision:** pending\|go\|no-go` — read, rendered, never enforced |
+| baseline | `BASELINE.md`, project-wide, written once by `init --brownfield` | `> commit:` header plus one file path per bullet — pre-existing files whose findings stay warnings until touched again |
 | test annotation | test title | `@spec:AC-001` or `@principle:P-001` |
 
 0.6.0 split what one PRD/RFC/TDD trio used to hold: `PRD.md` is prose only
@@ -308,5 +310,28 @@ feature directory rather than per file since it reads up to three source
 documents to write three destination ones, and never overwrites a SPEC.md
 section that already exists — a partial or hand-started SPEC.md is merged
 into, not clobbered.
+
+**Brownfield recognition and the baseline ratchet** (`parsers/baseline.js`,
+`adp init --brownfield`, M4-readonly-core). The read-only half of
+SCOPE-0.6.0.md PRD-002 — the highest-risk item in the whole document
+(`Reversible: no`, its archiving step moves the user's real files), split
+so the safe half could ship without the dangerous half riding along
+untested. `--brownfield` scans for `README*`/`docs/**`/`adr/**`/OpenAPI/
+migrations/`CHANGELOG*`/`CONTRIBUTING*` and prints what it found — nothing
+moved, nothing rewritten — and writes `.spec/BASELINE.md`: the commit and
+the pre-existing `srcGlobs` files at adoption time. `project.js` diffs that
+commit against the working tree once (`git diff --name-only <commit>`, no
+`..HEAD`, so an uncommitted edit still counts as touched) and
+`audit.js`'s `emit()` exempts any finding tied to a baselined,
+untouched file from ever escalating under `--ci` — general, not
+`FILE_ORPHAN`-specific, though that is the finding the source document's
+own "wall of `FILE_ORPHAN`" framing is about. The new **archaeologist**
+role (`payload/claude/agents/archaeologist.md`, skill
+`project-archaeology`) reads the recognition inventory plus the code and
+proposes a `SCOPE.md` draft — always `Draft`, never `Approved`, every
+claim cited to its source file. Deferred: the archiving step itself
+(`git mv` to `project_old_artifacts/`, its three guards, its own consent
+gate), `BASELINE_WIDENED`, and a no-git mtime fallback for the ratchet —
+all named in `.spec/BACKLOG.md`.
 
 ---

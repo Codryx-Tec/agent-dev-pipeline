@@ -15,12 +15,15 @@
 // run did nothing, instead of being asked to trust it.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
+import { spawnSync } from 'child_process';
 import path from 'path';
 import { verifyPayload, renderIntegrity, assertInside, sha256, loadManifest, walkRelative } from './integrity.js';
 import { buildInstallPlan } from './install-map.js';
 import { PACKAGE_DIR, PAYLOAD_DIR, TEMPLATES_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME } from './paths.js';
 import { VERSION } from '../version.js';
 import { SIGNALS, describeFeatureCeremony } from './ceremony.js';
+import { walkFiles } from '../util/glob.js';
+import { renderBaselineMd } from '../parsers/baseline.js';
 
 export { PACKAGE_DIR, PAYLOAD_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME };
 
@@ -50,6 +53,32 @@ function fill(text, vars) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// M4-readonly-core (SCOPE-0.6.0.md PRD-002, "Passo 1 — Reconhecimento"):
+// the glob-matchable documentation artifacts a brownfield adoption reads
+// before proposing anything. Module-comment scanning is explicitly not
+// here — that needs real per-language parsing, not a glob; deferred.
+const RECOGNITION_GLOBS = [
+  'README*',
+  'docs/**',
+  'doc/**',
+  'adr/**',
+  'rfc/**',
+  'wiki/**',
+  '*.openapi.yml',
+  '*.openapi.yaml',
+  '*.openapi.json',
+  'swagger*',
+  '**/migrations/**',
+  'CHANGELOG*',
+  'CONTRIBUTING*',
+];
+
+/** HEAD, or null outside a git repository — self-contained, same as project.js's own version: a migration or an installer should not depend on application code free to change shape independently of it. */
+function currentGitRevForInit(rootDir) {
+  const p = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' });
+  return p.status === 0 ? (p.stdout ?? '').trim() : null;
 }
 
 function writeIfMissing(fullPath, content, report, opts = {}) {
@@ -104,7 +133,7 @@ export function listPayloadSkills() {
     .sort();
 }
 
-export function initProject(rootDir, opts = {}) {
+export function initProject(rootDir, opts = {}, config = {}) {
   const report = { created: [], kept: [], notes: [], relTo: rootDir, installed: [] };
 
   // Verify the payload BEFORE writing anything. `payload/` carries shell hooks
@@ -192,6 +221,44 @@ export function initProject(rootDir, opts = {}) {
   writeIfMissing(path.join(rootDir, '.spec', 'features', '.gitkeep'), '', report);
   writeIfMissing(path.join(rootDir, '.spec', 'verification', '.gitkeep'), '', report);
   writeIfMissing(path.join(rootDir, '.spec', 'rfc', '.gitkeep'), '', report);
+
+  // ---- brownfield (M4-readonly-core, SCOPE-0.6.0.md PRD-002): recognition
+  // and BASELINE.md only — nothing here moves or rewrites a single file of
+  // the user's. The archiving step (git mv to project_old_artifacts/) is a
+  // separate, deliberately deferred pass; see .spec/BACKLOG.md ----
+  if (opts.brownfield) {
+    const ignoreGlobs = config.ignoreGlobs ?? [];
+    // One walk per glob, not per file — a glob can list which files it
+    // matched directly, so grouping never needs to ask "which glob found
+    // this file?" after the fact.
+    const seen = new Set();
+    const byGroup = [];
+    for (const glob of RECOGNITION_GLOBS) {
+      const matched = walkFiles(rootDir, { includeGlobs: [glob], ignoreGlobs }).filter((f) => !seen.has(f));
+      for (const f of matched) seen.add(f);
+      if (matched.length) byGroup.push([glob, matched.length]);
+    }
+    if (seen.size) {
+      report.notes.push(`brownfield recognition found ${seen.size} existing doc-like file(s): ${byGroup.map(([g, n]) => `${g} (${n})`).join(', ')} — a starting point for the archaeologist role, nothing was moved`);
+    } else {
+      report.notes.push('brownfield recognition found no existing README/docs/ADR/OpenAPI/CHANGELOG-shaped files');
+    }
+
+    const srcGlobs = config.srcGlobs ?? ['src/**'];
+    const srcFiles = walkFiles(rootDir, { includeGlobs: srcGlobs, ignoreGlobs });
+    const commit = currentGitRevForInit(rootDir);
+    const wrote = writeIfMissing(
+      path.join(rootDir, '.spec', 'BASELINE.md'),
+      renderBaselineMd({ commit, generatedAt: new Date().toISOString(), files: srcFiles }),
+      report
+    );
+    if (wrote) {
+      report.notes.push(`BASELINE.md recorded ${srcFiles.length} pre-existing source file(s) — findings tied to them stay warnings until touched`);
+    }
+    if (!commit) {
+      report.notes.push('no git repository detected — BASELINE.md was still written, but findings against it will never get the ratchet discount (that needs `git diff` against the recorded commit)');
+    }
+  }
 
   // ---- everything else the payload ships: one plan, one loop ----
   // detectAgent() runs before the plan because the skills subtree's

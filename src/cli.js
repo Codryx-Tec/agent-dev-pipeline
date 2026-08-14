@@ -83,7 +83,10 @@ const HELP = `agent-dev-pipeline — the specification that stays true
 
 usage: adp <command> [options]
 
-  init [--agent <name>]     scaffold .spec/ here and install the agent skill
+  init [--agent <name>] [--brownfield]
+                            scaffold .spec/ here and install the agent skill;
+                            --brownfield also scans for existing docs (read-only)
+                            and writes BASELINE.md — moving files is not built yet
   new <feature> [--signals <list>]
                             create PRD.md and SPEC.md; DESIGN.md too if the
                             ceremony matrix says it is due (see --signals)
@@ -143,6 +146,7 @@ options:
   --no-docs       skip docs/ (init)
   --no-memory     skip the .spec memory files (init)
   --no-agents-md  skip AGENTS.md (init)
+  --brownfield    scan for existing docs and write BASELINE.md, read-only (init)
   --rfc           create a decision record instead of a feature (new)
   --signals <list>  comma-separated: multiple-teams, hard-to-reverse,
                     money-or-pii, new-tech, large-estimate (new) — decides
@@ -307,13 +311,17 @@ export async function run(argv) {
       noDocs: Boolean(flags['no-docs']),
       noMemory: Boolean(flags['no-memory']),
       noAgents: Boolean(flags['no-agents-md']),
-    });
+      brownfield: Boolean(flags.brownfield),
+    }, config);
     console.log(renderReport(report, { title: `agent-dev-pipeline initialised in ${rootDir}` }));
     console.log('');
     console.log('next:');
     console.log('  1. fill in .spec/SCOPE.md and set its status to Approved   (opens gate G0)');
     console.log('  2. adp new <feature> [--signals <list>]                (creates PRD, SPEC, maybe DESIGN)');
     console.log('  3. adp status                                          (see where you are)');
+    if (flags.brownfield) {
+      console.log('  4. hand the recognition notes above to the archaeologist role for a draft SCOPE.md');
+    }
     return 0;
   }
 
