@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "algorithm": "sha256",
-  "fileCount": 54,
+  "fileCount": 56,
   "files": {
     "AGENTS.md": "b6ea3ee410d952c8e49b7c5a4603b181d8df123243d464c0ba51904210c70487",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
@@ -55,7 +55,9 @@
     "templates/RFC.md": "099b161f045001b91747e6140689f41f961a500c01b72eabc33199801c1bce36",
     "templates/SCOPE.md": "5ca2a56788a803ef707e2cf15631ddd62ba785c848f81758161c52c2a293ac9e",
     "templates/SPEC.md": "d988fc992a8444945bafb3337ce3a286071306a6b0675ed2aebbf4208de977f5",
+    "templates/adp.cmd": "0585eb58704e670f8599eb07f922950383d9a053b219432eb19470bac07559ec",
     "templates/adp.config.json": "c9f83536f04d550baacc93204fc282d0a2ee263fef91cfa1488d5a0635df8104",
+    "templates/adp.sh": "584a6872d7dcdc5a93deace18b658cd5eaf44a8cd90807e771a8b27ca6df2d76",
     "vocabulary/prd-forbidden.default.json": "a43b8dec8b94fe00aa3a7d5b8ef903378de2409c7588a6d2a821d862c9a575c3"
   }
 }

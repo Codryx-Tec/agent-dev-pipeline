@@ -92,6 +92,13 @@ export const DEFAULT_CONFIG = {
 
   // M6 — background execution
   parallel: { maxParallel: 3, model: null, effort: 'medium' },
+  // M6, PRD-005 — model per phase, generalizing `parallel.model`. Keyed by
+  // phase (scope/prd/rfc/tdd/implementation); only `implementation` is ever
+  // read by this engine today, since it is the only phase `adp run` actually
+  // invokes headlessly — the rest are interactive work a human drives through
+  // a skill, unaffected by this config. `parallel.model` is still read as a
+  // fallback for `implementation` so an existing config keeps working.
+  agent: { models: {} },
 
   // D-008: local-only is the default; GitHub is a mode, never a requirement
   delivery: 'local-only', // local-only | direct-PR
@@ -121,6 +128,11 @@ export function loadConfig(rootDir) {
       parallel: { ...DEFAULT_CONFIG.parallel, ...(raw.parallel || {}) },
       docLengthLimits: { ...DEFAULT_CONFIG.docLengthLimits, ...(raw.docLengthLimits || {}) },
       deferrals: { ...DEFAULT_CONFIG.deferrals, ...(raw.deferrals || {}) },
+      agent: {
+        ...DEFAULT_CONFIG.agent,
+        ...(raw.agent || {}),
+        models: { ...DEFAULT_CONFIG.agent.models, ...(raw.agent?.models || {}) },
+      },
       rootDir,
       configPath,
     };

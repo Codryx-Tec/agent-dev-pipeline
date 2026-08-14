@@ -13,7 +13,17 @@ import { auditProject } from './core/audit.js';
 import { evaluateGates, GATES, allMappedCodes } from './core/gates.js';
 import { projectCeremony } from './core/ceremony.js';
 import { renderTerminal, renderJson, renderGates, renderPrompt } from './core/report.js';
-import { initProject, newFeature, newRfc, renderReport, AGENT_SKILL_DIRS, PAYLOAD_DIR } from './core/init.js';
+import {
+  initProject,
+  newFeature,
+  newRfc,
+  renderReport,
+  AGENT_SKILL_DIRS,
+  PAYLOAD_DIR,
+  shellAliasBlock,
+  shellRcPath,
+  installShellAlias,
+} from './core/init.js';
 import { verifyPayload, renderIntegrity } from './core/integrity.js';
 import { checkTrust, grantTrust, revokeTrust, renderRefusal, storePath, TRUST_ENV } from './core/trust.js';
 import { startMonitor } from './server/server.js';
@@ -23,7 +33,7 @@ import { runVerification, writeRecords, summarise, VerifyRefused, makeLaneTestRu
 import { buildPlan, renderPlan } from './core/plan.js';
 import { runLane, mergeLane, isGitRepo, cleanupLane, cleanWorktrees, listOurWorktrees } from './core/executor.js';
 import { rerunLane } from './core/rerun.js';
-import { makeAgentRunner, describeAgentCommand } from './core/agent.js';
+import { makeAgentRunner, describeAgentCommand, resolveConfiguredModel } from './core/agent.js';
 import { progress, prune, append, read } from './core/ledger.js';
 import { buildResume, renderResume, saveCheckpoint, clearCheckpoint } from './core/resume.js';
 import { VERSION } from './version.js';
@@ -149,6 +159,8 @@ options:
   --no-memory     skip the .spec memory files (init)
   --no-agents-md  skip AGENTS.md (init)
   --brownfield    scan for existing docs and write BASELINE.md, read-only (init)
+  --shell-alias   also append a marked, removable adp alias to ~/.bashrc or
+                  ~/.zshrc, with confirmation (init) — ./adp always exists either way
   --rfc           create a decision record instead of a feature (new)
   --signals <list>  comma-separated: multiple-teams, hard-to-reverse,
                     money-or-pii, new-tech, large-estimate (new) — decides
@@ -324,6 +336,39 @@ export async function run(argv) {
     console.log('  3. adp status                                          (see where you are)');
     if (flags.brownfield) {
       console.log('  4. hand the recognition notes above to the archaeologist role for a draft SCOPE.md');
+    }
+
+    // --shell-alias is opt-in and never silent (PRD-005): the exact block is
+    // shown before anything is written, and a dotfile edit needs the same
+    // "type yes" confirmation `trust` already asks for before it runs
+    // something out of the repository — writing to a file OUTSIDE the
+    // repository deserves at least that much.
+    if (flags['shell-alias']) {
+      const rcPath = shellRcPath();
+      const block = shellAliasBlock(VERSION);
+      console.log('');
+      console.log(`about to append this block to ${rcPath}:`);
+      console.log('');
+      console.log(block);
+      console.log('');
+      if (!flags.yes) {
+        if (!process.stdin.isTTY) {
+          console.error('refusing to edit your shell rc file without confirmation: stdin is not a terminal.');
+          console.error('use --yes deliberately.');
+          return 2;
+        }
+        const answer = await ask('type the word yes to append this block: ');
+        if (answer.trim().toLowerCase() !== 'yes') {
+          console.log('not written — your shell rc file was not touched.');
+          return 0;
+        }
+      }
+      const result = installShellAlias(rcPath, VERSION);
+      console.log(
+        result.written
+          ? `written to ${result.path} — restart your shell, or run: source ${result.path}`
+          : `already present in ${result.path} — left untouched`
+      );
     }
     return 0;
   }
@@ -945,6 +990,9 @@ export async function run(argv) {
     console.log(renderPlan(plan));
     console.log('');
     console.log(`agent : ${agentCommand}`);
+    console.log(
+      `model : ${resolveConfiguredModel(config) ?? 'harness default (no agent.models.implementation configured)'}`
+    );
     console.log(`edits : ${allowEdits ? 'ALLOWED — the agent may write without asking' : 'not allowed (pass --allow-edits)'}`);
     console.log(
       `tests : ${laneTests.runner ? `${laneTests.command} — after every task, in the lane` : `not run (${laneTests.reason})`}`

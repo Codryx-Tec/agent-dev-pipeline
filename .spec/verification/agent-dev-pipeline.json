@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8384,
-  "verifiedAt": "2026-08-14T22:22:53.320Z",
-  "gitRev": "d1b2f1c90a9bb1ee473ee6b3f7bb20d22764ccb6",
+  "durationMs": 8432,
+  "verifiedAt": "2026-08-14T23:06:34.325Z",
+  "gitRev": "b809324cf8104876d8a807855ca3918cdbd40b9d",
   "gitDirty": true,
-  "codeMtime": 1786746046172.3203,
+  "codeMtime": 1786748530901.6826,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -1936,6 +1936,74 @@
       "tests": [
         {
           "title": "a third renewal is DEFERRAL_RENEWED_REPEATEDLY, but still defers — it is a warning, not a refusal @spec:AC-112",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-113": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "init writes an executable ./adp wrapper pinned to the installing version, by default @spec:AC-113",
+          "status": "pass"
+        },
+        {
+          "title": "init writes adp.cmd alongside, same pinned version, for Windows @spec:AC-113",
+          "status": "pass"
+        },
+        {
+          "title": "re-running init never overwrites a hand-edited ./adp wrapper @spec:AC-113",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-114": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "shellAliasBlock names the pinned version inside a marked, removable block @spec:AC-114",
+          "status": "pass"
+        },
+        {
+          "title": "shellRcPath picks .zshrc for zsh and .bashrc otherwise @spec:AC-114",
+          "status": "pass"
+        },
+        {
+          "title": "installShellAlias appends the block once, and a second call leaves it untouched @spec:AC-114",
+          "status": "pass"
+        },
+        {
+          "title": "installShellAlias creates the rc file if it does not exist yet @spec:AC-114",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-115": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "resolveConfiguredModel prefers agent.models.implementation, then parallel.model, then null @spec:AC-115",
+          "status": "pass"
+        },
+        {
+          "title": "a configured model becomes --model for a harness that knows the flag @spec:AC-115",
+          "status": "pass"
+        },
+        {
+          "title": "a configured model combines with --allow-edits, model flags first @spec:AC-115",
+          "status": "pass"
+        },
+        {
+          "title": "describeAgentCommand resolves the configured model automatically, without the caller repeating the lookup @spec:AC-115",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-116": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "a harness with no known model flag refuses a configured model instead of guessing @spec:AC-116",
           "status": "pass"
         }
       ]

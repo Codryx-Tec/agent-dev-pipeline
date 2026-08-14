@@ -1211,6 +1211,63 @@ way to disable a gate.
   the same entry is told what is actually happening, not blocked from
   doing it
 
+### US-033 — The captain gets a working `adp` command with no dotfile edited, and can pick a stronger model where it matters
+
+As a captain who just ran `init`, I want `adp` to work immediately without
+hand-writing a shell alias, and I want to be able to ask for a specific
+model on the one phase this engine actually invokes headlessly, so that
+CI is pinned by default and a cost decision is visible before it is
+spent, never guessed at.
+
+#### AC-113 — `init` writes an executable `./adp` (and `adp.cmd`) pinned to the installing version, by default
+
+- **Given** a fresh project directory
+- **When** `adp init` runs, with no flag naming the wrapper at all
+- **Then** `./adp` exists, is executable, and its content names
+  `@codryx/agent-dev-pipeline@<the exact installing version>`; `adp.cmd`
+  exists alongside it with the same pinned version; a second `init` never
+  overwrites either file, even after a hand edit — the same
+  never-overwrite rule every other file `init` writes already follows
+
+#### AC-114 — `--shell-alias` is opt-in, writes a marked and removable block, and is idempotent
+
+- **Given** a shell rc file that does and does not already exist, and
+  separately one that already carries the block
+- **When** the alias is installed
+- **Then** the block is delimited by a start and end marker naming the
+  pinned version; a missing rc file is created; an rc file already
+  carrying the marker is left byte-for-byte untouched, never duplicated;
+  and — since this writes OUTSIDE the project — `adp init --shell-alias`
+  never performs the write without the same explicit "type yes"
+  confirmation `adp trust` already asks for before running something
+  from inside the repository
+
+#### AC-115 — A configured model becomes the harness's model-selection flag
+
+- **Given** `agent.models.implementation` set to a model name, and
+  separately only the older `parallel.model` set, and separately neither
+- **When** the configured model is resolved and the agent command built
+- **Then** `resolveConfiguredModel` returns the per-phase key when both are
+  set, falls back to `parallel.model` when only it is set, and returns
+  `null` — never a guess — when neither is; a `null` model resolves to no
+  extra flag at all, so the harness runs its own default; a real model
+  name is appended to the invocation using the harness's own known
+  flag, combining correctly with `--allow-edits`; `describeAgentCommand`
+  resolves the configured model on its own, so the text shown before the
+  `adp run` confirmation already carries it without a caller repeating
+  the lookup
+
+#### AC-116 — A harness with no known model-selection flag refuses a configured model instead of guessing
+
+- **Given** a harness (built-in or a custom `agent.command`) that declares
+  no `modelArgs`
+- **When** a model is requested for it
+- **Then** the invocation is refused with a message naming
+  `agent.modelArgs` as the fix — silently running the harness's own
+  default model instead would be a wrong guess invisible until the wrong
+  bill arrives, the same posture `editArgs: null` already takes toward
+  write permission
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1733,5 +1790,11 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 - Refs: AC-102, AC-103, AC-104, AC-105, AC-106, AC-107, AC-108, AC-109, AC-110, AC-111, AC-112
 - Files: src/parsers/deferrals.js, src/config.js, src/core/project.js, src/core/gates.js, src/core/audit.js, src/core/report.js, src/cli.js
 - Notes: Closes M5b's "camada 2" (§12.1) — the n/a gate state it names as "camada 1" was already built in M2b, and camada 3 (baseline) in M4; this is what was left. `DEFERRALS.md` is project-wide and optional, parsed the same way `BACKLOG.md` is. Renewal grammar was underspecified in SCOPE-0.6.0.md's prose ("acrescenta linha, não edita a anterior") and resolved by asking rather than guessing: a second `Until:` line in the same block, never an edited first line — the last line is always the active deadline. Two codes beyond the four SCOPE-0.6.0.md names outright (`DEFERRAL_TOO_BROAD`, `DEFERRAL_WITHOUT_OWNER`, `DEFERRAL_EXPIRED`, `DEFERRAL_RENEWED_REPEATEDLY`) were added by the same necessity `SPEC_MISSING` and `RFC_EXEMPTION_UNDECLARED` were: the source text names a required `Until:` and a day ceiling without ever naming what fires when either is violated — `DEFERRAL_WITHOUT_DEADLINE` and `DEFERRAL_TOO_LONG` fill that gap. `DEFERRAL_NOT_ELIGIBLE` covers both "not G5/G6" and "on the never-deferrable list" as one condition, since both mean the same thing: this cannot be deferred. `isDeferrable()`/`NEVER_DEFERRABLE` in gates.js name five codes (`RFC_REQUIRED`, `DOOR_UNDECLARED`, `MVP_WIDENED`, `BASELINE_WIDENED`, `HOURS_IMPLAUSIBLE`) that are not implemented anywhere yet, kept in the set anyway so they are excluded from birth. A deferred finding is marked, not removed — `evaluateGates` excludes it from both the error and warning tallies but keeps it in `findings`, and every renderer (`terminal`, `gates`, `json`) prints the active deferred count next to green and red, per §12.1's own rule that hidden debt is the only kind that grows unseen.
+
+## T-058 — Ergonomy: the `./adp` wrapper and model per phase [done]
+
+- Refs: AC-113, AC-114, AC-115, AC-116
+- Files: payload/templates/adp.sh, payload/templates/adp.cmd, src/core/init.js, src/cli.js, src/core/agent.js, src/config.js
+- Notes: Closes M6's PRD-005. `init` writes `./adp`/`adp.cmd` unconditionally (default, not opt-in — the whole point is nothing to set up by hand), both pinned to the exact installing `VERSION`, through the same `writeIfMissing` every other file goes through, so a second `init` never overwrites a hand edit. `--shell-alias` stays opt-in and asks the same "type yes" confirmation `adp trust` already uses before touching something outside the repository, appending a marked block (`installShellAlias`) that a second call finds already present and leaves alone. Windows PowerShell profile editing was in scope for `--shell-alias`'s "same rule" clause and is deliberately deferred — this environment cannot test a PowerShell profile edit, and shipping an unverified one risks corrupting a file this tool has no way to check; `./adp`/`adp.cmd` (plain files, no OS-specific edit) ship regardless. Model per phase generalizes `parallel.model` into `agent.models` (scope/prd/rfc/tdd/implementation), but only `.implementation` is ever consumed: it is the only phase this engine invokes headlessly at all, the rest being interactive work a human drives through a skill. `AGENT_COMMANDS` gains `modelArgs`, mirroring `editArgs`'s `null`-means-unknown-refuses-rather-than-guesses posture exactly, for the same reason: a silently ignored model flag is a wrong guess that costs real money and surfaces only when the bill does. "Escalar modelo pergunta antes" is met by making the resolved model part of `describeAgentCommand`'s output plus its own `model :` line in `adp run`/`rerun`'s existing pre-flight confirmation screen, rather than inventing a second consent mechanism for the same act.
 
 ---

@@ -17,6 +17,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
 import { spawnSync } from 'child_process';
 import path from 'path';
+import os from 'os';
 import { verifyPayload, renderIntegrity, assertInside, sha256, loadManifest, walkRelative } from './integrity.js';
 import { buildInstallPlan } from './install-map.js';
 import { PACKAGE_DIR, PAYLOAD_DIR, TEMPLATES_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME } from './paths.js';
@@ -190,6 +191,16 @@ export function initProject(rootDir, opts = {}, config = {}) {
     fill(template('BACKLOG.md'), { PROJECT: project }),
     report
   );
+  // ---- the ./adp wrapper (PRD-005): default, not opt-in, and pinned to the
+  // installing version. Writing into `~/.bashrc` was the tempting option and
+  // the wrong one — this package advertises "leaves nothing behind outside
+  // the project," and a dotfile edit contradicts that on line one. A wrapper
+  // INSIDE the project resolves both problems this PRD names at once: no
+  // alias to set up by hand, and CI already gets a pinned version merely by
+  // calling ./adp instead of npx @codryx/agent-dev-pipeline (no version) ----
+  writeIfMissing(path.join(rootDir, 'adp'), fill(template('adp.sh'), { VERSION }), report, { mode: 0o755 });
+  writeIfMissing(path.join(rootDir, 'adp.cmd'), fill(template('adp.cmd'), { VERSION }), report);
+
   // ---- the hours-per-FP table: seeded once from the shipped default, then
   // it is the project's own editable copy (PRD-003-core) — same low-ceremony
   // reasoning as BACKLOG.md, and not part of the generic install map for the
@@ -329,6 +340,38 @@ export function initProject(rootDir, opts = {}, config = {}) {
   }
 
   return { ...report, agent: detected.agent, minimal };
+}
+
+const SHELL_ALIAS_START = '# >>> agent-dev-pipeline alias >>>';
+const SHELL_ALIAS_END = '# <<< agent-dev-pipeline alias <<<';
+
+/** The exact block `--shell-alias` appends — marked so it stays removable by hand. */
+export function shellAliasBlock(version) {
+  return [SHELL_ALIAS_START, `alias adp='npx --yes @codryx/agent-dev-pipeline@${version}'`, SHELL_ALIAS_END].join(
+    '\n'
+  );
+}
+
+/** Which rc file `--shell-alias` targets — zsh's if $SHELL says so, bash's otherwise. */
+export function shellRcPath(env = process.env) {
+  const shell = env.SHELL ?? '';
+  return path.join(os.homedir(), shell.includes('zsh') ? '.zshrc' : '.bashrc');
+}
+
+/**
+ * Append the alias block to `rcPath`, once. Idempotent by the same marker it
+ * writes: a second call finds `SHELL_ALIAS_START` already present and leaves
+ * the file untouched rather than appending a duplicate block. The CALLER
+ * (cli.js) is where the explicit confirmation happens — this function never
+ * runs without a human having already agreed to exactly this text, same
+ * split as `grantTrust`/the `trust` command.
+ */
+export function installShellAlias(rcPath, version) {
+  const existing = existsSync(rcPath) ? readFileSync(rcPath, 'utf-8') : '';
+  if (existing.includes(SHELL_ALIAS_START)) return { written: false, path: rcPath };
+  const sep = existing.length && !existing.endsWith('\n') ? '\n\n' : existing.length ? '\n' : '';
+  writeFileSync(rcPath, existing + sep + shellAliasBlock(version) + '\n');
+  return { written: true, path: rcPath };
 }
 
 export function newFeature(rootDir, name, opts = {}) {

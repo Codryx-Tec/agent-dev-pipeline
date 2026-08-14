@@ -48,3 +48,11 @@
   cases (README/docs/ADR/OpenAPI/migrations/CHANGELOG/CONTRIBUTING) are
   built; scanning source comments for documentation needs real parsing
   per language, not a glob.
+- `--shell-alias` on PowerShell (Windows). PRD-005 says "same rule" for
+  `adp.cmd`'s side of the alias, but that means editing the PowerShell
+  `$PROFILE` file, which this Linux development environment has no way to
+  test. `./adp`/`adp.cmd` themselves ship regardless — they are plain
+  files, not an edit to something outside the project — only the opt-in
+  alias-into-the-profile half is deferred, same reasoning M4's archiving
+  step used: an unverified edit to a file this tool cannot check risks
+  corrupting it, and that is worse than not offering the shortcut yet.

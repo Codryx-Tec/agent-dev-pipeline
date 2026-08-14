@@ -774,6 +774,58 @@ test('a harness whose write flags are unknown refuses rather than guesses @spec:
   assert.deepEqual(declared.args, ['{{PROMPT}}', '--write']);
 });
 
+test('resolveConfiguredModel prefers agent.models.implementation, then parallel.model, then null @spec:AC-115', async () => {
+  const { resolveConfiguredModel } = await import('../src/core/agent.js');
+  assert.equal(resolveConfiguredModel({ agent: { models: { implementation: 'opus' } } }), 'opus');
+  // The older, single-phase key still works, so an existing config is not silently ignored.
+  assert.equal(resolveConfiguredModel({ parallel: { model: 'sonnet' } }), 'sonnet');
+  assert.equal(
+    resolveConfiguredModel({ agent: { models: { implementation: 'opus' } }, parallel: { model: 'sonnet' } }),
+    'opus',
+    'the generalized per-phase key wins over the older single one'
+  );
+  assert.equal(resolveConfiguredModel({}), null, 'no configuration means no opinion — let the harness pick');
+});
+
+test('a configured model becomes --model for a harness that knows the flag @spec:AC-115', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  const { args } = resolveAgentCommand({ agent: { name: 'claude' } }, { model: 'opus' });
+  assert.deepEqual(args, ['-p', '{{PROMPT}}', '--model', 'opus']);
+});
+
+test('a configured model combines with --allow-edits, model flags first @spec:AC-115', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  const { args } = resolveAgentCommand({ agent: { name: 'claude' } }, { model: 'opus', allowEdits: true });
+  assert.deepEqual(args, ['-p', '{{PROMPT}}', '--model', 'opus', '--permission-mode', 'acceptEdits']);
+});
+
+test('a harness with no known model flag refuses a configured model instead of guessing @spec:AC-116', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  // Guessing here is a real bill, not just a broken run: a wrong flag might be
+  // silently ignored by the harness, which then runs its own (possibly pricier
+  // or cheaper) default model with nobody the wiser.
+  assert.throws(
+    () => resolveAgentCommand({ agent: { name: 'codex' } }, { model: 'gpt-5' }),
+    /agent\.modelArgs/
+  );
+  assert.throws(
+    () => resolveAgentCommand({ agent: { command: 'my-agent', args: ['{{PROMPT}}'] } }, { model: 'x' }),
+    /agent\.modelArgs/
+  );
+  // ...and accepts it once the operator states the flag, same shape as editArgs.
+  const declared = resolveAgentCommand(
+    { agent: { command: 'my-agent', args: ['{{PROMPT}}'], modelArgs: ['--model', '{{MODEL}}'] } },
+    { model: 'x' }
+  );
+  assert.deepEqual(declared.args, ['{{PROMPT}}', '--model', 'x']);
+});
+
+test('describeAgentCommand resolves the configured model automatically, without the caller repeating the lookup @spec:AC-115', async () => {
+  const { describeAgentCommand } = await import('../src/core/agent.js');
+  const text = describeAgentCommand({ agent: { name: 'claude', models: { implementation: 'opus' } } });
+  assert.match(text, /--model opus/);
+});
+
 test('the summary is the one line the orchestrator reads @spec:AC-021', async () => {
   const { extractSummary } = await import('../src/core/agent.js');
   assert.equal(

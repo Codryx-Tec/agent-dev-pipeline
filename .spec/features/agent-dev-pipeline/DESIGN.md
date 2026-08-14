@@ -355,35 +355,44 @@ that keeps it out of `hours-per-fp.json`. Deferred: SSE (polling already
 works and already fails honestly; this pass changes what's visible, not
 the transport) — left out rather than half-built.
 
-**Declared deferral** (`parsers/deferrals.js`, `core/audit.js`,
-M5b). SCOPE-0.6.0.md §12.1's "camada 2": the honest way to live with a
-real finding on purpose, instead of a finding either blocking everything
-or a gate getting turned off entirely. `.spec/DEFERRALS.md` is
-project-wide and optional, owner of the `DEF-xxx` family — one file, so
-scattered debt stays summable. Each entry names the finding code, a
-`Scope:` (a glob against the finding's file, or an exact match against a
-fileless finding's feature name — "path or instance"), an `Owner:`, a
-`Reason:`, and one or more `Until:` lines; renewing is a second `Until:`
-line, never an edit of the first — the file's own grammar was
-underspecified in the source prose and settled by asking rather than
-guessing, so a human hand-editing this file later is not guessing either.
-Six rules keep it from becoming the gate-off switch by the back door: only
-G5/G6 findings are eligible, and ten of those (`NEVER_DEFERRABLE` in
-`gates.js`) never are — proof and decisions, never; a `Scope:` matching
-more than `deferrals.maxMatches` (default 5) findings is
-`DEFERRAL_TOO_BROAD`; an `Until:` past `deferrals.maxDays` (default 90)
-from the moment the audit runs is `DEFERRAL_TOO_LONG`; a missing `Owner:`
-or `Reason:` is `DEFERRAL_WITHOUT_OWNER`; a missing `Until:` is
-`DEFERRAL_WITHOUT_DEADLINE`; an expired `Until:` returns the finding to
-full severity and reports `DEFERRAL_EXPIRED`; a third renewal is
-`DEFERRAL_RENEWED_REPEATEDLY` — a warning, not a refusal, since at that
-point the debt is accepted, not deferred, and belongs in `BASELINE.md` or
-`BACKLOG.md` instead. A deferred finding is marked, never removed:
-`evaluateGates()` excludes it from both the error and the warning tally
-per gate, but every renderer still prints the active count next to green
-and red — hidden debt is the only kind that grows unseen. `--ci` still
-honors a valid deferral (the whole point is a pipeline that can stay
-green on purpose); `adp audit --strict` ignores `DEFERRALS.md` entirely,
-the monthly run that shows the real state regardless.
+**Declared deferral** (`parsers/deferrals.js`, `core/audit.js`, M5b).
+SCOPE-0.6.0.md §12.1's "camada 2": living with a real finding on
+purpose, instead of it blocking everything or a gate being turned off.
+`.spec/DEFERRALS.md` is project-wide and optional, owner of `DEF-xxx`.
+Each entry names the finding code, a `Scope:` (glob against the
+finding's file, or exact match against a fileless finding's feature
+name), `Owner:`, `Reason:`, and one or more `Until:` lines — renewing is
+a second `Until:` line, never an edit of the first; the last one is
+active. Six rules keep it from becoming the gate-off switch by the back
+door: only G5/G6 findings are eligible, and ten (`NEVER_DEFERRABLE` in
+`gates.js`) never are; a `Scope:` matching more than `deferrals.maxMatches`
+(5) findings is `DEFERRAL_TOO_BROAD`; an `Until:` past
+`deferrals.maxDays` (90) is `DEFERRAL_TOO_LONG`; a missing `Owner:`/
+`Reason:` is `DEFERRAL_WITHOUT_OWNER`; a missing `Until:` is
+`DEFERRAL_WITHOUT_DEADLINE`; expiry returns full severity and reports
+`DEFERRAL_EXPIRED`; a third renewal is `DEFERRAL_RENEWED_REPEATEDLY`
+(warning — at that point the debt is accepted, and belongs in
+`BASELINE.md`/`BACKLOG.md` instead). A deferred finding is marked, never
+removed: `evaluateGates()` excludes it from both tallies per gate, but
+every renderer still prints the active count next to green and red.
+`--ci` still honors a valid deferral; `adp audit --strict` ignores
+`DEFERRALS.md` entirely, the monthly run that shows the real state.
+
+**Ergonomy: the `./adp` wrapper and model per phase** (`core/init.js`,
+`core/agent.js`, M6, PRD-005). A `~/.bashrc` alias was the tempting,
+wrong answer — this package leaves nothing outside the project. `init`
+writes `./adp`/`adp.cmd` instead, unconditionally, pinned to the
+installing `VERSION`, through the same `writeIfMissing` every other file
+uses. `--shell-alias` stays opt-in, behind the same "type yes"
+confirmation `adp trust` already asks before touching something outside
+the repository; PowerShell profile editing is deferred, unverifiable
+from this environment. Model per phase generalizes the unused
+`parallel.model` into `agent.models`, but only `.implementation` is
+read — the one phase invoked headlessly. `AGENT_COMMANDS` gains
+`modelArgs` beside `editArgs`, same refusal posture toward an unknown
+harness. "Escalar modelo pergunta antes" needs no second consent
+mechanism: the resolved model is in `describeAgentCommand`'s rendered
+line, and `adp run`/`rerun`'s pre-flight screen prints it on its own
+`model :` line, visible before the one confirmation both share.
 
 ---

@@ -32,27 +32,52 @@ export const AGENT_COMMANDS = {
     args: ['-p', '{{PROMPT}}'],
     // Verified against Claude Code 2.1.221: without this the run cannot write.
     editArgs: ['--permission-mode', 'acceptEdits'],
+    // M6, PRD-005 — model per phase. Same placeholder convention as
+    // `{{PROMPT}}`: substituted, never shell-interpolated.
+    modelArgs: ['--model', '{{MODEL}}'],
   },
   // `null`, not `[]`. An empty array would claim these harnesses need no flag to
   // edit files, which nobody here has checked. Null means unknown, and asking
   // for edits with an unknown harness refuses instead of guessing — the wrong
-  // guess is silent, and it fails as "the agent did nothing" hours later.
-  codex: { command: 'codex', args: ['exec', '{{PROMPT}}'], editArgs: null },
-  cursor: { command: 'cursor-agent', args: ['-p', '{{PROMPT}}'], editArgs: null },
+  // guess is silent, and it fails as "the agent did nothing" hours later. The
+  // same posture applies to `modelArgs`: a config naming a model for a harness
+  // with no verified flag for it would silently run the DEFAULT model instead,
+  // which is a wrong guess that costs real money and is invisible until
+  // someone notices the bill.
+  codex: { command: 'codex', args: ['exec', '{{PROMPT}}'], editArgs: null, modelArgs: null },
+  cursor: { command: 'cursor-agent', args: ['-p', '{{PROMPT}}'], editArgs: null, modelArgs: null },
 };
 
 /**
- * @param {object} config
- * @param {{allowEdits?: boolean}} [opts] — whether the caller has consented to
- *   the agent writing to the worktree. Off unless `adp run --allow-edits`.
+ * The model configured for a phase, generalizing the older `parallel.model`
+ * (PRD-005). Only `implementation` is ever read here — it is the only phase
+ * `adp run` invokes headlessly; `scope`/`prd`/`rfc`/`tdd` are interactive
+ * work a human drives through a skill, and this engine never spawns an agent
+ * for them, so there is nothing for those keys to configure yet. `null` means
+ * "let the harness use its own default" — never guessed at.
  */
-export function resolveAgentCommand(config, { allowEdits = false } = {}) {
+export function resolveConfiguredModel(config) {
+  return config.agent?.models?.implementation ?? config.parallel?.model ?? null;
+}
+
+/**
+ * @param {object} config
+ * @param {{allowEdits?: boolean, model?: string|null}} [opts] — `allowEdits`:
+ *   whether the caller has consented to the agent writing to the worktree
+ *   (off unless `adp run --allow-edits`). `model`: an explicit model name to
+ *   request, or null/omitted to let the harness use its own default —
+ *   resolveConfiguredModel(config) is the usual source, but this function
+ *   never reads config for it itself, so a caller that wants a SPECIFIC
+ *   model (not the configured default) can always ask for exactly that one.
+ */
+export function resolveAgentCommand(config, { allowEdits = false, model = null } = {}) {
   const custom = config.agent?.command;
   const base = custom
     ? {
         command: custom,
         args: config.agent.args ?? ['{{PROMPT}}'],
         editArgs: config.agent.editArgs ?? null,
+        modelArgs: config.agent.modelArgs ?? null,
       }
     : AGENT_COMMANDS[config.agent?.name ?? 'claude'];
 
@@ -63,7 +88,20 @@ export function resolveAgentCommand(config, { allowEdits = false } = {}) {
     );
   }
 
-  if (!allowEdits) return { command: base.command, args: base.args };
+  let args = base.args;
+  if (model) {
+    if (!Array.isArray(base.modelArgs)) {
+      throw new Error(
+        `agent.models names "${model}" for this harness, but "${custom ?? config.agent?.name ?? 'claude'}" has no ` +
+          `known flag to select a model. Set agent.modelArgs in your config to the flags that harness needs ` +
+          `(e.g. ["--model", "{{MODEL}}"]), then run it once by hand to confirm they work. A wrong guess here ` +
+          `would silently run the harness's own default model instead — invisible until the wrong bill arrives.`
+      );
+    }
+    args = [...args, ...base.modelArgs.map((a) => a.replace('{{MODEL}}', model))];
+  }
+
+  if (!allowEdits) return { command: base.command, args };
 
   if (!Array.isArray(base.editArgs)) {
     throw new Error(
@@ -73,12 +111,13 @@ export function resolveAgentCommand(config, { allowEdits = false } = {}) {
     );
   }
 
-  return { command: base.command, args: [...base.args, ...base.editArgs] };
+  return { command: base.command, args: [...args, ...base.editArgs] };
 }
 
 /** A human-readable rendering of the command, for consent and for the log. */
-export function describeAgentCommand(config, opts) {
-  const { command, args } = resolveAgentCommand(config, opts);
+export function describeAgentCommand(config, opts = {}) {
+  const model = opts.model !== undefined ? opts.model : resolveConfiguredModel(config);
+  const { command, args } = resolveAgentCommand(config, { ...opts, model });
   return [command, ...args].join(' ');
 }
 
@@ -148,8 +187,9 @@ export function extractSummary(output) {
  *
  * @returns ({task, cwd}) => {ok, summary, output}
  */
-export function makeAgentRunner(project, config, { timeout, allowEdits = false } = {}) {
-  const { command, args } = resolveAgentCommand(config, { allowEdits });
+export function makeAgentRunner(project, config, { timeout, allowEdits = false, model } = {}) {
+  const resolvedModel = model !== undefined ? model : resolveConfiguredModel(config);
+  const { command, args } = resolveAgentCommand(config, { allowEdits, model: resolvedModel });
   const timeoutMs = timeout ?? config.parallel?.taskTimeoutMs ?? 20 * 60 * 1000;
 
   return function runTask({ task, cwd }) {

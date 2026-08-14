@@ -1,9 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { initProject, newFeature, newRfc, detectAgent, AGENT_SKILL_DIRS, LOCKFILE_NAME } from '../src/core/init.js';
+import {
+  initProject,
+  newFeature,
+  newRfc,
+  detectAgent,
+  AGENT_SKILL_DIRS,
+  LOCKFILE_NAME,
+  shellAliasBlock,
+  shellRcPath,
+  installShellAlias,
+} from '../src/core/init.js';
+import { VERSION } from '../src/version.js';
 import { createHash } from 'crypto';
 import { loadConfig } from '../src/config.js';
 import { loadProject } from '../src/core/project.js';
@@ -375,5 +386,84 @@ test('without --brownfield, no BASELINE.md is written and no recognition scan ru
     const report = initProject(root, {}, { srcGlobs: ['src/**'], ignoreGlobs: [] });
     assert.equal(existsSync(path.join(root, '.spec', 'BASELINE.md')), false);
     assert.equal(report.notes.some((n) => n.includes('brownfield recognition')), false);
+  });
+});
+
+// -------------------------------------------------------------- M6: ./adp wrapper
+
+test('init writes an executable ./adp wrapper pinned to the installing version, by default @spec:AC-113', () => {
+  fresh((root) => {
+    initProject(root);
+    const wrapperPath = path.join(root, 'adp');
+    assert.ok(existsSync(wrapperPath));
+    const content = readFileSync(wrapperPath, 'utf8');
+    assert.match(content, new RegExp(`@codryx/agent-dev-pipeline@${VERSION}`));
+    assert.match(content, /npx/);
+    assert.equal(content.includes('{{'), false, 'no placeholder may survive into the written file');
+    // 0o755 — the wrapper is meant to be run as ./adp, not sourced or piped to bash.
+    const mode = statSync(wrapperPath).mode & 0o777;
+    assert.equal(mode, 0o755);
+  });
+});
+
+test('init writes adp.cmd alongside, same pinned version, for Windows @spec:AC-113', () => {
+  fresh((root) => {
+    initProject(root);
+    const content = readFileSync(path.join(root, 'adp.cmd'), 'utf8');
+    assert.match(content, new RegExp(`@codryx/agent-dev-pipeline@${VERSION}`));
+    assert.equal(content.includes('{{'), false);
+  });
+});
+
+test('re-running init never overwrites a hand-edited ./adp wrapper @spec:AC-113', () => {
+  fresh((root) => {
+    initProject(root);
+    const wrapperPath = path.join(root, 'adp');
+    writeFileSync(wrapperPath, '#!/usr/bin/env bash\necho "hand-edited"\n');
+    const report = initProject(root);
+    assert.ok(report.kept.includes('adp'), 'a second init must report the wrapper as kept, not overwrite it');
+    assert.match(readFileSync(wrapperPath, 'utf8'), /hand-edited/);
+  });
+});
+
+// ---------------------------------------------------- M6: --shell-alias (opt-in)
+
+test('shellAliasBlock names the pinned version inside a marked, removable block @spec:AC-114', () => {
+  const block = shellAliasBlock('0.6.0');
+  assert.match(block, /^# >>> agent-dev-pipeline alias >>>/m);
+  assert.match(block, /^# <<< agent-dev-pipeline alias <<</m);
+  assert.match(block, /@codryx\/agent-dev-pipeline@0\.6\.0/);
+});
+
+test('shellRcPath picks .zshrc for zsh and .bashrc otherwise @spec:AC-114', () => {
+  assert.match(shellRcPath({ SHELL: '/bin/zsh' }), /\.zshrc$/);
+  assert.match(shellRcPath({ SHELL: '/bin/bash' }), /\.bashrc$/);
+  assert.match(shellRcPath({}), /\.bashrc$/, 'no $SHELL at all defaults to bash, not a guess at zsh');
+});
+
+test('installShellAlias appends the block once, and a second call leaves it untouched @spec:AC-114', () => {
+  fresh((root) => {
+    const rcPath = path.join(root, '.bashrc');
+    writeFileSync(rcPath, '# existing rc content\nexport FOO=bar\n');
+
+    const first = installShellAlias(rcPath, '0.6.0');
+    assert.equal(first.written, true);
+    const afterFirst = readFileSync(rcPath, 'utf8');
+    assert.match(afterFirst, /export FOO=bar/, 'existing content must survive, not be replaced');
+    assert.match(afterFirst, /agent-dev-pipeline alias/);
+
+    const second = installShellAlias(rcPath, '0.6.0');
+    assert.equal(second.written, false, 'a marker already present means nothing is written a second time');
+    assert.equal(readFileSync(rcPath, 'utf8'), afterFirst, 'no duplicate block, no silent edit');
+  });
+});
+
+test('installShellAlias creates the rc file if it does not exist yet @spec:AC-114', () => {
+  fresh((root) => {
+    const rcPath = path.join(root, '.bashrc');
+    assert.equal(existsSync(rcPath), false);
+    const result = installShellAlias(rcPath, '0.6.0');
+    assert.equal(result.written, true);
+    assert.match(readFileSync(rcPath, 'utf8'), /agent-dev-pipeline alias/);
   });
 });
