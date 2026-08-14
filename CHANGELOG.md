@@ -26,6 +26,25 @@ fixed sibling of each feature's PRD — decision records live at
 linked from any PRD's `> rfcs:` line. One RFC can now serve several PRDs;
 one PRD often needs several, one per one-way door.
 
+**Exit codes and paths, old → new:**
+
+| | 0.5.x | 0.6.0 |
+|---|---|---|
+| Gates | six (G0–G5) | seven (G0–G6) |
+| Exit code | `0`–`6` | `0`–`7` — the number is still the first gate that failed |
+| Per-feature docs | `PRD.md`, `RFC.md`, `TDD.md` | `PRD.md`, `SPEC.md` (new), `DESIGN.md` (renamed from `TDD.md`) |
+| RFC location | `.spec/features/<name>/RFC.md` | `.spec/rfc/RFC-<NNN>-<slug>.md`, flat and global |
+| `US-xxx`/`AC-xxx` owner | `PRD.md` | `SPEC.md` |
+| `ASM-xxx`/`Q-xxx` owner | `RFC.md` | `SPEC.md` |
+| `T-xxx` owner | `TDD.md` | `SPEC.md` |
+
+Any pipeline parsing the exit code as 0–6, or reading a file at the old
+paths, breaks. `adp upgrade --apply` runs the codemod; `--json` output now
+also carries a textual `gate` (`"G4"`) per finding so a consumer never has
+to depend on the bare integer alone. The migration never discards a line of
+user content — what it cannot place automatically becomes a finding
+(`PRD_MISSING`, etc.), never silence.
+
 ### Added
 
 - **An install lockfile and `adp upgrade`.** `.spec/.adp-install.json`
@@ -51,6 +70,53 @@ one PRD often needs several, one per one-way door.
   slug to the checklist. Deferred: `MVP_WIDENED` (detecting the boundary
   growing silently after approval), which needs a before/after snapshot
   this pass found no clean write-trigger for yet.
+- **Function Point estimation (`adp profile` / `adp estimate`).** Hours are
+  a PF count times the matching row of a hand-editable, seeded
+  `.spec/metrics/hours-per-fp.json` table, cold-start by construction. The
+  PF count itself is declared directly (`--pf <n>`) or produced by an
+  automated counting loop the AI proposes and only a human confirms
+  (`.spec/metrics/count-draft.json` → `adp estimate --review` →
+  `--confirm`). Never proof either way.
+- **Closing the estimation loop (`adp close --hours <n>`).** Records what a
+  feature actually took and recalibrates the profile's table row from
+  `hours-history.jsonl`, shared across every project on the machine (or a
+  team path), never from one project's closures alone. The shared record
+  carries no project, feature or person name by construction.
+  `adp metrics import`/`export [--csv]` move history between machines;
+  imported records are always marked as such. `adp estimate --history`
+  reports cold-start vs. calibrated error.
+- **Antipatterns as findings.** Eight checks from the source document:
+  `PRD_WITH_SOLUTION`, `CONTEXT_WITHOUT_NUMBERS`, `STRAW_OPTION`,
+  `OPTION_DO_NOTHING_MISSING`, `AC_NOT_OBSERVABLE`, `DOC_TOO_LONG`,
+  `DOC_FOSSIL`, `DUPLICATE_PROSE`.
+- **Brownfield adoption (`adp init --brownfield`).** Read-only recognition
+  of an existing codebase's documentation, plus `.spec/BASELINE.md`: the
+  pre-existing source files at adoption time, whose findings stay warnings
+  — exempt from `--ci` escalation — until touched again. The new
+  `archaeologist` role proposes a `Draft` `SCOPE.md` from the inventory.
+  Deferred: the archiving step (`git mv` old docs into
+  `project_old_artifacts/`), `BASELINE_WIDENED`, and a no-git mtime
+  fallback for the ratchet.
+- **The monitor returns, read-only (D-013).** Live lanes and tasks for the
+  current run, the same paste-ready prompt `adp prompt` prints, and a debt
+  panel (baseline file count, backlog count, last closure's declared
+  hours). No write endpoint exists; a test asserts it rather than trusting
+  the comment.
+- **Declared deferral (`.spec/DEFERRALS.md`, `adp audit --strict`).** A
+  dated, owned decision to live with a real finding for a while, instead
+  of either blocking on it or disabling the gate: `DEFERRAL_TOO_BROAD`,
+  `DEFERRAL_WITHOUT_OWNER`, `DEFERRAL_WITHOUT_DEADLINE`,
+  `DEFERRAL_TOO_LONG`, `DEFERRAL_NOT_ELIGIBLE`, `DEFERRAL_EXPIRED`,
+  `DEFERRAL_RENEWED_REPEATEDLY`. Only G5/G6 findings are eligible, and ten
+  of those never are. `--strict` ignores every deferral and shows the real
+  state.
+- **The `./adp` wrapper and model per phase.** `init` writes an executable
+  `./adp`/`adp.cmd`, pinned to the installing version, so CI is pinned and
+  nobody hand-writes a shell alias; `--shell-alias` still offers one,
+  opt-in, with confirmation. `agent.models.implementation` (generalizing
+  `parallel.model`) lets a headless run request a specific model; a
+  harness with no known model flag refuses rather than silently running
+  its own default.
 
 ## [0.5.0] — 2026-08-04
 

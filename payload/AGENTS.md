@@ -216,6 +216,43 @@ of the user's:
 re-grow the baseline after it shrinks) — both named in `.spec/BACKLOG.md`.
 Don't imply either exists.
 
+### Living with a real finding on purpose — `DEFERRALS.md`
+
+Not every real finding gets fixed today. The honest answer is neither
+silence nor a switch that turns a gate off — it is a dated, owned decision,
+recorded where the audit can see it:
+
+```markdown
+## DEF-001 — legacy suite leaves with the billing migration
+
+- Finding: TEST_ORPHAN
+- Scope: test/legacy/**
+- Owner: alice
+- Reason: the old suite leaves with the billing migration
+- Opened: 2026-08-05
+- Until: 2026-11-03
+```
+
+`Scope:` is a glob against the finding's file, or an exact match against a
+fileless finding's feature name. **Never** write a deferral yourself without
+being asked — `Owner:` names a real person who answers for the debt, and
+that is not your call to make. Renewing is a **second** `Until:` line
+appended under the same block, never an edit of the first one; the last
+line is always the active deadline.
+
+| Finding | Fires when |
+|---|---|
+| `DEFERRAL_TOO_BROAD` | `Scope:` matches more findings than `deferrals.maxMatches` (default 5) — deferring this broadly is turning the gate off with extra steps |
+| `DEFERRAL_WITHOUT_OWNER` | `Owner:` or `Reason:` is missing |
+| `DEFERRAL_WITHOUT_DEADLINE` | no `Until:` line at all |
+| `DEFERRAL_TOO_LONG` | the active `Until:` is further out than `deferrals.maxDays` (default 90) from today |
+| `DEFERRAL_NOT_ELIGIBLE` | the named `Finding:` is not G5/G6, or is on the never-deferrable list (proof, and decisions nothing should route around — `TASK_DONE_WITHOUT_PROOF`, `AC_WITHOUT_PROOF`, `PROOF_WEAK`, `PROOF_STALE`, `SCOPE_NOT_APPROVED` among them) |
+| `DEFERRAL_EXPIRED` (warning) | the active `Until:` is in the past — the finding it covered is back at full severity, escalating under `--ci` like any other |
+| `DEFERRAL_RENEWED_REPEATEDLY` (warning) | a third renewal of the same entry — not deferred anymore, accepted; belongs in `BASELINE.md` or `BACKLOG.md` instead |
+
+`adp audit --ci` still honors a valid deferral. `adp audit --strict` ignores
+`DEFERRALS.md` entirely — use it when asked for the real, undeferred state.
+
 ## Proof is written by `verify`, and by nothing else
 
 `adp audit` reads documents and tests. It can see that a criterion has a test

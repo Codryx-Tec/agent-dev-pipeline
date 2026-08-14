@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8432,
-  "verifiedAt": "2026-08-14T23:06:34.325Z",
-  "gitRev": "b809324cf8104876d8a807855ca3918cdbd40b9d",
+  "durationMs": 8492,
+  "verifiedAt": "2026-08-14T23:47:32.723Z",
+  "gitRev": "101057a2a77cae72de69a3f86eade79448b2e1fc",
   "gitDirty": true,
-  "codeMtime": 1786748530901.6826,
+  "codeMtime": 1786750979498.7283,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -2004,6 +2004,31 @@
       "tests": [
         {
           "title": "a harness with no known model flag refuses a configured model instead of guessing @spec:AC-116",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-117": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "README.md documents the ./adp wrapper, not a hand-written alias, as the default @spec:AC-117",
+          "status": "pass"
+        },
+        {
+          "title": "README.md and INSTALL.md know about DEFERRALS.md, --strict and the seven gates @spec:AC-117",
+          "status": "pass"
+        },
+        {
+          "title": "no top-level doc still pins an 0.4.x version or claims a stale test count @spec:AC-117",
+          "status": "pass"
+        },
+        {
+          "title": "ARCHITECTURE.md describes the current four-document chain, not the pre-0.6.0 layout @spec:AC-117",
+          "status": "pass"
+        },
+        {
+          "title": "CHANGELOG.md names the exit-code and file-path breaks explicitly, old to new @spec:AC-117",
           "status": "pass"
         }
       ]

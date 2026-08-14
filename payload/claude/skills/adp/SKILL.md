@@ -69,9 +69,9 @@ shorthand for that invocation — the person will usually have it aliased.
 
 | Command | What it does |
 |---|---|
-| `status` | seven lights, one line each, plus ceremony/backlog — start here, every session |
+| `status` | seven lights, one line each, plus ceremony/backlog/deferrals — start here, every session |
 | `report [--html <path>] [--json]` | a portable viability snapshot: gates, ceremony, MVP/backlog, the recorded decision, the estimate if one exists — no server needed |
-| `audit [--ci] [--json]` | every gate, with the findings behind the first red one |
+| `audit [--ci] [--strict] [--json]` | every gate, with the findings behind the first red one — `--strict` ignores `DEFERRALS.md` and shows the real state |
 | `gates [--list]` | the gates and their state, without the findings |
 | `prompt [<gate>]` | the paste-ready text for a red gate |
 | `verify [--background]` | **run the tests and record what they prove** |
@@ -80,14 +80,17 @@ shorthand for that invocation — the person will usually have it aliased.
 | `plan` | the execution lanes, without running anything |
 | `run [--lane <id>]` | execute pending tasks in isolated git worktrees |
 | `rerun <lane>` | re-run one lane, leaving merged work alone |
+| `clean [--force]` | remove worktrees whose work is already merged |
+| `resume` / `checkpoint --note "<s>"` | where the work stands, at the start of a session / what to remember for the next one |
 | `monitor [--port <n>]` | a read-only page showing gates and progress |
-| `init` · `new <feature> [--signals <list>]` | scaffold a project · scaffold a feature (only the documents its ceremony level needs) |
+| `init [--brownfield] [--shell-alias]` · `new <feature> [--signals <list>]` | scaffold a project (`--brownfield` adopts an existing one, read-only) · scaffold a feature (only the documents its ceremony level needs) |
 | `new --rfc <slug>` | a new global decision record at `.spec/rfc/RFC-<NNN>-<slug>.md` |
 | `profile [--stack] [--familiarity] [--app-type] [--brownfield] [--tests]` | declare the stack/team profile `estimate` reads |
 | `estimate [--pf <n>] [--csv]` | hours = a PF count × the profile's table row — declared with `--pf`, or from a confirmed count; never proof |
 | `estimate --review` / `--confirm [--yes]` | show the draft count / lock it in — only a human confirms |
 | `close --hours <n> [--note]` | record what a feature actually took; recalibrates the table row from cross-project history |
 | `metrics import <file>` / `export [--csv]` | move the shared, anonymized calibration history between machines or teams |
+| `upgrade [--apply] [--only-migrations]` | compare the installed payload against the version currently running; dry-run unless `--apply` |
 | `doctor` | verify this copy of the tool against its manifest |
 
 **The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. You never
@@ -141,6 +144,63 @@ answer to "do we build this?", read by `adp report`. It is purely
 declarative: no gate checks it, and `no-go` refuses nothing. If the answer
 is "use another tool," the documents written up to that point are still the
 person's — that is the point of writing them first.
+
+## Adopting an existing project
+
+`adp init --brownfield` recognizes a codebase that already exists instead of
+auditing it as if it were new. It scans for `README*`, `docs/**`, `adr/**`,
+`rfc/**`, `wiki/**`, OpenAPI/Swagger specs, migrations, `CHANGELOG*` and
+`CONTRIBUTING*`, and prints what it found — **nothing is moved or
+rewritten**. It writes `.spec/BASELINE.md`: the commit and the pre-existing
+source files at adoption time.
+
+A finding tied to a baselined file stays a **warning**, exempt from `--ci`
+escalation, for as long as that file is untouched since the recorded commit —
+touch it again (even uncommitted), or map it with a task, and it owes the
+same full-strength check as any new file. This is what keeps a legacy
+repository's first `adp audit` **legible** instead of a wall. The
+**archaeologist** role reads the recognition inventory and the code and
+proposes a `Draft` `SCOPE.md`, every claim cited — invoke it once, right
+after `--brownfield`, never for a project born with this tool. Archiving old
+documentation (`git mv` to `project_old_artifacts/`) is not built yet; don't
+imply it exists.
+
+## Living with a real finding on purpose — `DEFERRALS.md`
+
+Not every real finding gets fixed today, and the honest answer is neither
+"block everything" nor a hidden switch that turns a gate off. `.spec/DEFERRALS.md`
+records a **dated, owned decision** instead:
+
+```markdown
+## DEF-001 — legacy suite leaves with the billing migration
+
+- Finding: TEST_ORPHAN
+- Scope: test/legacy/**
+- Owner: alice
+- Reason: the old suite leaves with the billing migration
+- Opened: 2026-08-05
+- Until: 2026-11-03
+```
+
+`Scope:` is a glob against the finding's file, or an exact match against a
+fileless finding's feature name. Renewing appends a **second** `Until:` line
+to the same block — never an edit of the first one; the last line is always
+the active deadline. **Never write an entry yourself unless asked** —
+`Owner:` names a real person who answers for the debt, the same rule that
+keeps you from confirming an estimate or approving `adp trust` on the
+person's behalf.
+
+Only findings that describe the world changing under a document (G5/G6) are
+eligible, and ten of those — proof, and decisions nothing should route
+around — never are, regardless of scope. A `Scope:` too broad
+(`DEFERRAL_TOO_BROAD`), an `Until:` too far out (`DEFERRAL_TOO_LONG`), a
+missing `Owner:`/`Reason:`/`Until:`, or a third renewal of the same entry
+(`DEFERRAL_RENEWED_REPEATEDLY`, a warning — that debt is accepted now, not
+deferred, and belongs in `BASELINE.md` or `BACKLOG.md` instead) each earn
+their own finding. An expired `Until:` returns the finding to full severity
+on its own. `--ci` still honors a valid deferral; `adp audit --strict`
+ignores `DEFERRALS.md` entirely — reach for it when asked for the real,
+undeferred state.
 
 ## Proof comes from `verify`, and from nothing else
 
@@ -432,6 +492,13 @@ grepping for it must find the same string on every machine.
 | document is over its length ceiling (`DOC_TOO_LONG`) | `PRD.md`/`DESIGN.md` past its configured line ceiling | split it, or move detail to where it belongs |
 | document is older than the code it describes (`DOC_FOSSIL`) | `DESIGN.md` predates the newest file its tasks map | update it — a document that lies is worse than none |
 | substantial prose repeated across documents (`DUPLICATE_PROSE`) | a feature's own `PRD.md`/RFC/`DESIGN.md` share a near-identical passage | point at it from one document, don't copy it |
+| deferral matches more findings than allowed (`DEFERRAL_TOO_BROAD`) | a `DEFERRALS.md` entry's `Scope:` covers more than `deferrals.maxMatches` findings | narrow the `Scope:`, or split it into several entries |
+| deferral without an owner or a reason (`DEFERRAL_WITHOUT_OWNER`) | missing `Owner:` or `Reason:` | ask the person who owns the debt to fill it in — never you |
+| deferral without an `Until:` date (`DEFERRAL_WITHOUT_DEADLINE`) | no deadline at all | add one, or the finding is effectively deleted |
+| deferral deadline beyond the allowed ceiling (`DEFERRAL_TOO_LONG`) | `Until:` is further out than `deferrals.maxDays` from today | pick a nearer date; renew later instead |
+| deferral of a finding that cannot be deferred (`DEFERRAL_NOT_ELIGIBLE`) | the `Finding:` code is outside G5/G6, or on the never-deferrable list | it cannot be deferred at all — fix the underlying finding |
+| deferral past its deadline (`DEFERRAL_EXPIRED`) | the active `Until:` is in the past | the finding is back at full severity; renew or fix it |
+| deferral renewed three times or more (`DEFERRAL_RENEWED_REPEATEDLY`) | the same entry keeps getting a new `Until:` line | that is acceptance, not deferral — move it to `BASELINE.md`/`BACKLOG.md` |
 | feature name diverges from its directory (`FEATURE_MISMATCH`) | the header and the folder disagree | make them match |
 | project could not be read (`PROJECT_INVALID`) | a document failed to parse | the message names the file |
 
