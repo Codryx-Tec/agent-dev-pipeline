@@ -1054,6 +1054,54 @@ legacy project the same way it does on a fresh one.
   and `.spec/BASELINE.md` names the pre-existing source file; without the
   flag, neither the recognition report nor `BASELINE.md` appears at all
 
+### US-031 — The captain sees the chain happening, not just its verdict
+
+As a captain with the monitor open, I want to see a run's lanes moving,
+the exact text to paste when something is red, and how much old and
+declared debt the project is carrying, so that the page answers "what is
+happening right now" and not only "did it pass."
+
+#### AC-098 — The monitor finds the most recent run without being told which one it is
+
+- **Given** a ledger with events from no run, one run, and several runs
+  written in an order that does not match their timestamps
+- **When** the most recent run is asked for
+- **Then** an empty ledger answers with nothing to show; one run answers
+  with itself; several runs answer with whichever one's id sorts
+  lexicographically last — the same ordering `adp run`'s own timestamp-based
+  ids already guarantee is chronological
+
+#### AC-099 — The live-run view reports every lane and task from the ledger, and whether the run is still going
+
+- **Given** a ledger recording a lane that has started and a task within
+  it that has started, and separately a ledger where that lane has
+  reached a terminal state
+- **When** the run view is built
+- **Then** the first case reports the lane and task's exact states and
+  `live: true`; the second reports `live: false`; a project where `adp
+  run` has never executed reports no run at all, distinctly from a run
+  that already finished
+
+#### AC-100 — The monitor's paste-ready text for the first red gate matches `adp prompt`'s own output exactly
+
+- **Given** a project with a real red gate
+- **When** the monitor's state is built
+- **Then** the text attached to it is character-for-character what
+  `adp prompt` already prints for that same gate — one implementation,
+  never two texts that could drift apart
+
+#### AC-101 — The debt panel reports a baseline file count, never the file list, and the last declared closure's hours
+
+- **Given** a project with no `BASELINE.md`, then one naming several
+  files, and separately a project with no closure yet and then one with
+  a recorded closure
+- **When** the monitor's state is built
+- **Then** the no-baseline case reports `present: false` with a zero
+  count; the baselined case reports the correct count and commit, with no
+  file list anywhere in the response; the no-closure case reports nothing
+  under the estimate; the closed case reports that closure's declared
+  hours — wall-clock is never present anywhere in this response
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1564,5 +1612,11 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 - Refs: AC-094, AC-095, AC-096, AC-097
 - Files: src/parsers/baseline.js
 - Notes: Closes M4-readonly-core — the read-only half of PRD-002, deliberately split from the archiving step (`git mv` to `project_old_artifacts/`), the single highest-risk item in the whole 0.6.0 scope (`W-002`, `Reversible: no`). `adp init --brownfield` scans for doc-shaped files and writes `.spec/BASELINE.md`, both purely additive. `project.js` computes the ratchet's touched-set with one `git diff --name-only <commit>` call against the working tree, not one spawn per file; `audit.js`'s `emit()` exempts a baselined-and-untouched file's findings from `--ci` escalation generally, not `FILE_ORPHAN`-specifically. The new `archaeologist` role (`payload/claude/agents/archaeologist.md`, skill `project-archaeology`) proposes a `Draft` `SCOPE.md` from the recognition inventory and the code, every claim cited. Archiving, `BASELINE_WIDENED`, and a no-git mtime fallback all remain in `.spec/BACKLOG.md`.
+
+## T-056 — The monitor shows the work, not just the verdict [done]
+
+- Refs: AC-098, AC-099, AC-100, AC-101
+- Files: src/core/ledger.js
+- Notes: Closes M5-monitor-core. Most of PRD-004 already existed by the time this pass started (the per-feature document trail, the raw findings behind the first red gate — both from the earlier "Monitor UI parity" pass); this closes what genuinely didn't: live lanes (`ledger.js`'s `latestRunId()` plus its own already-existing `progress()`, no new domain logic), the paste-ready prompt (`prompts.js:buildPrompt()` reused, not reimplemented, so the page and `adp prompt` can never say two different things), and a debt panel (baseline file count — never the file list — next to the backlog count, and the last `adp close`'s declared hours next to the estimate). Deliberately deferred: SSE (polling already works and already fails honestly; RFC-001's own `D-006` named SSE and the shipped implementation is polling regardless) and wall-clock next to the actual-hours fact — the same "two clocks never mix" rule already kept out of `hours-per-fp.json`, now kept out of this page too.
 
 ---

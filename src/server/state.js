@@ -16,20 +16,41 @@ import { auditProject } from '../core/audit.js';
 import { evaluateGates, GATES } from '../core/gates.js';
 import { projectCeremony } from '../core/ceremony.js';
 import { loadEstimate, loadHoursTable } from '../core/estimate.js';
-import { calibrationLabel } from '../core/closure.js';
+import { calibrationLabel, loadClosures } from '../core/closure.js';
+import { latestRunId, progress } from '../core/ledger.js';
+import { buildPrompt } from '../core/prompts.js';
 
 /**
  * The last estimate, with the current calibration label for the table row
  * it used — null when no `adp close` has ever recorded against that row
  * (PRD-003c-core: this reads the row's own `observations` count, already
- * updated by `adp close`, rather than re-reading closures.jsonl itself).
+ * updated by `adp close`, rather than re-reading closures.jsonl itself) —
+ * and the last closure's declared hours (M5-monitor-core), human hours
+ * only. Wall-clock stays off this page for the same reason it stays out of
+ * `hours-per-fp.json`: the two clocks never mix (SCOPE-0.6.0.md's own rule).
  */
 function buildEstimateWithCalibration(rootDir, config) {
   const estimate = loadEstimate(rootDir, config);
-  if (!estimate) return null;
+  const closures = loadClosures(rootDir, config);
+  const lastClosure = closures.length ? closures[closures.length - 1] : null;
+  if (!estimate) return lastClosure ? { lastClosure } : null;
   const hoursTable = loadHoursTable(rootDir, config);
   const row = hoursTable?.find((r) => r.profile === estimate.rowUsed) ?? null;
-  return { ...estimate, calibration: row ? calibrationLabel(row.observations) : null };
+  return { ...estimate, calibration: row ? calibrationLabel(row.observations) : null, lastClosure };
+}
+
+// A lane's own state (never a task's — see ledger.js:progress(), which
+// only ever assigns a lane-level event to the lane map) is one of these
+// once it stops changing. Anything else means the run is still going.
+const TERMINAL_LANE_STATES = new Set(['lane-done', 'lane-merged', 'lane-failed', 'lane-error', 'merge-conflict']);
+
+/** The most recent run's lanes/tasks, or null if `adp run` has never executed here. */
+function buildRun(config) {
+  const runId = latestRunId(config);
+  if (!runId) return null;
+  const p = progress(config, runId);
+  const live = p.lanes.some((l) => !TERMINAL_LANE_STATES.has(l.state));
+  return { runId, live, lanes: p.lanes, tasks: p.tasks };
 }
 
 /** Files whose modification time decides whether the state could have changed. */
@@ -124,8 +145,21 @@ export function buildState(config) {
       present: project.backlog?.present ?? false,
       items: project.backlog?.items?.length ?? 0,
     },
+    // M4-readonly-core: file count only, never the list — the debt panel
+    // stays a summary, not another wall of file names to scroll past.
+    baseline: {
+      present: project.baseline?.present ?? false,
+      fileCount: project.baseline?.files?.size ?? 0,
+      commit: project.baseline?.commit ?? null,
+    },
     // PRD-003-core: the last `adp estimate` run, or null if none has run yet.
     estimate: buildEstimateWithCalibration(project.rootDir, config),
+    // M5-monitor-core: the same text `adp prompt` prints for the first red
+    // gate, so the page has something to copy, not just something to read.
+    firstRedPrompt: buildPrompt(gates.find((g) => g.state === 'red') ?? null),
+    // M5-monitor-core: "the parallel execution is invisible today" (PB-004)
+    // — null when `adp run`/`adp rerun` have never executed in this project.
+    run: buildRun(config),
     gates,
     firstRed: evaluation.firstRed,
     exitCode: evaluation.exitCode,

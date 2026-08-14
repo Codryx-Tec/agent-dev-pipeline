@@ -334,4 +334,26 @@ claim cited to its source file. Deferred: the archiving step itself
 gate), `BASELINE_WIDENED`, and a no-git mtime fallback for the ratchet —
 all named in `.spec/BACKLOG.md`.
 
+**The monitor shows the work, not just the verdict** (`core/ledger.js`,
+`server/state.js`, `ui/app.js`, M5-monitor-core). PRD-004's own complaint:
+the chain happens and the page only ever showed the six (now seven)
+lights. Most of the answer already existed by the time this pass started
+— the per-feature document trail and the raw findings behind the first
+red gate were built earlier this session — so this closes the specific
+gaps PRD-004 names that didn't: **live lanes**, reading `ledger.js`'s
+existing `progress(config, runId)` for whichever run
+`latestRunId(config)` finds most recent, one `id`/`state` per lane and
+per task, `live` derived from whether every lane has reached a terminal
+state; **the paste-ready prompt**, reusing `prompts.js:buildPrompt(gate)`
+on the first red gate — the same text `adp prompt` already prints,
+now also in a `readonly` textarea on the page; and **a debt panel**
+showing the baseline's file count (never the file list — a summary, not
+another wall) next to the existing backlog count, plus the last `adp
+close`'s declared hours beside the estimate, human hours only —
+wall-clock stays off this page, the same "two clocks never mix" rule
+that keeps it out of `hours-per-fp.json`. Deferred: SSE (polling already
+works and already fails honestly; this pass changes what's visible, not
+the transport), and `DEFERRALS.md`-based active-deferral tracking (M5b,
+not built) — both left out rather than half-built.
+
 ---

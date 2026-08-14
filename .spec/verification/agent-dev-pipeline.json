@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8377,
-  "verifiedAt": "2026-08-13T23:33:58.353Z",
-  "gitRev": "f7bad1c2f87b61f6a0fb5b60bbcbfc1175ac6182",
+  "durationMs": 8363,
+  "verifiedAt": "2026-08-14T00:21:36.016Z",
+  "gitRev": "ee33ea79f9086646ce79e95da92208d989c7c5b0",
   "gitDirty": true,
-  "codeMtime": 1786663823792.545,
+  "codeMtime": 1786666676135.2827,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -1757,6 +1757,66 @@
         },
         {
           "title": "without --brownfield, no BASELINE.md is written and no recognition scan runs @spec:AC-097",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-098": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "latestRunId is null when nothing has ever run @spec:AC-098",
+          "status": "pass"
+        },
+        {
+          "title": "latestRunId is the one run, when there is only one @spec:AC-098",
+          "status": "pass"
+        },
+        {
+          "title": "latestRunId picks the most recent of several runs, regardless of write order @spec:AC-098",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-099": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "run is null when adp run has never executed here @spec:AC-099",
+          "status": "pass"
+        },
+        {
+          "title": "run reports a live lane while it is still going, and lanes/tasks from the ledger @spec:AC-099",
+          "status": "pass"
+        },
+        {
+          "title": "run reports live:false once every lane reaches a terminal state @spec:AC-099",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-100": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "firstRedPrompt matches adp prompt's own text for whichever gate is first red @spec:AC-100",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-101": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": "baseline reports present:false with a zero count when there is no BASELINE.md @spec:AC-101",
+          "status": "pass"
+        },
+        {
+          "title": "baseline reports the file count, never the file list itself @spec:AC-101",
+          "status": "pass"
+        },
+        {
+          "title": "estimate.lastClosure is null before any adp close, and the declared hours after @spec:AC-101",
           "status": "pass"
         }
       ]

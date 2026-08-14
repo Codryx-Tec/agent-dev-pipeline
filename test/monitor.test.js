@@ -9,8 +9,13 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
+import { rmSync } from 'fs';
 import { createMonitor, startMonitor, renderPage } from '../src/server/server.js';
+import { buildState } from '../src/server/state.js';
 import { loadConfig } from '../src/config.js';
+import { append } from '../src/core/ledger.js';
+import { renderBaselineMd } from '../src/parsers/baseline.js';
+import { buildPrompt } from '../src/core/prompts.js';
 import http from 'http';
 
 // Node's fetch (undici) silently DROPS a hand-set Host header, so a rebinding
@@ -170,6 +175,106 @@ test('renderPage works without a server @spec:AC-034', () => {
   const html = renderPage();
   assert.match(html, /agent-dev-pipeline/);
   assert.ok(html.length > 5000, 'the assembled page should carry its CSS and JS');
+});
+
+// ------------------------------------------------- M5-monitor-core: new fields
+
+function freshBuildStateProject(fn) {
+  const root = fixture();
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'adp-monitor-state-'));
+  try {
+    const config = { ...loadConfig(root), rootDir: root, stateDir };
+    return fn(root, config);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(stateDir, { recursive: true, force: true });
+  }
+}
+
+test('run is null when adp run has never executed here @spec:AC-099', () => {
+  freshBuildStateProject((root, config) => {
+    const state = buildState(config);
+    assert.equal(state.run, null);
+  });
+});
+
+test('run reports a live lane while it is still going, and lanes/tasks from the ledger @spec:AC-099', () => {
+  freshBuildStateProject((root, config) => {
+    append(config, { runId: '2026-01-01T00-00-00', laneId: 'lane-01', type: 'lane-started' });
+    append(config, { runId: '2026-01-01T00-00-00', laneId: 'lane-01', taskId: 'T-001', type: 'task-started' });
+    const state = buildState(config);
+    assert.ok(state.run);
+    assert.equal(state.run.live, true);
+    assert.equal(state.run.lanes.length, 1);
+    assert.equal(state.run.lanes[0].state, 'lane-started');
+    assert.equal(state.run.tasks.length, 1);
+    assert.equal(state.run.tasks[0].state, 'task-started');
+  });
+});
+
+test('run reports live:false once every lane reaches a terminal state @spec:AC-099', () => {
+  freshBuildStateProject((root, config) => {
+    append(config, { runId: '2026-01-01T00-00-00', laneId: 'lane-01', type: 'lane-started' });
+    append(config, { runId: '2026-01-01T00-00-00', laneId: 'lane-01', type: 'lane-merged' });
+    const state = buildState(config);
+    assert.equal(state.run.live, false);
+  });
+});
+
+test('firstRedPrompt matches adp prompt\'s own text for whichever gate is first red @spec:AC-100', () => {
+  freshBuildStateProject((root, config) => {
+    // The shared fixture is not fully clean (its RFC predates
+    // CONTEXT_WITHOUT_NUMBERS, its SCOPE.md predates the real grammar) —
+    // fine for the other tests in this file, which don't care which gate
+    // is red. This one only needs a REAL red gate to exist and its prompt
+    // to match buildPrompt()'s own output for that gate — buildPrompt(null)
+    // returning null for a clean project is already that function's own
+    // contract, not new behavior this test needs to re-prove.
+    const state = buildState(config);
+    const redGate = state.gates.find((g) => g.state === 'red');
+    assert.ok(redGate, 'the shared fixture is expected to have at least one red gate');
+    assert.ok(state.firstRedPrompt);
+    assert.match(state.firstRedPrompt, new RegExp(`Gate ${redGate.id}`));
+    assert.equal(state.firstRedPrompt, buildPrompt(redGate));
+  });
+});
+
+test('baseline reports present:false with a zero count when there is no BASELINE.md @spec:AC-101', () => {
+  freshBuildStateProject((root, config) => {
+    const state = buildState(config);
+    assert.equal(state.baseline.present, false);
+    assert.equal(state.baseline.fileCount, 0);
+  });
+});
+
+test('baseline reports the file count, never the file list itself @spec:AC-101', () => {
+  freshBuildStateProject((root, config) => {
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    writeFileSync(
+      path.join(root, '.spec', 'BASELINE.md'),
+      renderBaselineMd({ commit: 'abc123', generatedAt: new Date().toISOString(), files: ['src/a.js', 'src/b.js'] })
+    );
+    const state = buildState(config);
+    assert.equal(state.baseline.present, true);
+    assert.equal(state.baseline.fileCount, 2);
+    assert.equal(state.baseline.commit, 'abc123');
+    assert.equal(Object.prototype.hasOwnProperty.call(state.baseline, 'files'), false);
+  });
+});
+
+test('estimate.lastClosure is null before any adp close, and the declared hours after @spec:AC-101', () => {
+  freshBuildStateProject((root, config) => {
+    const before = buildState(config);
+    assert.equal(before.estimate, null);
+
+    mkdirSync(path.join(root, '.spec', 'metrics'), { recursive: true });
+    writeFileSync(
+      path.join(root, '.spec', 'metrics', 'closures.jsonl'),
+      JSON.stringify({ closedAt: '2026-01-01T00:00:00.000Z', hours: 42, pf: null, note: null }) + '\n'
+    );
+    const after = buildState(config);
+    assert.equal(after.estimate.lastClosure.hours, 42);
+  });
 });
 
 test('the server exports no write handler at all @spec:AC-035', () => {

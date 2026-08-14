@@ -86,6 +86,67 @@
       }
       list.appendChild(li);
     });
+
+    // The same text `adp prompt` prints — a readonly textarea, click to
+    // select all, so copying it costs one click and no clipboard
+    // permission the page has never asked for.
+    var promptBox = el('findings-prompt');
+    if (s.firstRedPrompt) {
+      promptBox.hidden = false;
+      promptBox.value = s.firstRedPrompt;
+    } else {
+      promptBox.hidden = true;
+    }
+  }
+
+  // ---- live run: lanes and their tasks --------------------------------------
+
+  var TERMINAL_LANE_STATES = { 'lane-done': 1, 'lane-merged': 1, 'lane-failed': 1, 'lane-error': 1, 'merge-conflict': 1 };
+  var FAILED_LANE_STATES = { 'lane-failed': 1, 'lane-error': 1, 'merge-conflict': 1 };
+  var FAILED_TASK_STATES = { 'task-failed': 1, 'task-tests-failed': 1, 'task-empty': 1, 'undeclared-files': 1 };
+
+  function renderRun(s) {
+    var section = el('run-section');
+    if (!s.run) { section.hidden = true; return; }
+    section.hidden = false;
+
+    el('run-status').textContent = s.run.live ? '— in progress' : '— finished';
+
+    var tasksByLane = {};
+    s.run.tasks.forEach(function (t) {
+      var key = t.laneId || '';
+      (tasksByLane[key] = tasksByLane[key] || []).push(t);
+    });
+
+    var list = el('lanes');
+    clear(list);
+    s.run.lanes.forEach(function (l) {
+      var cls = 'lane';
+      if (FAILED_LANE_STATES[l.state]) cls += ' failed';
+      else if (TERMINAL_LANE_STATES[l.state]) cls += ' ok';
+      else cls += ' live';
+      var li = text('li', cls);
+
+      var head = text('div', 'lane-head');
+      head.appendChild(text('span', 'id', l.id));
+      head.appendChild(text('span', 'state', l.state + (l.error ? ' — ' + l.error : '')));
+      li.appendChild(head);
+
+      var tasks = tasksByLane[l.id] || [];
+      if (tasks.length) {
+        var taskRow = text('div', 'lane-tasks');
+        tasks.forEach(function (t) {
+          var pillCls = 'pill' + (FAILED_TASK_STATES[t.state] ? ' task-failed' : t.state === 'task-done' ? ' task-done' : '');
+          var pill = text('span', pillCls);
+          pill.appendChild(text('b', null, t.id));
+          pill.appendChild(document.createTextNode(' ' + t.state));
+          taskRow.appendChild(pill);
+        });
+        li.appendChild(taskRow);
+      }
+
+      list.appendChild(li);
+    });
   }
 
   // ---- overview: decision, backlog, estimate ---------------------------------
@@ -107,7 +168,9 @@
       host.appendChild(backlogFact);
     }
 
-    if (s.estimate) {
+    // `s.estimate` can carry only `lastClosure` when no `adp estimate` has
+    // run yet but `adp close` has — state.js's own null-vs-partial rule.
+    if (s.estimate && s.estimate.hours) {
       var e = s.estimate;
       var estFact = text('span', 'fact');
       estFact.appendChild(text('b', null, e.pf + ' PF'));
@@ -116,6 +179,23 @@
         (e.calibration ? ' · ' + e.calibration : '')
       ));
       host.appendChild(estFact);
+    }
+
+    // Human hours only — wall-clock stays off this page. "Two clocks never
+    // mix" is the same rule that keeps them apart in hours-per-fp.json.
+    if (s.estimate && s.estimate.lastClosure) {
+      var closureFact = text('span', 'fact');
+      closureFact.appendChild(document.createTextNode('actual '));
+      closureFact.appendChild(text('b', null, s.estimate.lastClosure.hours + 'h'));
+      host.appendChild(closureFact);
+    }
+
+    // M4-readonly-core: old debt, visible, not another wall to scroll past.
+    if (s.baseline && s.baseline.present) {
+      var baselineFact = text('span', 'fact');
+      baselineFact.appendChild(document.createTextNode('baseline '));
+      baselineFact.appendChild(text('b', null, s.baseline.fileCount));
+      host.appendChild(baselineFact);
     }
   }
 
@@ -233,6 +313,7 @@
     renderOverview(s);
     renderGates(s.gates);
     renderFindings(s);
+    renderRun(s);
     renderFeatures(s.features);
     renderErrors(s.errors);
     el('stamp').textContent =
