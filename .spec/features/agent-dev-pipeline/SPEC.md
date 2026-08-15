@@ -1460,6 +1460,51 @@ decisions that never needed it.
   `auditProject` and the CLI's own gate evaluation) agree, since they
   compute from the same function
 
+### US-039 — Any AI coding agent can use this tool, and a project can write its own documents in its own language
+
+As someone adopting this tool with a coding agent this project has never
+heard of, or a team that writes its specs in a language other than English,
+I want a config-level way to point the installer at the right skills
+directory and to declare the language my documents are written in, so that
+neither choice requires a code change here — the same posture already
+extended to a harness with no known headless-invocation flags.
+
+#### AC-129 — `agent.skillsDir` installs skills for any agent name, known or not; six more agents are known by default
+
+- **Given** a project whose `adp.config.json` declares `agent.skillsDir`
+  for an agent name absent from the built-in list; separately one that
+  requests a known name (`windsurf`, `gemini`, `copilot`, `cline`,
+  `opencode`, `kilocode`) with no override; separately one with only a bare
+  `.github/` directory (workflows, issue templates — no skills installed);
+  separately one with `.github/skills/` already present; separately one
+  with only `.agents/` present (the path `codex` and `antigravity` share)
+- **When** `adp init`/`adp upgrade` run
+- **Then** the first installs at the declared `skillsDir`, overriding even
+  a known agent's own default path, and does so live from the current
+  config on every run rather than a value cached in the lockfile; the
+  second installs at that agent's documented path; the third is never
+  auto-detected as `copilot` — a bare `.github/` exists in most repositories
+  for unrelated reasons; the fourth is; the fifth is reported ambiguous
+  between `codex` and `antigravity` rather than silently mislabeled — same
+  physical file placement either way, only the report's honesty changes. An
+  agent name with neither a built-in entry nor a configured `skillsDir` is
+  still refused, unchanged.
+
+#### AC-130 — `SCOPE.md` declares a documentation language, decoupled from the engine's own fixed vocabulary
+
+- **Given** a `SCOPE.md` with no `**Docs language:**` line at all (every
+  document written before this field existed); separately one declaring
+  `**Docs language:** Portuguese (Brazil)` or any other free-text value
+- **When** the project loads
+- **Then** the first reads `scope.docsLanguage` as `'English'` — identical
+  to this tool's behavior before the field existed; the second reads back
+  exactly what was declared, unvalidated against any fixed list (a language
+  name is never a value the engine compares or re-emits, unlike the five
+  token families D-016 moved to English-only). `AGENTS.md`'s own
+  instructions now point an agent at this field for prose inside generated
+  documents, while keeping finding codes, task statuses and field labels
+  English, unconditionally, exactly as D-016 left them.
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -2036,5 +2081,13 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
 - Notes: Closes §2.4 of `.spec/BACKLOG.md`'s largest item, Part B of two. Opt-in, not retroactive, the same posture `OPTION_DO_NOTHING_MISSING` already takes toward this repository's own 16 pre-existing decisions and `.exemplo/`'s 2: a decision reaches the stricter checks only by declaring `**Decision criteria:**` or `**Options considered**` itself — fabricating a scoring matrix onto an already-settled decision after the fact would be the antipattern this family exists to catch, not compliance with it. A score's `Total` column is read when the matrix names one; when it doesn't, the sum of an option's own criteria columns stands in, so `RECOMMENDATION_AGAINST_SCORE` still has a number to compare against either way. `OPTION_BEYOND_TEAM` and the `new-tech` auto-light share one function (`ceremony.js`'s `computeCeremonySignals`) called from both `auditProject` and the CLI's own separate `projectCeremony` call (used for gate applicability outside a full audit run) — two independently written computations would have let a gate's "due or not" quietly disagree with the finding that drove it, caught by testing the CLI path deliberately rather than assuming the shared import was enough.
 
   Deliberately not built, matching PRD-003c-history-core's own already-recorded deferral rather than opening a new one: `capabilityGapMultiplier` (`ceremony.js`, default `1.5`) is a flat, informational guess, not a measured figure — no closure yet records which capabilities a feature actually exercised, so there is nothing yet to average instead of assume.
+
+## T-064 — Six more agent harnesses, a config escape hatch for any other one, and a declared documentation language [done]
+
+- Refs: AC-129, AC-130
+- Files: src/core/paths.js, src/core/install-map.js, src/core/init.js, src/core/upgrade.js, src/cli.js, src/core/project.js, payload/templates/SCOPE.md, payload/AGENTS.md, payload/claude/skills/adp/SKILL.md, src/parsers/spec.js, README.md, README.pt-BR.md, INSTALL.md, test/init.test.js, test/upgrade.test.js, test/report.test.js, test/parsers.test.js
+- Notes: Ideas borrowed (not copied — original implementation) from a comparative read of openspec.dev and open-gsd/gsd-core, then checked against what this repository already had. `windsurf`/`gemini`/`copilot`/`cline`/`opencode`/`kilocode` joined `AGENT_SKILL_DIRS`, each verified fresh against that tool's own current docs — one candidate from OpenSpec's own compatibility table (`.agent/skills` for Antigravity) turned out to be stale; this repo's existing `.agents/skills` entry was already correct and untouched. `agent.skillsDir` mirrors the escape hatch `agent.command`/`args` already gave headless invocation, extended to skill installation — read live from config in both `initProject` and `planUpgrade`, never cached into the lockfile, so editing `adp.config.json` takes effect on the very next `adp upgrade` with no migration.
+
+  The `**Docs language:**` field closes a real gap `adp init` was quietly imposing: `AGENTS.md` mandated all generated prose in English, in every installed project, regardless of the team's own working language — well past what D-016 ever decided (that RFC fixed the engine's own token vocabulary only). The new field is declarative, free text, defaulting to English so no project already using this tool changes behavior. Reviewing D-016 for this pass also surfaced a real, if minor, inconsistency: `spec.js`'s `SECTIONS`/`CLAUSES` still silently accept Portuguese section headers and Given/When/Then markers, which D-016's own text never actually covered (its five token families are all values the engine compares or re-emits; a heading or a clause marker is a landmark the parser searches for, never one). Kept as-is rather than cut — breaking a Portuguese document mid-flight was never on the table for this pass — but formalized: the stale pre-D-016 comment is replaced with the real reasoning, and a regression test locks the behavior in on purpose.
 
 ---

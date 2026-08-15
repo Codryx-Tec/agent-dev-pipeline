@@ -241,9 +241,13 @@ migração — a ferramenta nunca assume que escreveu o que está no disco.
 Flags reduzem isso: `--minimal` instala só `.spec/` e a skill própria da
 ferramenta; `--no-roles`, `--no-docs`, `--no-memory`, `--no-skills`,
 `--no-agents-md` pulam uma parte cada. `--agent
-claude|cursor|codex|antigravity|none` escolhe o harness; do contrário ele é
-detectado a partir dos diretórios já presentes, e um projeto ambíguo é
-**avisado**, não decidido no palpite. `--brownfield` escaneia um código já
+claude|cursor|codex|antigravity|windsurf|gemini|copilot|cline|opencode|kilocode|none`
+escolhe o harness; do contrário ele é detectado a partir dos diretórios já
+presentes, e um projeto ambíguo é **avisado**, não decidido no palpite.
+Qualquer outro harness também funciona — defina `agent.skillsDir` no
+`adp.config.json` apontando de onde ele lê skills, a mesma saída de escape
+que `agent.command`/`args` já dão a um harness sem invocação headless
+embutida. `--brownfield` escaneia um código já
 existente atrás de arquivos com cara de documentação e escreve
 `.spec/BASELINE.md` — somente leitura, nada é movido ou reescrito; veja
 [Adotando um projeto existente](#adotando-um-projeto-existente) abaixo.
@@ -354,7 +358,7 @@ bin/adp.js           o comando
   ui/                  index.html · app.css · app.js, embutidos na resposta
 scripts/             build-manifest.js — o manifesto SHA-256 do payload
 .github/workflows/   ci, e publish com provenance via OIDC
-test/                374 testes, node:test, sem framework
+test/                423 testes, node:test, sem framework
 payload/             O QUE É INSTALADO — templates, AGENTS.md, skills, agents, hooks, docs
 .exemplo/            um projeto pronto, verde e executável para ler e quebrar
 .exemplo-legado/     um código pré-existente pequeno, adotado com --brownfield
@@ -525,7 +529,7 @@ Construído e testado: o motor, os sete gates, a constituição executável, o
 instalador e seu wrapper `./adp`, a matriz de cerimônia, MVP/backlog,
 estimativa por Ponto de Função e o fechamento do laço com horas reais,
 execução em background em worktrees isoladas, adoção brownfield, adiamento
-declarado, e o monitor somente leitura. **374 testes**, cada um carregando
+declarado, e o monitor somente leitura. **423 testes**, cada um carregando
 sua própria anotação `@spec:AC-xxx` ou `@principle:P-xxx` — a ferramenta se
 prova com seu próprio mecanismo.
 

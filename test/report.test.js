@@ -23,11 +23,11 @@ function withProject(fileset, fn) {
   }
 }
 
-const SCOPE_OK = (decision) => `# Project Scope
+const SCOPE_OK = (decision, docsLanguage) => `# Project Scope
 
 **Scope status:** Approved
 **Scope owner:** test
-${decision ? `**Decision:** ${decision}\n` : ''}
+${decision ? `**Decision:** ${decision}\n` : ''}${docsLanguage ? `**Docs language:** ${docsLanguage}\n` : ''}
 ## 3. Features
 
 - **MVP (prioritized):**
@@ -42,8 +42,8 @@ const PRD_OK = `# PRD
 Prose only.
 `;
 
-const files = (decision) => ({
-  '.spec/SCOPE.md': SCOPE_OK(decision),
+const files = (decision, docsLanguage) => ({
+  '.spec/SCOPE.md': SCOPE_OK(decision, docsLanguage),
   '.spec/features/f/PRD.md': PRD_OK,
 });
 
@@ -67,6 +67,20 @@ test('an unrecognized decision value falls back to pending, never throws @spec:A
   withProject(files('maybe later'), (root) => {
     const project = loadProject(loadConfig(root));
     assert.equal(project.scope.decision, 'pending');
+  });
+});
+
+test('an absent Docs language line defaults to English @spec:AC-130', () => {
+  withProject(files(null), (root) => {
+    const project = loadProject(loadConfig(root));
+    assert.equal(project.scope.docsLanguage, 'English');
+  });
+});
+
+test('a declared Docs language is read back as free text, no fixed vocabulary @spec:AC-130', () => {
+  withProject(files(null, 'Portuguese (Brazil)'), (root) => {
+    const project = loadProject(loadConfig(root));
+    assert.equal(project.scope.docsLanguage, 'Portuguese (Brazil)');
   });
 });
 

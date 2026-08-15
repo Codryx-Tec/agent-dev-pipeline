@@ -161,6 +161,26 @@ test('a file new in the current manifest but absent from the lockfile is created
   });
 });
 
+test('agent.skillsDir is read live from config, not cached in the lockfile — changing it moves the skill on the next upgrade @spec:AC-129', () => {
+  fresh((root) => {
+    const payloadDir = fixturePayload(root);
+    initWithFixture(root, payloadDir); // lockfile still records agent: 'claude', .claude/skills/adp/SKILL.md
+    writeFileSync(path.join(root, 'adp.config.json'), JSON.stringify({ agent: { skillsDir: '.custom/path' } }));
+
+    const config = loadConfig(root);
+    assert.equal(config.agent.skillsDir, '.custom/path');
+    const plan = planUpgrade(root, config, { payloadDir });
+    assert.deepEqual(plan.classification.new.map((f) => f.projectRel), ['.custom/path/adp/SKILL.md']);
+    assert.deepEqual(
+      plan.classification.removed.map((f) => f.projectRel),
+      ['.claude/skills/adp/SKILL.md']
+    );
+
+    const applied = applyUpgrade(root, config, plan, { payloadDir });
+    assert.ok(existsSync(path.join(root, '.custom/path/adp/SKILL.md')));
+  });
+});
+
 test('a file in the lockfile but gone from the current manifest is reported as removed and never deleted @spec:AC-055', () => {
   fresh((root) => {
     const payloadDir = fixturePayload(root);

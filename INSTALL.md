@@ -112,8 +112,12 @@ upgrading needs no migration step of its own: the tool never assumes it wrote
 what is on disk.
 
 The agent is detected from the directories already present — `.claude/`,
-`.cursor/`, `.agents/`. If more than one exists, it says so instead of guessing
-silently. Override with `--agent claude|codex|cursor|antigravity|none`.
+`.cursor/`, `.agents/`, `.windsurf/`, `.gemini/`, `.github/skills/`, `.cline/`,
+`.opencode/`, `.kilocode/`. If more than one exists, it says so instead of
+guessing silently. Override with `--agent
+claude|codex|cursor|antigravity|windsurf|gemini|copilot|cline|opencode|kilocode|none`
+— or any other name at all, once `agent.skillsDir` names where to install it
+in `adp.config.json`.
 
 Adopting a codebase that already exists? Add `--brownfield`: it scans for
 doc-shaped files and writes `.spec/BASELINE.md`, read-only — nothing is
@@ -204,7 +208,7 @@ Not an install route; this is how you run the source you are editing.
 ```sh
 git clone https://github.com/Codryx-Tec/agent-dev-pipeline
 cd agent-dev-pipeline
-npm test                       # 374 tests, no dependencies to fetch first
+npm test                       # 423 tests, no dependencies to fetch first
 node bin/adp.js status         # the tool auditing itself
 node scripts/build-manifest.js # after changing anything under payload/
 ```

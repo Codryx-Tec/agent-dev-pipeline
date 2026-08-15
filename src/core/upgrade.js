@@ -68,7 +68,10 @@ export function planUpgrade(rootDir, config, { payloadDir = PAYLOAD_DIR } = {}) 
   const agent = lockfile ? lockfile.agent : detectAgent(rootDir).agent;
   const flags = lockfile ? { ...EMPTY_FLAGS, ...lockfile.options } : { ...EMPTY_FLAGS };
 
-  const currentPlan = buildInstallPlan(manifest.files, { agent, ...flags });
+  // skillsDir is read live from the current config, never from the
+  // lockfile — same as agent.command/args elsewhere — so editing
+  // adp.config.json takes effect on the very next upgrade.
+  const currentPlan = buildInstallPlan(manifest.files, { agent, ...flags, skillsDir: config.agent?.skillsDir });
   const currentProjectRels = new Set(currentPlan.map((e) => e.projectRel));
 
   const classification = { intact: [], edited: [], new: [], removed: [], deleted: [] };

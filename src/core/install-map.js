@@ -36,7 +36,10 @@ export function mapPayloadPath(payloadRel, opts = {}) {
 
   if (payloadRel.startsWith('claude/skills/')) {
     if (!opts.agent || opts.agent === 'none') return null;
-    const skillsRoot = AGENT_SKILL_DIRS[opts.agent];
+    // An explicit override always wins, for any agent name — known or not.
+    // Mirrors agent.js's resolveAgentCommand, which lets config.agent.command
+    // bypass AGENT_COMMANDS the same way.
+    const skillsRoot = opts.skillsDir || AGENT_SKILL_DIRS[opts.agent];
     if (!skillsRoot) return null;
     const rest = strip('claude/skills/', payloadRel);
     // --minimal / --no-skills install only the engine's own contract: the
@@ -70,7 +73,7 @@ export function mapPayloadPath(payloadRel, opts = {}) {
  * install would place, and where.
  *
  * @param {Record<string,string>} manifestFiles - manifest.files, payloadRel -> hash
- * @param {object} opts - { agent, minimal, noSkills, noRoles, noDocs, noMemory, noAgents }
+ * @param {object} opts - { agent, skillsDir, minimal, noSkills, noRoles, noDocs, noMemory, noAgents }
  * @returns {{payloadRel: string, projectRel: string}[]}
  */
 export function buildInstallPlan(manifestFiles, opts = {}) {

@@ -25,6 +25,9 @@ const RE_SCOPE_STATUS = /^\*\*Scope status:\*\*\s*(.+)$/m;
 // it, nothing enforces it. "o motor não veta o projeto."
 const RE_SCOPE_DECISION = /^\*\*Decision:\*\*\s*(.+)$/m;
 const DECISIONS = ['pending', 'go', 'no-go'];
+// Declared documentation language (free text) — read by AGENTS.md/SKILL.md's
+// own instructions, not enforced here. See scope.docsLanguage below.
+const RE_SCOPE_DOCS_LANGUAGE = /^\*\*Docs language:\*\*\s*(.+)$/m;
 // The MVP checklist (M2c-core, SCOPE-0.6.0.md §2.2): a line only counts once
 // it names a real feature slug as its first token after the checkbox — a
 // prose description ("`init` command that scaffolds...") starts with a
@@ -162,6 +165,13 @@ export function loadProject(config) {
       const raw = fold(scopeRaw?.match(RE_SCOPE_DECISION)?.[1] ?? '');
       return DECISIONS.includes(raw) ? raw : 'pending';
     })(),
+    // The declared language for prose in generated documents — declarative
+    // only, like `decision` above. Free text, not a fixed enum: a language
+    // name isn't a token the engine compares or re-emits, unlike the five
+    // families D-016 moved to English-only. Absent line reads as 'English',
+    // which is what every document written before this field existed
+    // already assumes.
+    docsLanguage: (scopeRaw?.match(RE_SCOPE_DOCS_LANGUAGE)?.[1] ?? '').trim() || 'English',
   };
 
   // ---- features ----

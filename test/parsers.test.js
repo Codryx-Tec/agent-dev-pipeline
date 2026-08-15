@@ -143,6 +143,25 @@ test('both English and Portuguese clause keywords are accepted @spec:AC-006', ()
   assert.equal(parseSpec(doc, 'SPEC.md').acs[0].complete, true);
 });
 
+// D-016 never covered these two: a section heading is a landmark the parser
+// searches for, never a value re-emitted or compared against a fixed list
+// (unlike statuses/codes) — locked in so this isn't "fixed" by accident.
+test('Portuguese section headers for assumptions/questions are accepted @spec:AC-008', () => {
+  const doc = `## Suposições
+
+- **ASM-001** — a suposição *(status: confirmed)*
+
+## Perguntas em aberto
+
+- **Q-001** — a pergunta *(status: answered, Door: two-way)*
+`;
+  const spec = parseSpec(doc, 'SPEC.md');
+  assert.equal(spec.hasAssumptionsSection, true);
+  assert.equal(spec.hasQuestionsSection, true);
+  assert.equal(spec.assumptions[0].id, 'ASM-001');
+  assert.equal(spec.questions[0].id, 'Q-001');
+});
+
 test('a criterion before the first story is flagged as orphan @spec:AC-006', () => {
   const doc = `#### AC-001 — loose
 

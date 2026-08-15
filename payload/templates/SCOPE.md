@@ -4,6 +4,7 @@
 **Gathering date:** {{DATE}}
 **Scope owner:** {{OWNER}}
 **Decision:** pending
+**Docs language:** English
 
 > Gate G0 stays red until this line reads `**Scope status:** Approved`.
 > That is deliberate: development must not start on a scope nobody signed.
@@ -13,6 +14,13 @@
 > gate checks it, nothing refuses to run because it says `no-go`. If the
 > answer is "use another tool," the documents up to here are still yours —
 > that is the point of writing them first.
+>
+> `**Docs language:**` names the language for PROSE inside generated
+> documents (this file, PRD/RFC/SPEC/DESIGN — story text, rationale,
+> context). Declarative only, like `**Decision:**`: nothing gates on it, and
+> it never touches the engine's own vocabulary (finding codes, statuses,
+> field labels), which stays English, one spelling, unconditionally — see
+> `AGENTS.md`.
 
 ---
 

@@ -227,9 +227,13 @@ needs no migration step — the tool never assumes it wrote what is on disk.
 
 Flags trim it: `--minimal` installs only `.spec/` and the engine's own skill;
 `--no-roles`, `--no-docs`, `--no-memory`, `--no-skills`, `--no-agents-md` each
-skip one part. `--agent claude|cursor|codex|antigravity|none` picks the harness;
-otherwise it is detected from the directories already present, and an ambiguous
-project is **told**, not gambled on. `--brownfield` scans an existing codebase
+skip one part. `--agent
+claude|cursor|codex|antigravity|windsurf|gemini|copilot|cline|opencode|kilocode|none`
+picks the harness; otherwise it is detected from the directories already
+present, and an ambiguous project is **told**, not gambled on. Any other
+harness works too — set `agent.skillsDir` in `adp.config.json` to where it
+reads skills from, the same escape hatch `agent.command`/`args` already give
+a harness with no built-in headless invocation. `--brownfield` scans an existing codebase
 for doc-shaped files and writes `.spec/BASELINE.md` — read-only, nothing moved
 or rewritten; see [Adopting an existing project](#adopting-an-existing-project)
 below.
@@ -336,7 +340,7 @@ bin/adp.js           the command
   ui/                  index.html · app.css · app.js, inlined at request time
 scripts/             build-manifest.js — the payload's SHA-256 manifest
 .github/workflows/   ci, and publish with provenance from OIDC
-test/                374 tests, node:test, no framework
+test/                423 tests, node:test, no framework
 payload/             WHAT GETS INSTALLED — templates, AGENTS.md, skills, agents, hooks, docs
 .exemplo/            a finished, green, runnable project to read and break
 .exemplo-legado/     a small pre-existing codebase, adopted with --brownfield
@@ -497,7 +501,7 @@ Built and tested: the engine, the seven gates, the executable constitution,
 the installer and its `./adp` wrapper, the ceremony matrix, MVP/backlog,
 Function Point estimation and closing the loop with real hours, background
 execution in isolated worktrees, brownfield adoption, declared deferral, and
-the read-only monitor. **374 tests**, each carrying its own `@spec:AC-xxx` or
+the read-only monitor. **423 tests**, each carrying its own `@spec:AC-xxx` or
 `@principle:P-xxx` annotation — the tool proves itself with its own
 mechanism.
 

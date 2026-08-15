@@ -152,7 +152,8 @@ usage: adp <command> [options]
   version | help
 
 options:
-  --agent <name>  ${Object.keys(AGENT_SKILL_DIRS).join(' | ')} | none  (init; auto-detected otherwise)
+  --agent <name>  ${Object.keys(AGENT_SKILL_DIRS).join(' | ')} | none  (init; auto-detected otherwise) —
+                  any other name works too if agent.skillsDir is set in adp.config.json
   --project <s>   project name written into SCOPE.md (init)
   --owner <s>     scope owner written into SCOPE.md (init)
   --minimal       install only .spec/ and the adp skill (init)

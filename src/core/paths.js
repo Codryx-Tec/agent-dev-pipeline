@@ -19,6 +19,12 @@ export const AGENT_SKILL_DIRS = {
   codex: '.agents/skills',
   antigravity: '.agents/skills',
   cursor: '.cursor/skills',
+  windsurf: '.windsurf/skills',
+  gemini: '.gemini/skills',
+  copilot: '.github/skills',
+  cline: '.cline/skills',
+  opencode: '.opencode/skills',
+  kilocode: '.kilocode/skills',
 };
 
 // Project-relative, inside config.specDir. Shared by init.js (writer) and

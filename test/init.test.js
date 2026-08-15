@@ -139,6 +139,67 @@ test('a non-Claude agent gets the skills but not the role agents @spec:AC-001', 
   });
 });
 
+test('every declared agent installs its skills at its own documented path @spec:AC-129', () => {
+  for (const agent of Object.keys(AGENT_SKILL_DIRS)) {
+    fresh((root) => {
+      initProject(root, { agent });
+      assert.ok(
+        existsSync(path.join(root, AGENT_SKILL_DIRS[agent], 'adp', 'SKILL.md')),
+        `${agent} must install at ${AGENT_SKILL_DIRS[agent]}`
+      );
+    });
+  }
+});
+
+test('a bare .github/ directory never auto-detects as copilot — only .github/skills/ does @spec:AC-129', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
+    const report = initProject(root);
+    assert.notEqual(report.agent, 'copilot', '.github/ alone exists in most repos for unrelated reasons');
+    assert.equal(report.agent, 'claude', 'no known agent directory present — default applies');
+  });
+});
+
+test('.github/skills/ does auto-detect as copilot @spec:AC-129', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, '.github', 'skills'), { recursive: true });
+    const report = initProject(root);
+    assert.equal(report.agent, 'copilot');
+  });
+});
+
+test('codex and antigravity share one physical path and are reported as ambiguous between them @spec:AC-129', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, '.agents'), { recursive: true });
+    const report = initProject(root);
+    assert.match(report.notes.join(' '), /more than one agent directory/);
+    assert.ok(['codex', 'antigravity'].includes(report.agent));
+  });
+});
+
+test('agent.skillsDir installs an unknown agent name at the declared path @spec:AC-129', () => {
+  fresh((root) => {
+    const config = { agent: { skillsDir: '.mytool/skills' } };
+    const report = initProject(root, { agent: 'mytool' }, config);
+    assert.equal(report.agent, 'mytool');
+    assert.ok(existsSync(path.join(root, '.mytool/skills/adp/SKILL.md')));
+  });
+});
+
+test('agent.skillsDir overrides even a known agent name @spec:AC-129', () => {
+  fresh((root) => {
+    const config = { agent: { skillsDir: '.custom/path' } };
+    initProject(root, { agent: 'cursor' }, config);
+    assert.ok(existsSync(path.join(root, '.custom/path/adp/SKILL.md')));
+    assert.equal(existsSync(path.join(root, '.cursor/skills/adp/SKILL.md')), false);
+  });
+});
+
+test('an unknown agent name with no skillsDir configured is still refused @spec:AC-129', () => {
+  assert.throws(() => detectAgent('/tmp', 'emacs', {}), /unknown agent/);
+  assert.throws(() => detectAgent('/tmp', 'emacs', { agent: {} }), /unknown agent/);
+});
+
 test('a stale singular .claude/skill directory is called out @spec:AC-002', () => {
   fresh((root) => {
     mkdirSync(path.join(root, '.claude', 'skill', 'legacy'), { recursive: true });

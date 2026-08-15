@@ -1,10 +1,16 @@
 # AGENTS.md — Rules for AI Agents
 
-> Read before any task. All `.md` output in English. **Never translate engine
-> tokens** — finding codes (`AC_WITHOUT_TEST`, `AC_WITHOUT_PROOF`,
-> `TASK_DONE_WITHOUT_PROOF`, `PRINCIPLE_WITHOUT_VERIFICATION`) and task statuses
-> (`[pending]`, `[in-progress]`, `[in-test]`, `[done]`) are the
-> machine's vocabulary, not prose. Talk to the human in their own language.
+> Read before any task. **Never translate engine tokens** — finding codes
+> (`AC_WITHOUT_TEST`, `AC_WITHOUT_PROOF`, `TASK_DONE_WITHOUT_PROOF`,
+> `PRINCIPLE_WITHOUT_VERIFICATION`) and task statuses (`[pending]`,
+> `[in-progress]`, `[in-test]`, `[done]`) are the machine's vocabulary, not
+> prose — one spelling, in English, on every machine, forever. That rule is
+> unconditional and never changes.
+>
+> Prose INSIDE generated documents (SCOPE/PRD/RFC/SPEC/DESIGN — story text,
+> rationale, context) is different: write it in the language `SCOPE.md`
+> declares under `**Docs language:**`, defaulting to English when that line
+> is absent. Talk to the human in their own language regardless.
 
 ## Core loop
 

@@ -19,8 +19,17 @@ import { lineOf, blocksBetween, stripNonGrammar, fold, splitList } from '../util
 
 // ---- stories / acceptance criteria (formerly prd.js) ----
 
-// Both languages are accepted: Projeto_Agent's documents already mix them, and
-// rejecting one would make the migration a rewrite.
+// D-016 (RFC-001, "The engine vocabulary is English, in one spelling") moved
+// five token families to English-only: finding codes, task statuses,
+// document statuses, assumption/question statuses, and field labels — every
+// one of those is a VALUE the engine re-emits, greps for, or compares
+// against a fixed list (see STATUS_INVALID below), so a second spelling
+// would mean two things to test forever. Given/When/Then markers were never
+// one of those five families: a clause label is a structural LANDMARK the
+// parser searches for to locate a body, never a value compared against a
+// fixed list or re-emitted anywhere — Portuguese and English coexist here
+// without the cost D-016 was written to avoid, and rejecting one would
+// break any document already written in it.
 const CLAUSES = {
   given: /^\s*[-*]\s*\*\*(Given|Dado)\*\*/m,
   when: /^\s*[-*]\s*\*\*(When|Quando)\*\*/m,
@@ -61,6 +70,9 @@ const RE_DOOR_IN = /door:\s*(one-way|two-way)/i;
 // table rows: | ASM-001 | text | ... |   or   | 1 | text | ... |
 const RE_TABLE_ROW = /^\|\s*((?:ASM|Q)-\d+|\d+)\s*\|([^|]*)\|(.*)$/gm;
 
+// Same reasoning as CLAUSES above: a section heading is a landmark the
+// parser searches for, never a value the engine compares or re-emits, so
+// D-016's English-only cut never applied to it either.
 const SECTIONS = {
   assumptions: /^##\s+(?:Assumptions|Suposi[çc][õo]es|Premissas)\s*$/m,
   questions: /^##\s+(?:Open questions|Open Questions|Perguntas em aberto|Quest[õo]es em aberto)\s*$/m,

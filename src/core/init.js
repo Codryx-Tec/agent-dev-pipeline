@@ -104,22 +104,47 @@ function writeIfMissing(fullPath, content, report, opts = {}) {
   return true;
 }
 
+// Every probe is the agent's own dedicated first path segment, EXCEPT
+// copilot: `.github/` exists in most GitHub-hosted repositories for reasons
+// that have nothing to do with Copilot (workflows, issue templates), so
+// probing that alone would false-positive constantly. `.github/skills`
+// specifically only exists once skills were actually installed there.
+const AUTO_DETECT_PROBES = [
+  { agent: 'claude', probe: '.claude' },
+  { agent: 'cursor', probe: '.cursor' },
+  { agent: 'codex', probe: '.agents' },
+  { agent: 'antigravity', probe: '.agents' },
+  { agent: 'windsurf', probe: '.windsurf' },
+  { agent: 'gemini', probe: '.gemini' },
+  { agent: 'cline', probe: '.cline' },
+  { agent: 'opencode', probe: '.opencode' },
+  { agent: 'kilocode', probe: '.kilocode' },
+  { agent: 'copilot', probe: AGENT_SKILL_DIRS.copilot },
+];
+
 // Which agent this project uses, guessed from what is already on disk. Guessing
 // wrong would install the skills where nothing reads them, so an ambiguous
 // project gets told rather than gambled on.
-export function detectAgent(rootDir, requested) {
+//
+// `config` is optional (every existing call site passes two args) and is
+// only consulted for one thing: an agent name with no entry in
+// AGENT_SKILL_DIRS is refused UNLESS `config.agent.skillsDir` names where to
+// install it — the same "an explicit override is consent, a guess is not"
+// posture agent.js's resolveAgentCommand already takes toward an unknown
+// harness's invocation.
+export function detectAgent(rootDir, requested, config) {
   if (requested) {
     if (requested === 'none') return { agent: 'none', ambiguous: false };
     if (!AGENT_SKILL_DIRS[requested]) {
+      if (config?.agent?.skillsDir) return { agent: requested, ambiguous: false };
       throw new Error(
-        `unknown agent "${requested}" — use one of: ${Object.keys(AGENT_SKILL_DIRS).join(', ')}, none`
+        `unknown agent "${requested}" — use one of: ${Object.keys(AGENT_SKILL_DIRS).join(', ')}, none, ` +
+          `or set agent.skillsDir in your config to install skills for any other harness`
       );
     }
     return { agent: requested, ambiguous: false };
   }
-  const present = ['claude', 'cursor', 'codex'].filter((a) =>
-    existsSync(path.join(rootDir, AGENT_SKILL_DIRS[a].split('/')[0]))
-  );
+  const present = AUTO_DETECT_PROBES.filter((c) => existsSync(path.join(rootDir, c.probe))).map((c) => c.agent);
   if (present.length === 1) return { agent: present[0], ambiguous: false };
   if (present.length > 1) return { agent: present[0], ambiguous: true, candidates: present };
   return { agent: 'claude', ambiguous: false, defaulted: true };
@@ -274,9 +299,13 @@ export function initProject(rootDir, opts = {}, config = {}) {
   // ---- everything else the payload ships: one plan, one loop ----
   // detectAgent() runs before the plan because the skills subtree's
   // destination depends on it.
-  const detected = detectAgent(rootDir, opts.agent);
+  const detected = detectAgent(rootDir, opts.agent, config);
   const { files: manifestFiles, verified } = payloadFileList(PAYLOAD_DIR);
-  const plan = buildInstallPlan(manifestFiles, { ...installOpts, agent: detected.agent });
+  const plan = buildInstallPlan(manifestFiles, {
+    ...installOpts,
+    agent: detected.agent,
+    skillsDir: config.agent?.skillsDir,
+  });
   for (const { payloadRel, projectRel } of plan) {
     const content = readFileSync(path.join(PAYLOAD_DIR, payloadRel));
     const mode = payloadRel.endsWith('.sh') ? 0o755 : undefined;

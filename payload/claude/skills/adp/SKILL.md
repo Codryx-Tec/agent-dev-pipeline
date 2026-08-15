@@ -55,8 +55,11 @@ Say "the acceptance criterion AC-003 (late delivery warning) still has no test",
 never "AC-003 is missing its @spec tag". Never require the person to know the
 alphabet soup in order to understand what you told them.
 
-Answer in whatever language the person is writing to you in. Files stay in the
-language the repository mandates — check `AGENTS.md`.
+Answer in whatever language the person is writing to you in. Prose INSIDE
+generated documents follows `SCOPE.md`'s `**Docs language:**` field (defaults
+to English if absent) — see `AGENTS.md`. The engine's own tokens (statuses,
+finding codes, field labels) are English always, unconditionally, regardless
+of that field.
 
 ## The engine
 
