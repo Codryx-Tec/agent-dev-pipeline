@@ -147,6 +147,25 @@ user content — what it cannot place automatically becomes a finding
   `OPTION_BEYOND_TEAM` (an option's `Requires:` tag naming a capability
   `adp profile --capabilities <list>` never declared — also auto-lights the
   `new-tech` ceremony signal for that feature).
+- **Six more agent harnesses, and a config escape hatch for any other one.**
+  `--agent` now also knows `windsurf`/`gemini`/`copilot`/`cline`/`opencode`/
+  `kilocode`, each verified against that tool's own current docs. Copilot's
+  auto-detect checks its full `.github/skills` path rather than the bare
+  `.github/` almost every GitHub repo already has for unrelated reasons.
+  `agent.skillsDir` in `adp.config.json` installs skills for any harness at
+  all, known or not — the same escape hatch `agent.command`/`args` already
+  gave headless invocation.
+- **A declared, non-enforced documentation language.** `SCOPE.md`'s new
+  `**Docs language:**` field lets a team write PRD/RFC/SPEC/DESIGN prose in
+  its own language, decoupled from the engine's own fixed token vocabulary
+  (finding codes, statuses, field labels), which stays English, one
+  spelling, unconditionally. Defaults to English when absent — no existing
+  project changes behavior.
+- **`adp init` asks which agent to use, when it genuinely can't tell.**
+  Nothing found, or more than one candidate, in a real terminal: a numbered
+  list, with whatever was detected marked and pre-selected. A script, CI
+  run, or `--yes` gets exactly the same silent default as before — this
+  never blocks an unattended install.
 
 ### Fixed
 
