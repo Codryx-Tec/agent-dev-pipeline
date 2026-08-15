@@ -14,15 +14,6 @@
 
 ## Technical
 
-- `adp audit` reports `OPTION_DO_NOTHING_MISSING` (warning) 16 times against
-  this repo's own `.spec/rfc/RFC-001-agent-dev-pipeline.md` — none of its
-  16 decisions names a "do nothing" alternative, because they all predate
-  the check (M3b-remainder). Known, accepted debt, not retrofitted:
-  writing a genuine "do nothing" alternative for 16 already-settled,
-  mostly-structural engineering decisions after the fact would be
-  ceremony for its own sake, exactly what this whole antipattern family
-  exists to catch elsewhere. Revisit case by case if any of these
-  decisions are ever reopened, rather than as a batch.
 - Module-comment scanning beyond JS/TS. `scanModuleComments()` covers this
   tool's own ecosystem (a `/** */` block or a leading `//` run, past a
   length floor); other languages' own conventions (Python docstrings, Go

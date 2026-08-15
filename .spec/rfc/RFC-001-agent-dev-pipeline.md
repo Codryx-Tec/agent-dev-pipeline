@@ -50,6 +50,8 @@ Two upstream sources shape most of these decisions and are named throughout:
    engine's proof and audit state. No card exists that is not a task.
 3. *Store with sync.* A board store kept in step with the documents by a
    reconciliation routine running on file change.
+4. *Do nothing.* No board or state abstraction at all — the CLI prints raw
+   findings text; nothing computes a board-shaped view over the documents.
 
 **Decision: alternative 2 — projection.**
 
@@ -79,8 +81,8 @@ grow before reads need caching — acceptable at the volumes in `SCOPE.md` §7.
 2. *Headless subprocesses*, as onp-spec does: each task is one non-interactive
    agent invocation spawned as a child process, with its output captured as a
    stream. No terminal multiplexer anywhere.
-3. *No background execution.* The orchestrating session implements everything
-   itself, sequentially.
+3. *Do nothing — no background execution.* The orchestrating session
+   implements everything itself, sequentially.
 
 **Decision: alternative 2 — headless subprocesses.**
 
@@ -110,6 +112,8 @@ becomes responsible for supervision that the harness would otherwise provide.
    stories and criteria, RFC owns assumptions and questions, TDD owns tasks.
 3. *Three documents that are purely narrative*, with the machine-readable codes
    still centralized in a separate `spec.md`.
+4. *Do nothing.* No structured document grammar at all — free-form notes,
+   nothing machine-readable, no traceability codes anywhere.
 
 **Decision: alternative 2 — three documents with divided ownership.**
 
@@ -136,6 +140,8 @@ so G1 genuinely must precede G3. Migrating a project that already uses
 2. *Port the source into this repository* under its MIT terms, with attribution,
    adapting the grammar, the finding catalogue and the language.
 3. *Write a new engine from scratch*, keeping only the ideas.
+4. *Do nothing.* No engine at all — the tool would be prompts and
+   instructions only, with no mechanical audit, no exit code, no proof.
 
 **Decision: alternative 2 — port with attribution.**
 
@@ -168,6 +174,8 @@ translated.
 2. *One self-contained HTML file* — inline CSS and JS, no framework, no CDN, no
    bundler.
 3. *Server-rendered HTML* with full page reloads and no client-side state.
+4. *Do nothing.* No interface beyond the command line at all — no page, no
+   board, nothing to build.
 
 **Decision: alternative 2 — self-contained HTML.**
 
@@ -195,6 +203,8 @@ stay navigable. Browser support targets current evergreen browsers only.
 1. *Polling* on a short interval.
 2. *WebSocket*, full duplex.
 3. *Server-Sent Events*, server to client only, over plain HTTP.
+4. *Do nothing.* No live-update mechanism — the page would need a manual
+   reload to see anything new.
 
 **Decision: alternative 3 — Server-Sent Events.**
 
@@ -219,6 +229,8 @@ corporate proxies buffer SSE; the documented fallback is direct loopback access.
 2. *Inside the repository but git-ignored.*
 3. *Outside the repository*, in a state directory whose root is configurable, as
    onp-spec does.
+4. *Do nothing.* No execution telemetry at all — a lane's run leaves no
+   record anywhere once it finishes.
 
 **Decision: alternative 3 — outside the repository.**
 
@@ -240,7 +252,8 @@ corrupt trailing line in an append-only log without failing the read.
 
 1. *Required*, as `AGENTS.md` currently mandates: every task gets an issue, every
    change a pull request.
-2. *Excluded* entirely; the tool never talks to a remote.
+2. *Do nothing — excluded entirely.* The tool never talks to a remote, and
+   GitHub integration is never built.
 3. *A delivery mode chosen per project*, following Bridge Commander's
    `local-only | direct-PR` model, with `local-only` as the default.
 
@@ -265,6 +278,8 @@ unconditional and must be rewritten as mode-conditional — recorded as T-024 in
 1. *One verdict.* The audit passes or fails; the operator reads the findings.
 2. *Six gates*, G0 through G5, each a named checkpoint with its own subset of
    findings and its own exit code.
+3. *Do nothing.* No audit engine at all — the documents exist, but nothing
+   mechanically checks whether they agree with the code or with each other.
 
 **Decision: alternative 2 — six gates.**
 
@@ -294,6 +309,8 @@ fails, so "blocked" is a third state that must be rendered distinctly from red.
 1. *Image contains the project*, built per project.
 2. *Image contains only the tool*; the repository, the git configuration and the
    state directory are mounted at run time.
+3. *Do nothing.* No container image at all — the tool runs only by
+   installing Node directly on the target machine.
 
 **Decision: alternative 2 — mount the repository.**
 
@@ -319,8 +336,9 @@ page deserves to find the reasoning rather than repeat it.
 
 1. *Build the monitor as specified.* M4 and M5: an HTTP server on loopback, a
    projected kanban, a document editor, live updates over SSE.
-2. *Remove it.* The command line and the exit code are the whole interface; the
-   container is how the tool reaches a machine that has no Node.
+2. *Do nothing — remove it.* The command line and the exit code are the
+   whole interface; the container is how the tool reaches a machine that
+   has no Node.
 3. *Defer it.* Keep the milestones, the criteria and the tasks in the documents,
    marked as post-MVP.
 
@@ -357,6 +375,8 @@ purpose. Whether the board returns later as a read-only renderer over
 3. *Trust on first use, bound to the command text*, as direnv does: approve once,
    re-approve whenever the command changes, with the record kept outside the
    repository.
+4. *Do nothing.* No automated test execution at all — a human runs the
+   project's tests manually, outside the tool, whenever they choose to.
 
 **Decision: alternative 3 — trust on first use, bound to the content.**
 
@@ -389,8 +409,8 @@ that killed the writable page is still the reasoning that keeps it dead.
 
 **Alternatives considered**
 
-1. *Keep it dead.* The terminal and the exit code are the whole interface, as
-   D-011 decided.
+1. *Do nothing — keep it dead.* The terminal and the exit code are the whole
+   interface, as D-011 decided.
 2. *Bring back the full monitor*, M4 and M5 — page, board, document editor, live
    updates over SSE.
 3. *Bring back only the read half.* A page that renders gates, findings and
@@ -444,6 +464,9 @@ if editing is ever wanted, this decision is what must be revisited first.
 2. *`Reads:` alone.* Distinguish reading from writing so lanes stop collapsing on a
    shared read, and leave ordering to emerge from write overlap as it does today.
 3. *Both.* Ordering becomes declarable and reading stops implying collision.
+4. *Do nothing.* No `Depends on:`/`Reads:` declarations at all — file
+   overlap stays the only lever, and Q-010's workaround (declaring a false
+   read to force ordering) stays the honest thing left to do.
 
 **Decision: alternative 3 — both, because either one alone leaves the other's
 failure in place.**
@@ -510,6 +533,10 @@ before the confirmation rather than discovered in the diff.
 2. *The orchestrator runs them.* After each task commits, the executor runs that
    same approved command in the lane and attributes the result to the task.
 3. *Both*, with the lane's run as an independent verdict on top of the worker's.
+4. *Do nothing.* Neither the worker nor the orchestrator runs the project's
+   tests inside a lane — Q-009's failure (a broken test surfacing only at
+   `adp verify`, after the merge, belonging to no task) stays exactly as
+   observed.
 
 **Decision: alternative 2 — the orchestrator runs them, and the worker is granted
 nothing.**
@@ -563,8 +590,9 @@ result. `--no-lane-tests` turns it off for a suite too slow to run per task.
 
 **Alternatives considered**
 
-1. *Keep the Portuguese vocabulary.* Statuses, finding codes and field labels
-   stay as they were written; only prose is English. Nothing breaks.
+1. *Do nothing — keep the Portuguese vocabulary.* Statuses, finding codes
+   and field labels stay as they were written; only prose is English.
+   Nothing breaks.
 2. *Accept both spellings, English canonical.* The parser reads `[concluida]`
    and `[done]`; scaffolds emit English; the Portuguese keeps working forever.
 3. *English only, with a hard cut.* One spelling per token, and every existing
