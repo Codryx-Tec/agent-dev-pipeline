@@ -1507,6 +1507,24 @@ decisions that never needed it.
   `auditProject` and the CLI's own gate evaluation) agree, since they
   compute from the same function
 
+#### AC-139 — A scored decision's `RECOMMENDATION_AGAINST_SCORE` check weighs each criterion by its declared weight, not a plain sum
+
+- **Given** a scored decision whose options score higher on a lightly
+  weighted criterion than on a heavily weighted one, such that the plain
+  sum of raw cells ranks one option first while the weighted average ranks
+  a different one first; separately the same shape with the actual
+  weighted winner recommended, no justification; separately the plain-sum
+  winner recommended instead, no justification; separately a decision
+  whose criteria cite no `W-xxx` id declared in `SCOPE.md`'s own `## 11.
+  Decision criteria` at all (most projects, most of the time)
+- **When** the audit runs
+- **Then** the second clears — it names the option that is genuinely best
+  once weighted, whatever the raw sum said; the third fires
+  `RECOMMENDATION_AGAINST_SCORE`, naming both options and their weighted
+  scores — this is the case the plain sum used to miss; the fourth falls
+  back to the plain sum across the matrix's numeric cells, unchanged,
+  since there is no declared weight to consult
+
 ### US-039 — Any AI coding agent can use this tool, and a project can write its own documents in its own language
 
 As someone adopting this tool with a coding agent this project has never
@@ -2252,5 +2270,13 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
 - Notes: Closes `.spec/BACKLOG.md`'s module-comment-scanning item, deliberately scoped down before building rather than left to guesswork: `SCOPE-0.6.0.md`'s own text names "comentários de módulo" as a recognition source in one line, with no language or format specified, unlike every other entry in `RECOGNITION_GLOBS` which has real spec detail behind it. Scoped to this tool's own ecosystem (JS/TS) rather than a general per-language parser — `.spec/BACKLOG.md` keeps the door open for other languages, revisited if a real brownfield adoption in one actually needs it, rather than building speculative coverage now.
 
   `scanModuleComments()` reads each `srcGlobs`-matched `.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/`.tsx` file's own leading `/** */` block or run of `//` lines (past a shebang or BOM), past an 80-character floor so a one-line `// TODO` doesn't count as a module's own documentation. Deliberately NOT folded into `RECOGNITION_GLOBS`: that list drives both `init --brownfield`'s recognition report and `adp archive`'s own scan, and a source file carrying its own header comment is still live code — archiving it would mean moving code out of the codebase, not documentation out of the way. Reuses the `srcFiles` list `init.js` already computes for `BASELINE.md`, so this costs no extra directory walk.
+
+## T-069 — The §2.4 scoring matrix weighs by the declared `W-xxx`, not a plain sum [done]
+
+- Refs: AC-139
+- Files: src/core/audit.js, payload/templates/SCOPE.md, .spec/SCOPE.md, test/audit.test.js
+- Notes: Closes the gap `T-065` surfaced while drafting `D-017`'s own matrix and deliberately did not fix there. `RECOMMENDATION_AGAINST_SCORE`'s `scoreOf()` now computes a weighted average — `sum(cell × weight) / sum(weight)` across the criteria a decision actually cited — instead of trusting a hand-typed `Total` column or a plain unweighted sum. Normalizes by the cited criteria's own weight sum rather than assuming 100, so a project's `W-xxx` scale (1–5, 1–10, a percentage split) never has to add up to a fixed total; `payload/templates/SCOPE.md`'s own guidance updated to say so instead of asserting a "should sum to 100" rule the formula never actually needed. No declared weight for any criterion a decision cites (most projects, most of the time — including every one of this repo's own pre-`D-017` fixtures) falls back to the plain sum unchanged, so nothing already using the unweighted mechanism regresses.
+
+  Verified the fix actually changes ranking, not just arithmetic: a fixture where `W-001` outweighs `W-002` 9-to-1 has one option winning by plain sum and a different one winning once weighted — recommending the true (weighted) winner with no justification clears; recommending the plain-sum winner instead now correctly fires. Also re-ran this repo's own `D-017` under the new formula for real (`adp audit --ci`) to confirm its own recommendation — already carrying real justification prose — still clears regardless of which option the weighting puts on top.
 
 ---

@@ -93,7 +93,9 @@ Project-level outcomes. The per-feature detail belongs in each feature's
 
 Optional. Weighted criteria a scoring matrix judges options against — only
 an RFC decision that opts into that structure (SCOPE-0.6.0.md §2.4)
-references these, by id. Weights are a percentage split and should sum to
-100. Leave empty until an RFC actually needs one.
+references these, by id. Weights are relative to each other, any scale
+(1–5, 1–10, a percentage split summing to 100 — the audit normalizes by
+whatever the cited criteria's own weights sum to, so nothing has to add up
+to a fixed total). Leave empty until an RFC actually needs one.
 
 - **W-001** — what matters and why (weight: n)

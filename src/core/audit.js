@@ -340,12 +340,32 @@ export function auditProject(project, { ci = false, strict = false, now = new Da
         // The recommendation may depart from the top score — but only with
         // real justification prose, not silently.
         if (scored.recommendation) {
+          // Weighted, not a plain sum: a raw per-criterion score means
+          // nothing on its own once criteria carry different weights — a 9
+          // on a weight-3 criterion should not out-rank a 7 on a weight-5
+          // one, and a plain sum let it. Normalizes by the actual weight
+          // SUM of the criteria this decision cited (via SCOPE.md's own
+          // `## 11. Decision criteria`), not an assumed 100 — a project's
+          // weights can be on any scale, 1–5 or otherwise. No weights
+          // declared for any cited criterion (most projects, most of the
+          // time): falls back to the plain sum this mechanism always used,
+          // unchanged — a hand-typed `Total` column is no longer read as
+          // authoritative either way, since a human's own arithmetic is
+          // exactly what this check exists to verify, not trust.
+          const weightOf = (id) => scope.criteria.find((c) => c.id === id)?.weight ?? null;
           const scoreOf = (optId) => {
             const row = scored.matrix[optId];
             if (!row) return null;
-            const totalKey = scored.matrixHeader.find((h) => /^total$/i.test(h));
-            const raw = totalKey ? row[totalKey] : null;
-            if (raw != null && Number.isFinite(Number(raw))) return Number(raw);
+            let weightedSum = 0;
+            let weightSum = 0;
+            for (const critId of scored.criteriaIds) {
+              const cell = Number(row[critId]);
+              const w = weightOf(critId);
+              if (!Number.isFinite(cell) || w == null) continue;
+              weightedSum += cell * w;
+              weightSum += w;
+            }
+            if (weightSum > 0) return weightedSum / weightSum;
             const sum = Object.values(row)
               .map(Number)
               .filter((n) => Number.isFinite(n))
@@ -358,8 +378,9 @@ export function auditProject(project, { ci = false, strict = false, now = new Da
           const isPlaceholder = /^\[.*\]$/.test(scored.recommendation.justification);
           const hasJustification = scored.recommendation.justification.length > 0 && !isPlaceholder;
           if (top && recScore !== null && recScore < top.score && !hasJustification) {
+            const round = (n) => Math.round(n * 100) / 100;
             emit('RECOMMENDATION_AGAINST_SCORE', 'error',
-              `${d.id} recommends ${scored.recommendation.optId} (score ${recScore}) over the top-scored ${top.id} (score ${top.score}) with no justification prose — a recommendation against the score needs a reason, not just a name`,
+              `${d.id} recommends ${scored.recommendation.optId} (score ${round(recScore)}) over the top-scored ${top.id} (score ${round(top.score)}) with no justification prose — a recommendation against the score needs a reason, not just a name`,
               { file: d.file, line: d.line });
           }
         }

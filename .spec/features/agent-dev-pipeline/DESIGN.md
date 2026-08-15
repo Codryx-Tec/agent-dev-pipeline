@@ -322,10 +322,9 @@ own "wall of `FILE_ORPHAN`" framing is about. The new **archaeologist**
 role (`payload/claude/agents/archaeologist.md`, skill
 `project-archaeology`) reads the recognition inventory plus the code and
 proposes a `SCOPE.md` draft — always `Draft`, never `Approved`, every
-claim cited to its source file. Deferred: the archiving step itself
-(`git mv` to `project_old_artifacts/`, its three guards, its own consent
-gate), `BASELINE_WIDENED`, and a no-git mtime fallback for the ratchet —
-all named in `.spec/BACKLOG.md`.
+claim cited to its source file. The archiving step, `BASELINE_WIDENED` and
+the no-git mtime fallback all followed later — see their own paragraphs
+below.
 
 **The monitor shows the work, not just the verdict** (`core/ledger.js`,
 `server/state.js`, `ui/app.js`, M5-monitor-core). PRD-004's own complaint:
@@ -395,5 +394,6 @@ pre-flight screen prints it on its own `model :` line too.
 **`BASELINE_WIDENED`, finally implemented** (`project.js`'s `widenedBaselineFiles()`). Reserved in `NEVER_DEFERRABLE` since M4-readonly-core, never built. Walks `BASELINE.md`'s own commit history (one `git show` per commit touching it, not per listed file), tracks which files were ever removed between consecutive snapshots, and flags one reappearing later — the working tree itself is the final snapshot, so an uncommitted re-add is caught the same session. Lives in G6 (`Aligned`) alongside `FILE_ORPHAN`/`DOC_FOSSIL`; unconditional, not `--ci`-gated, since it was already non-deferrable.
 **The mtime fallback outside git** (`project.js`'s `mtimeFallbackTouchedSet()`) — and a real bug it uncovered. Empirically running `adp audit --ci` against a no-git fixture before writing the fallback showed the existing code comment had it backwards: without git, `touchedSet` stayed permanently empty, so a baselined file was exempt forever rather than "no discount at all" as claimed — the one test covering it passed for an unrelated reason (its fixture never wrote the file to disk). Fixed: each baselined file's own mtime against `BASELINE.md`'s `generated:` timestamp decides touched or not when git can't answer; no usable timestamp exempts nothing, the same posture an unbaselined file gets. Disclosed limitation: a bare file copy stamps every mtime alike, so a file edited moments after extraction still reads as untouched — no worse than the old behavior there, strictly better for a project edited in place over time.
 **Module-comment scanning, JS/TS only** (`init.js`'s `scanModuleComments()`). `SCOPE-0.6.0.md` names "comentários de módulo" as a recognition source in one line, no language or format specified — scoped down to this tool's own ecosystem rather than a guessed-at general parser; other languages stay in `.spec/BACKLOG.md`. Reads each `srcGlobs` file's own leading `/** */` block or `//` run (past a shebang/BOM), an 80-character floor filtering out a bare `// TODO`. Deliberately not folded into `RECOGNITION_GLOBS`: a file carrying this is still live source, never something `adp archive` should move.
+**The §2.4 score is weighted, not summed** (`audit.js`'s `scoreOf()`). A gap `T-065` surfaced drafting `D-017`'s own matrix: a raw per-criterion score meant nothing next to a differently-weighted one, since nothing multiplied a cell by its `W-xxx`'s declared weight. Now `sum(cell × weight) / sum(weight)` across the criteria a decision cites, normalized by their own weight sum rather than an assumed 100 — a project's scale can be 1–5, 1–10, or a percentage split. No declared weight for any cited criterion: falls back to the old plain sum, unchanged, so nothing already using it regresses.
 
 ---

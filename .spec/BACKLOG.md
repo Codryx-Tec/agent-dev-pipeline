@@ -45,12 +45,3 @@
   PRD-003c-history-core already recorded for the rest of `adp close`'s own
   metrics; revisit once enough closures against `OPTION_BEYOND_TEAM`
   features exist to make a real number worth computing.
-- The §2.4 scoring matrix's `Total` column is a plain sum, not weighted by
-  the declared `W-xxx` values arithmetically — the weights order which
-  criteria get cited in `**Decision criteria:**` and feed
-  `OPTION_BEYOND_TEAM`'s ceremony logic, but nothing in `audit.js`
-  multiplies a cell by its column's weight. Surfaced while drafting `D-017`
-  (a `W-001`/`W-002`-weight-5 criterion sits in the same unweighted sum as
-  `W-005`/`W-006`-weight-3 ones), not fixed there. A human filling in raw
-  per-criterion scores can under- or over-represent a heavily-weighted
-  criterion next to a lightly-weighted one without the tool ever noticing.

@@ -256,6 +256,87 @@ test('a recommendation against the top score WITH real justification prose clear
   assert.equal(has(audit, 'RECOMMENDATION_AGAINST_SCORE'), false);
 });
 
+const WEIGHTED_SCOPE = `# Project Scope
+
+**Scope status:** Approved
+**Scope owner:** test
+
+## 3. Features
+
+- **MVP (prioritized):**
+  - [ ] f
+
+## 11. Decision criteria
+
+- **W-001** — heavily weighted (weight: 9)
+- **W-002** — lightly weighted (weight: 1)
+`;
+
+// Plain sum ranks OPT-001 highest (5+10=15 vs OPT-002's 8+2=10), but W-001
+// is weighted 9x W-002 — weighted, OPT-002 wins ((8*9+2*1)/10=7.4 vs
+// OPT-001's (5*9+10*1)/10=5.5). Proves the fix actually changes the
+// ranking, not just the arithmetic.
+const WEIGHTED_RFC = `# RFC: t
+
+## Purpose
+
+Support tickets about this take 20 minutes to resolve.
+
+### D-005 — Where to cache session state
+
+**Decision criteria:** W-001, W-002
+
+**Options considered**
+
+- **OPT-000 — Do nothing.** Keep sessions in memory, single instance only.
+- **OPT-001 — Redis with TTL.** Requires: redis
+- **OPT-002 — Postgres advisory locks.** Requires: postgres
+
+**Scoring matrix**
+
+| Option | W-001 | W-002 |
+|---|---|---|
+| OPT-000 | 1 | 1 |
+| OPT-001 | 5 | 10 |
+| OPT-002 | 8 | 2 |
+
+**Recommendation:** OPT-002 —
+
+**Decision: OPT-002 — Postgres advisory locks.**
+`;
+
+test('the score weights each criterion by its declared W-xxx weight, not a plain sum @spec:AC-139', () => {
+  const { audit } = auditOf(base({
+    '.spec/SCOPE.md': WEIGHTED_SCOPE,
+    '.spec/rfc/RFC-001-t.md': WEIGHTED_RFC,
+  }));
+  // OPT-002 IS the weighted top (7.4) even though OPT-001 has the higher
+  // plain sum (15 vs 10) — recommending it with no justification must
+  // clear, not fire, since it genuinely is the best option once weighted.
+  assert.equal(has(audit, 'RECOMMENDATION_AGAINST_SCORE'), false);
+});
+
+test('recommending the plain-sum winner instead of the weighted one is now caught @spec:AC-139', () => {
+  const rfc = WEIGHTED_RFC.replace('**Recommendation:** OPT-002 —', '**Recommendation:** OPT-001 —');
+  const { audit } = auditOf(base({
+    '.spec/SCOPE.md': WEIGHTED_SCOPE,
+    '.spec/rfc/RFC-001-t.md': rfc,
+  }));
+  // OPT-001 has the higher plain sum but is NOT the weighted top — this
+  // must fire now, where the old unweighted mechanism would have cleared it.
+  const finding = findingsFor(audit, 'RECOMMENDATION_AGAINST_SCORE')[0];
+  assert.ok(finding);
+  assert.match(finding.message, /OPT-001.*OPT-002/);
+});
+
+test('with no declared W-xxx weights at all, scoring falls back to the plain sum unchanged @spec:AC-139', () => {
+  // SCORED_RFC_GOOD's own scope (via base()) has no ## 11 section — this
+  // is the same scenario every earlier §2.4 test already exercised, kept
+  // here as an explicit regression guard for the fallback path itself.
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': SCORED_RFC_GOOD }));
+  assert.equal(has(audit, 'RECOMMENDATION_AGAINST_SCORE'), false);
+});
+
 test('a numeric claim in an option with no cited source is a finding, narrow to opted-in decisions @spec:AC-126', () => {
   const rfc = SCORED_RFC_GOOD.replace(
     '- **OPT-001 — Redis with TTL.** Requires: redis',
