@@ -18,7 +18,7 @@ permissionMode: auto
 [ ] JWT token: correct HS256/RS256 algorithm; no "alg: none"
 [ ] Token expiration configured and enforced
 [ ] Refresh token invalidated after use (if implemented)
-[ ] Login endpoint has rate limiting or brute-force protection
+[ ] Login, password-reset, and verification endpoints have rate limiting or brute-force protection
 ```
 
 ### 2. IDOR (A01)
@@ -55,6 +55,7 @@ Manual test:
 [ ] No raw SQL with string interpolation — always parameterized queries (SQLAlchemy or equivalent)
 [ ] No eval(), exec() or subprocess with user input
 [ ] File names not used in path.join() without sanitization (path traversal)
+[ ] User-controlled content rendered as HTML is escaped or sanitized (no dangerouslySetInnerHTML / innerHTML fed with raw input) — XSS
 ```
 
 ### 5. Data exposure (A02, LGPD)
@@ -82,7 +83,18 @@ New personal data not mapped in `.spec/SCOPE.md`: escalate to **business-analyst
 [ ] CORS configured for specific origins, not "*" in production
 [ ] Reverse proxy sends security headers: X-Content-Type-Options, X-Frame-Options, basic CSP
 [ ] Sensitive environment variables not in code (SECRET_KEY, DATABASE_URL)
+[ ] No API key/secret reachable by inspecting the frontend JS bundle or the git history — a third-party API is called from the backend (BFF pattern), never directly from the browser; secret files are in .gitignore before the first commit
 ```
+
+### 8. Client-authenticated databases (Supabase/Firebase) and frontend-only rules (A01, A04)
+
+```
+[ ] Row Level Security (or equivalent) enabled on every table reachable directly from the browser — it ships OFF by default; an unauthenticated read must be refused, not merely unlisted in the UI
+[ ] service_role / admin key never shipped to the frontend bundle
+[ ] Every privileged decision (isAdmin, ownership, plan tier, ...) re-checked server-side or by an RLS policy — a frontend if/hidden-button is UX, never authorization; the same class of bug as IDOR (section 2) with the check missing on the database side instead of the API side
+```
+
+Manual test: open the browser console on the running app, query a table directly with the anon/public key. Expected: refused, or scoped to the caller's own rows only.
 
 ## Security Report
 
