@@ -1054,6 +1054,20 @@ legacy project the same way it does on a fresh one.
   and `.spec/BASELINE.md` names the pre-existing source file; without the
   flag, neither the recognition report nor `BASELINE.md` appears at all
 
+#### AC-136 — The baseline only shrinks; a file that left it and comes back is `BASELINE_WIDENED`, never deferrable
+
+- **Given** `.spec/BASELINE.md`'s own git history showing a file present
+  in an earlier commit, absent from a later one, and present again in a
+  still-later commit (or in the current, uncommitted working tree);
+  separately a file that shrank out and simply never came back; separately
+  a baseline with only one snapshot and no history to compare against yet
+- **When** the project loads and the audit runs
+- **Then** the first names that file in `BASELINE_WIDENED` (error, in
+  `gates.js`'s `NEVER_DEFERRABLE` set already — confirmed real now, not
+  reserved) regardless of `--ci`; the second and third report nothing —
+  a real removal that never returns is the whole point of the ratchet,
+  and a baseline nobody has edited yet has nothing to be dishonest about
+
 ### US-031 — The captain sees the chain happening, not just its verdict
 
 As a captain with the monitor open, I want to see a run's lanes moving,
@@ -2181,5 +2195,13 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
   Verified for real, not only by the test suite: a throwaway git repo with an untouchable file, a CI-referenced file, and a plain doc, run through dry-run, `--apply` (copy), and `--apply --move` via a real pseudo-tty for the typed-`yes` prompt — confirmed actual file placement and `git status` output matched the plan exactly, including that `git mv` created the missing destination directory correctly (this session's `mkdirSync` runs regardless, so the empirical answer didn't change the code, only retired the uncertainty). `cli.js`'s own I/O (the prompt itself) stays untested by the same existing convention `T-064` already established — the confirmation matching (`isConfirmed`) is its own pure function in `archive.js` specifically so AC-135 gets a real test, same move `T-064` made for `shouldPromptForAgent`/`resolveAgentAnswer`.
 
   Deliberately not attempted, noted for later: `.exemplo-legado/`'s own `START-HERE.md` still narrates this step in prose rather than running the real command — wiring that walkthrough is its own pass, not bundled here. Also surfaced while drafting `D-017`'s matrix and worth a future `BACKLOG.md` line: the §2.4 scoring mechanism's `Total` column is a plain sum, not weighted by the declared `W-xxx` values arithmetically — the weights order which criteria are cited and feed `OPTION_BEYOND_TEAM`, but nothing multiplies a cell by its column's weight, so a human filling in raw scores can under- or over-represent a weight-5 criterion next to a weight-3 one without the tool noticing.
+
+## T-066 — `BASELINE_WIDENED`: the baseline only shrinks, enforced against the file's own git history [done]
+
+- Refs: AC-136
+- Files: src/core/project.js, src/core/audit.js, src/core/gates.js, test/baseline.test.js
+- Notes: Closes another `.spec/BACKLOG.md` item — SCOPE-0.6.0.md PRD-002's "o baseline só encolhe," already reserved in `gates.js`'s `NEVER_DEFERRABLE` since M4-readonly-core but never actually implemented. `widenedBaselineFiles()` (`project.js`, next to `loadBaseline`) walks `BASELINE.md`'s own commit history with one `git show` per commit that touched the file — not one spawn per listed file, same cost shape `touchedSet`'s single `git diff` already accepts — reconstructing each historical snapshot's file set and tracking which files were ever removed between consecutive snapshots. A file present in a later snapshot after being in that removed-ever set is widened. The current on-disk copy is appended as one final snapshot after the git-log ones, so an uncommitted re-add is caught the same session it happens, not only after a commit. No history yet (a single, never-committed snapshot) or no git at all: nothing to compare against, same "no discount, no verdict" posture the rest of the ratchet takes when git can't answer.
+
+  `BASELINE_WIDENED` joins G6 (`Aligned`) — the same gate `FILE_ORPHAN` and `DOC_FOSSIL` already live in, since this is fundamentally a question of whether the project's own record still agrees with itself, not a new kind of check. Emitted unconditionally (not behind `--ci`), since it was already in `NEVER_DEFERRABLE` — the same posture `RFC_REQUIRED` takes toward a one-way-door decision left open, a fact about a rule being broken, not about the world changing underneath a document.
 
 ---

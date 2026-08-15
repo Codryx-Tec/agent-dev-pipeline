@@ -112,6 +112,9 @@ export const GATES = [
       'DOC_TOO_LONG',
       'DOC_FOSSIL',
       'DUPLICATE_PROSE',
+      // SCOPE-0.6.0.md PRD-002: the baseline only shrinks — already in
+      // NEVER_DEFERRABLE below, confirmed real now that it's implemented.
+      'BASELINE_WIDENED',
       // M5b — declared deferral (§12.1). All four here because deferring is
       // itself a claim about G5/G6 ("do mundo mudando debaixo do
       // documento") — the same question G6 already asks.
@@ -203,6 +206,7 @@ export const LABELS = {
   DOC_TOO_LONG: 'document is over its length ceiling',
   DOC_FOSSIL: 'document is older than the code it describes',
   DUPLICATE_PROSE: 'substantial prose repeated across documents',
+  BASELINE_WIDENED: 'a file removed from the baseline is back',
   DEFERRAL_TOO_BROAD: 'deferral matches more findings than allowed',
   DEFERRAL_WITHOUT_OWNER: 'deferral without an owner or a reason',
   DEFERRAL_WITHOUT_DEADLINE: 'deferral without an Until date',

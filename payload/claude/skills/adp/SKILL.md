@@ -542,6 +542,7 @@ grepping for it must find the same string on every machine.
 | verification matches no file (`GLOB_WITHOUT_FILES`) | the check is inert | fix the glob — a check that cannot fail looks like one that passed |
 | malformed verification (`VERIFICATION_MALFORMED`) | invalid regex, or one that timed out | simplify the pattern |
 | source file mapped by no task (`FILE_ORPHAN`) | code nothing asked for | map it to a task, or question why it exists |
+| a file removed from the baseline is back (`BASELINE_WIDENED`) | `BASELINE.md`'s own git history shows a file that left the ratchet and returned | give it a fresh, honest baseline entry never happens by re-adding the old one — live with it at full strength instead |
 | document is over its length ceiling (`DOC_TOO_LONG`) | `PRD.md`/`DESIGN.md` past its configured line ceiling | split it, or move detail to where it belongs |
 | document is older than the code it describes (`DOC_FOSSIL`) | `DESIGN.md` predates the newest file its tasks map | update it — a document that lies is worse than none |
 | substantial prose repeated across documents (`DUPLICATE_PROSE`) | a feature's own `PRD.md`/RFC/`DESIGN.md` share a near-identical passage | point at it from one document, don't copy it |

@@ -23,10 +23,6 @@
   ceremony for its own sake, exactly what this whole antipattern family
   exists to catch elsewhere. Revisit case by case if any of these
   decisions are ever reopened, rather than as a batch.
-- `BASELINE_WIDENED` — SCOPE-0.6.0.md's rule that `BASELINE.md` may only
-  shrink, never regrow, needs walking that file's own git history to
-  detect a removed entry coming back. No payoff until teams are actually
-  using ratchet mode over time; not built in M4-readonly-core.
 - The mtime fallback for "touched since baseline" when git is unavailable
   or `git diff` fails. M4-readonly-core's ratchet only discounts severity
   when git succeeds; without it, a baselined file gets no discount at all

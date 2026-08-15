@@ -113,6 +113,43 @@ function currentGitRev(rootDir) {
   return p.status === 0 ? (p.stdout ?? '').trim() : null;
 }
 
+// SCOPE-0.6.0.md PRD-002: "o baseline só encolhe" — a file that leaves the
+// baseline never legitimately comes back. Walking BASELINE.md's own git
+// history (one `git show` per commit that touched it, not per file — same
+// cost shape `touchedSet` above already accepts) finds every file that was
+// present in some snapshot, absent from a later one, and present again in a
+// later one still — including the current on-disk copy, so a re-add that
+// hasn't been committed yet is caught too. No git, or the file has no
+// history yet (a single, uncommitted snapshot): nothing to compare against,
+// same "no discount" posture the rest of this ratchet takes when git can't
+// answer.
+function widenedBaselineFiles(rootDir, baselinePath, currentFiles) {
+  const relPath = rel(rootDir, baselinePath);
+  const log = spawnSync('git', ['log', '--format=%H', '--', relPath], { cwd: rootDir, encoding: 'utf8' });
+  if (log.status !== 0) return [];
+  const commits = (log.stdout ?? '').split('\n').map((s) => s.trim()).filter(Boolean).reverse(); // oldest first
+
+  const snapshots = [];
+  for (const commit of commits) {
+    const show = spawnSync('git', ['show', `${commit}:${relPath}`], { cwd: rootDir, encoding: 'utf8' });
+    if (show.status !== 0) continue;
+    snapshots.push(new Set(parseBaseline(show.stdout, relPath).files.map((f) => f.path)));
+  }
+  snapshots.push(currentFiles); // the working tree, uncommitted changes included
+
+  const removedEver = new Set();
+  const widened = new Set();
+  let prev = null;
+  for (const curr of snapshots) {
+    if (prev) {
+      for (const f of prev) if (!curr.has(f)) removedEver.add(f);
+      for (const f of curr) if (removedEver.has(f)) widened.add(f);
+    }
+    prev = curr;
+  }
+  return [...widened];
+}
+
 // The brownfield ratchet (M4-readonly-core, SCOPE-0.6.0.md PRD-002): a
 // finding tied to a file present at adoption time, and untouched since,
 // stays a warning instead of escalating under --ci. `touchedSet` is built
@@ -121,12 +158,11 @@ function currentGitRev(rootDir) {
 // spawn per file. No git, or the diff fails: no discount, same as an
 // unbaselined file — deliberately simpler than a per-file mtime fallback,
 // since brownfield adoption already assumes a git repository everywhere
-// else in the source design (the deferred archiving step refuses without
-// one).
+// else in the source design (`adp archive`, D-017, refuses without one too).
 function loadBaseline(rootDir, config) {
   const baselinePath = path.join(rootDir, config.specDir, 'BASELINE.md');
   const raw = readIfExists(baselinePath);
-  if (!raw) return { present: false, commit: null, files: new Set(), touchedSet: new Set() };
+  if (!raw) return { present: false, commit: null, files: new Set(), touchedSet: new Set(), widened: [] };
 
   const parsed = parseBaseline(raw, rel(rootDir, baselinePath));
   const files = new Set(parsed.files.map((f) => f.path));
@@ -137,7 +173,8 @@ function loadBaseline(rootDir, config) {
       touchedSet = new Set((diff.stdout ?? '').split('\n').map((s) => s.trim()).filter(Boolean));
     }
   }
-  return { present: true, commit: parsed.commit, files, touchedSet };
+  const widened = widenedBaselineFiles(rootDir, baselinePath, files);
+  return { present: true, file: rel(rootDir, baselinePath), commit: parsed.commit, files, touchedSet, widened };
 }
 
 export function loadProject(config) {

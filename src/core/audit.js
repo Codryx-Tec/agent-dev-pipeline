@@ -182,6 +182,20 @@ export function auditProject(project, { ci = false, strict = false, now = new Da
     }
   }
 
+  // ---------------------------------------------- BASELINE_WIDENED (global)
+  // SCOPE-0.6.0.md PRD-002: "o baseline só encolhe" — the one mechanism in
+  // this tool that turns findings off, so the one rule it cannot bend on is
+  // that the exemption never legitimately grows back. Never deferrable
+  // (gates.js's NEVER_DEFERRABLE) — the same posture RFC_REQUIRED takes
+  // toward a decision, not a fact about the world changing underneath it.
+  if (baseline?.present) {
+    for (const f of baseline.widened) {
+      emit('BASELINE_WIDENED', 'error',
+        `${f} left the baseline before and is back — the baseline only shrinks; a file that needs the discount again earns a fresh, honest look, not a re-add`,
+        { file: baseline.file });
+    }
+  }
+
   // ------------------------------------------------ global traceability index
   const seen = new Map();
   const knownAc = new Map();

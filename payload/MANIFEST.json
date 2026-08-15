@@ -3,7 +3,7 @@
   "algorithm": "sha256",
   "fileCount": 56,
   "files": {
-    "AGENTS.md": "7a95e672b8289331f7dec46f99779c9814491f6f416bbb4801b91452e0cd5398",
+    "AGENTS.md": "dc484a10ade215d5de7ff9fb8c3eba9845f710db313971dbccd4532f0ce259d0",
     "claude/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "claude/agents/archaeologist.md": "656e173ff08906e81a74575315d62c188b65c3add0ad855a0f501cc54bc4a617",
     "claude/agents/architect.md": "81a574edf6202910447510db173bc83972e9b3fdafc919042e65a5680d1d6f4e",
@@ -19,7 +19,7 @@
     "claude/hooks/context-persistence.sh": "e861b5c664f08406fb9905628f8ef5e10d28b49dba67e262205ce284e1f1c503",
     "claude/hooks/secrets-scanner.sh": "607a245d9b8b198f5a4b1ba9ecdb3554589aae460bef6951ba7b39bdb8ef4f96",
     "claude/settings.json": "f1e0dca95dd7cf42e2545c470a413e535281cf75f9bfd6cc29c86404d99ece7d",
-    "claude/skills/adp/SKILL.md": "99afd44d1686fe1b87908c4c7badd6db856509c74d7831db1f3a5ea9d0c6e240",
+    "claude/skills/adp/SKILL.md": "66c0654a7f981fa4ca10837d0efd1c5db9e0c9648fe3e6db7f826d732c669eb7",
     "claude/skills/create-rfc/.skill-meta.json": "b3368039e2352688f48fc7aea068ac9dd9ff027a5165e645a3adeb79d0050e7e",
     "claude/skills/create-rfc/INTEGRATION.md": "8f415d7d8e88e2da73677caab82f97ec35ea0325927a4569b01248ff42c3ad4b",
     "claude/skills/create-rfc/LICENSE": "8cd58eae8e643a9d0f900d279f0b6f80a6db3f86f885b122b52e930d6bcd1264",

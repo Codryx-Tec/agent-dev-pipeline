@@ -192,3 +192,72 @@ test('a file never in the baseline escalates under --ci, unaffected by an unrela
     assert.equal(finding.severity, 'error');
   });
 });
+
+// ---------------------------------------------- BASELINE_WIDENED, in project.js/audit.js
+
+function writeBaselineCommit(root, files, message = 'baseline update') {
+  writeFileSync(
+    path.join(root, '.spec', 'BASELINE.md'),
+    renderBaselineMd({ commit: 'irrelevant', generatedAt: new Date().toISOString(), files })
+  );
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-q', '-m', message]);
+}
+
+test('a file that shrinks out of the baseline and never comes back is not widened @spec:AC-136', () => {
+  freshGitProject((root) => {
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    writeBaselineCommit(root, ['a.js', 'b.js'], 'initial baseline');
+    writeBaselineCommit(root, ['a.js'], 'b.js paid down');
+
+    const project = loadProject(loadConfig(root));
+    assert.deepEqual(project.baseline.widened, []);
+  });
+});
+
+test('a file removed from the baseline and later re-added is BASELINE_WIDENED, an error with no override @spec:AC-136', () => {
+  freshGitProject((root) => {
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    writeBaselineCommit(root, ['a.js', 'b.js'], 'initial baseline');
+    writeBaselineCommit(root, ['a.js'], 'b.js paid down');
+    writeBaselineCommit(root, ['a.js', 'b.js'], 'b.js re-added — this is the mistake');
+
+    const project = loadProject(loadConfig(root));
+    assert.deepEqual(project.baseline.widened, ['b.js']);
+
+    const audit = auditProject(project, { ci: false }); // not even --ci: this one is never deferrable, not just escalated
+    const finding = audit.findings.find((f) => f.code === 'BASELINE_WIDENED');
+    assert.ok(finding);
+    assert.equal(finding.severity, 'error');
+    assert.match(finding.message, /b\.js/);
+  });
+});
+
+test('an uncommitted re-add is caught too — the working tree counts as the latest snapshot @spec:AC-136', () => {
+  freshGitProject((root) => {
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    writeBaselineCommit(root, ['a.js', 'b.js'], 'initial baseline');
+    writeBaselineCommit(root, ['a.js'], 'b.js paid down');
+
+    // re-add b.js without committing
+    writeFileSync(
+      path.join(root, '.spec', 'BASELINE.md'),
+      renderBaselineMd({ commit: 'irrelevant', generatedAt: new Date().toISOString(), files: ['a.js', 'b.js'] })
+    );
+
+    const project = loadProject(loadConfig(root));
+    assert.deepEqual(project.baseline.widened, ['b.js']);
+  });
+});
+
+test('a baseline with no history yet (one uncommitted snapshot) has nothing to compare against @spec:AC-136', () => {
+  freshGitProject((root) => {
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    writeFileSync(
+      path.join(root, '.spec', 'BASELINE.md'),
+      renderBaselineMd({ commit: 'irrelevant', generatedAt: new Date().toISOString(), files: ['a.js'] })
+    );
+    const project = loadProject(loadConfig(root));
+    assert.deepEqual(project.baseline.widened, []);
+  });
+});

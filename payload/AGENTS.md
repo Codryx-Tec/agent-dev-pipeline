@@ -296,9 +296,11 @@ default; `--apply` writes, gated behind typing `yes` unless `--yes` is
 passed. Never suggest running it without showing the human the dry-run
 output first.
 
-**Not built yet:** `BASELINE_WIDENED` (catching an attempt to re-grow the
-baseline after it shrinks) — named in `.spec/BACKLOG.md`. Don't imply it
-exists.
+The baseline only shrinks: a file that left it and comes back — checked
+against `BASELINE.md`'s own git history, including an uncommitted re-add —
+is `BASELINE_WIDENED`, an error with no override. Never suggest re-adding a
+removed entry as a fix for anything; the fix is a fresh, honest baseline
+entry, or living with the finding at full strength.
 
 ### Living with a real finding on purpose — `DEFERRALS.md`
 
