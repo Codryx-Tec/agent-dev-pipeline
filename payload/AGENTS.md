@@ -273,10 +273,13 @@ of the user's:
 
 - **Recognition.** Scans for `README*`, `docs/**`, `adr/**`, `rfc/**`,
   `wiki/**`, OpenAPI/Swagger specs, migrations, `CHANGELOG*`, and
-  `CONTRIBUTING*`, and prints what it found. That inventory is the
-  **archaeologist** role's starting point — invoke it next, and it
-  proposes a `SCOPE.md` draft (always `Draft`, never `Approved`) with
-  every claim cited to the file it came from.
+  `CONTRIBUTING*`, and prints what it found — plus, for JS/TS only, any
+  `srcGlobs` file whose own leading comment reads as real module
+  documentation (not a one-line `// TODO`). That second signal is never
+  archived — it names live source, not a standalone doc. The full
+  inventory is the **archaeologist** role's starting point — invoke it
+  next, and it proposes a `SCOPE.md` draft (always `Draft`, never
+  `Approved`) with every claim cited to the file it came from.
 - **`.spec/BASELINE.md`** records the commit and the pre-existing
   `srcGlobs` files at adoption time. A finding tied to one of those files
   stays a **warning** — it never escalates under `--ci` — for as long as

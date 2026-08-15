@@ -23,10 +23,13 @@
   ceremony for its own sake, exactly what this whole antipattern family
   exists to catch elsewhere. Revisit case by case if any of these
   decisions are ever reopened, rather than as a batch.
-- Module-comment scanning as a recognition source. The glob-matchable
-  cases (README/docs/ADR/OpenAPI/migrations/CHANGELOG/CONTRIBUTING) are
-  built; scanning source comments for documentation needs real parsing
-  per language, not a glob.
+- Module-comment scanning beyond JS/TS. `scanModuleComments()` covers this
+  tool's own ecosystem (a `/** */` block or a leading `//` run, past a
+  length floor); other languages' own conventions (Python docstrings, Go
+  package comments, ...) need their own per-language parsing, not a glob,
+  and `SCOPE-0.6.0.md` never specified which languages this should reach —
+  scoped narrow on purpose rather than guessed at generally. Revisit if a
+  brownfield adoption in another language actually needs it.
 - `--shell-alias` on PowerShell (Windows). PRD-005 says "same rule" for
   `adp.cmd`'s side of the alias, but that means editing the PowerShell
   `$PROFILE` file, which this Linux development environment has no way to

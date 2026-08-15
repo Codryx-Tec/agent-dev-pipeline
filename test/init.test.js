@@ -15,6 +15,8 @@ import {
   installShellAlias,
   shouldPromptForAgent,
   resolveAgentAnswer,
+  leadingComment,
+  scanModuleComments,
 } from '../src/core/init.js';
 import { VERSION } from '../src/version.js';
 import { createHash } from 'crypto';
@@ -476,6 +478,62 @@ test('without --brownfield, no BASELINE.md is written and no recognition scan ru
     const report = initProject(root, {}, { srcGlobs: ['src/**'], ignoreGlobs: [] });
     assert.equal(existsSync(path.join(root, '.spec', 'BASELINE.md')), false);
     assert.equal(report.notes.some((n) => n.includes('brownfield recognition')), false);
+  });
+});
+
+// -------------------------------------------------- module-comment scanning (JS/TS only)
+
+test('leadingComment reads a /** */ block, a leading // run, and stops at the first non-comment line @spec:AC-138', () => {
+  const block = `/**\n * This module owns the frobnicator lifecycle.\n * See ADR-004 for why it is not a class.\n */\nexport function frob() {}\n`;
+  assert.match(leadingComment(block), /frobnicator lifecycle/);
+
+  const lineRun = `// This module owns the frobnicator lifecycle.\n// See ADR-004 for why it is not a class.\nexport function frob() {}\n`;
+  assert.match(leadingComment(lineRun), /frobnicator lifecycle/);
+
+  const noComment = `export function frob() {}\n`;
+  assert.equal(leadingComment(noComment), null);
+});
+
+test('leadingComment skips a shebang and a BOM before looking for the comment @spec:AC-138', () => {
+  const withShebang = `#!/usr/bin/env node\n// This module owns the frobnicator lifecycle, in full.\nrun();\n`;
+  assert.match(leadingComment(withShebang), /frobnicator lifecycle/);
+
+  const withBom = `﻿/** This module owns the frobnicator lifecycle, in full. */\nrun();\n`;
+  assert.match(leadingComment(withBom), /frobnicator lifecycle/);
+});
+
+test('scanModuleComments only counts JS/TS files whose leading comment clears the noise floor @spec:AC-138', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'src', 'documented.js'),
+      '// This module owns the frobnicator lifecycle end to end, including\n// retries and the fallback path nobody remembers exists.\nmodule.exports = {};\n'
+    );
+    writeFileSync(path.join(root, 'src', 'trivial.js'), '// TODO: clean up\nmodule.exports = {};\n');
+    writeFileSync(path.join(root, 'src', 'undocumented.js'), 'module.exports = {};\n');
+    writeFileSync(
+      path.join(root, 'src', 'documented.py'),
+      '"""This module owns the frobnicator lifecycle end to end."""\n'
+    );
+
+    const srcFiles = ['src/documented.js', 'src/trivial.js', 'src/undocumented.js', 'src/documented.py'];
+    const found = scanModuleComments(root, srcFiles);
+    assert.deepEqual(found, ['src/documented.js']);
+  });
+});
+
+test('--brownfield reports JS/TS module-level documentation as a further signal, never as something to archive @spec:AC-138', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'src', 'documented.js'),
+      '// This module owns the frobnicator lifecycle end to end, including\n// retries and the fallback path nobody remembers exists.\nmodule.exports = {};\n'
+    );
+    const report = initProject(root, { brownfield: true }, { srcGlobs: ['src/**'], ignoreGlobs: [] });
+    const note = report.notes.find((n) => n.includes('module-level documentation'));
+    assert.ok(note);
+    assert.match(note, /1 JS\/TS source file/);
+    assert.match(note, /not moved or archived/);
   });
 });
 

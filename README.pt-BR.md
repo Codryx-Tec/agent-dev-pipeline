@@ -286,7 +286,9 @@ memória, limpeza de worktree, GitHub flow e kickoff de projeto.
 `adp init --brownfield` reconhece um código que já existe em vez de tratá-
 lo como se fosse novo. Ele escaneia atrás de arquivos com cara de
 documentação — `README*`, `docs/**`, `adr/**`, specs OpenAPI, migrations,
-`CHANGELOG*`, `CONTRIBUTING*` — e **imprime o que encontrou; nada é movido
+`CHANGELOG*`, `CONTRIBUTING*` — mais, só para arquivos-fonte JS/TS, um
+comentário no topo do arquivo que parece documentação real do módulo, não
+uma nota de uma linha — e **imprime o que encontrou; nada é movido
 ou reescrito**. O que ele escreve é `.spec/BASELINE.md`: o commit atual e
 os arquivos-fonte que já existiam, para que a auditoria consiga distinguir
 dívida herdada de dívida nova.

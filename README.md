@@ -271,10 +271,11 @@ GitHub flow and project kickoff.
 `adp init --brownfield` recognizes a codebase that already exists instead of
 treating it as if it were new. It scans for doc-shaped files —
 `README*`, `docs/**`, `adr/**`, OpenAPI specs, migrations, `CHANGELOG*`,
-`CONTRIBUTING*` — and **prints what it found; nothing is moved or
-rewritten**. What it does write is `.spec/BASELINE.md`: the current commit
-and the source files that already existed, so the audit can tell inherited
-debt from new debt.
+`CONTRIBUTING*` — plus, for JS/TS source files, a leading comment that
+reads as real module documentation rather than a one-line note — and
+**prints what it found; nothing is moved or rewritten**. What it does write
+is `.spec/BASELINE.md`: the current commit and the source files that
+already existed, so the audit can tell inherited debt from new debt.
 
 A file named in the baseline stays a **warning**, exempt from `--ci`
 escalation, for as long as it is untouched since that commit — a real edit

@@ -192,9 +192,12 @@ person's — that is the point of writing them first.
 `adp init --brownfield` recognizes a codebase that already exists instead of
 auditing it as if it were new. It scans for `README*`, `docs/**`, `adr/**`,
 `rfc/**`, `wiki/**`, OpenAPI/Swagger specs, migrations, `CHANGELOG*` and
-`CONTRIBUTING*`, and prints what it found — **nothing is moved or
-rewritten**. It writes `.spec/BASELINE.md`: the commit and the pre-existing
-source files at adoption time.
+`CONTRIBUTING*` — plus, for JS/TS `srcGlobs` files only, a leading comment
+that reads as real module documentation (past a length floor, so a bare
+`// TODO` doesn't count) — and prints what it found — **nothing is moved or
+rewritten**, and the comment signal never feeds `adp archive` either, since
+it names live source, not a standalone doc. It writes `.spec/BASELINE.md`:
+the commit and the pre-existing source files at adoption time.
 
 A finding tied to a baselined file stays a **warning**, exempt from `--ci`
 escalation, for as long as that file is untouched since the recorded commit —

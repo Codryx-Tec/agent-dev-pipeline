@@ -1084,6 +1084,23 @@ legacy project the same way it does on a fresh one.
   unbaselined file already gets, since there is no timestamp to compare
   against and no signal is safer than a wrong one
 
+#### AC-138 — A JS/TS source file's own leading comment is a recognition signal, scoped narrow rather than guessed at generally
+
+- **Given** a source file whose leading `/** */` block or run of `//`
+  lines, past a minimum length, reads as real module documentation;
+  separately a one-line `// TODO`-shaped comment; separately a file with
+  no leading comment at all; separately a shebang or a byte-order mark
+  before the comment; separately a non-JS/TS file with the same kind of
+  leading comment
+- **When** `adp init --brownfield` runs
+- **Then** the first is reported as a further recognition signal, named as
+  live source and never as something `adp archive` would move or copy;
+  the second and third report nothing — a one-liner is noise, not a
+  module's own documentation; the fourth still detects the comment behind
+  the shebang/BOM; the fifth is not scanned — `SCOPE-0.6.0.md` never named
+  a language for this signal, so it stays scoped to this tool's own
+  ecosystem rather than a general per-language parser
+
 ### US-031 — The captain sees the chain happening, not just its verdict
 
 As a captain with the monitor open, I want to see a run's lanes moving,
@@ -2227,5 +2244,13 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
 - Notes: Closes the last `.spec/BACKLOG.md` item this pass had planned to build. Empirically checking the *current* behavior outside git before writing the fallback (this session's own standing discipline) turned up something the existing code comment got backwards: it claimed a baselined file got "no discount at all" without git, but tracing `loadBaseline()` and then actually running `adp audit --ci` against a no-git fixture showed the opposite — `touchedSet` stayed permanently empty outside git, which means `baseline.files.has(f) && !touchedSet.has(f)` was **always true**, so a baselined file was exempt *forever*, with no way for the discount to ever expire once git was unavailable. The stale comment's own test (`'outside a git repository... touchedSet stays empty'`) passed for an unrelated reason — its fixture never wrote the file to disk, so the empty `touchedSet` came from a failed `statSync`-equivalent, not from the git-absence logic the test's title claimed to cover.
 
   `mtimeFallbackTouchedSet()` fixes it: when `parsed.commit` is absent or `git diff` fails, each baselined file's own mtime is compared against `BASELINE.md`'s recorded `> generated:` timestamp — later means touched, earlier means still exempt. No usable timestamp at all exempts nothing, matching what an unbaselined file already gets — the safe default when the tool truly has no signal. Documented, not hidden: a bare file copy (extracted from an archive rather than cloned) stamps every file with a near-identical mtime, so a file edited moments after extraction would still read as untouched — no worse than the old always-exempt behavior for that one case, strictly better for the common one, a legacy project a human keeps editing in place over days or weeks after adoption.
+
+## T-068 — Module-comment scanning, JS/TS only [done]
+
+- Refs: AC-138
+- Files: src/core/init.js, test/init.test.js
+- Notes: Closes `.spec/BACKLOG.md`'s module-comment-scanning item, deliberately scoped down before building rather than left to guesswork: `SCOPE-0.6.0.md`'s own text names "comentários de módulo" as a recognition source in one line, with no language or format specified, unlike every other entry in `RECOGNITION_GLOBS` which has real spec detail behind it. Scoped to this tool's own ecosystem (JS/TS) rather than a general per-language parser — `.spec/BACKLOG.md` keeps the door open for other languages, revisited if a real brownfield adoption in one actually needs it, rather than building speculative coverage now.
+
+  `scanModuleComments()` reads each `srcGlobs`-matched `.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/`.tsx` file's own leading `/** */` block or run of `//` lines (past a shebang or BOM), past an 80-character floor so a one-line `// TODO` doesn't count as a module's own documentation. Deliberately NOT folded into `RECOGNITION_GLOBS`: that list drives both `init --brownfield`'s recognition report and `adp archive`'s own scan, and a source file carrying its own header comment is still live code — archiving it would mean moving code out of the codebase, not documentation out of the way. Reuses the `srcFiles` list `init.js` already computes for `BASELINE.md`, so this costs no extra directory walk.
 
 ---

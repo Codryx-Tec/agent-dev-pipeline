@@ -23,7 +23,7 @@ import { buildInstallPlan } from './install-map.js';
 import { PACKAGE_DIR, PAYLOAD_DIR, TEMPLATES_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME } from './paths.js';
 import { VERSION } from '../version.js';
 import { SIGNALS, describeFeatureCeremony } from './ceremony.js';
-import { walkFiles } from '../util/glob.js';
+import { walkFiles, readIfExists } from '../util/glob.js';
 import { renderBaselineMd } from '../parsers/baseline.js';
 
 export { PACKAGE_DIR, PAYLOAD_DIR, AGENT_SKILL_DIRS, LOCKFILE_NAME };
@@ -58,8 +58,10 @@ function today() {
 
 // M4-readonly-core (SCOPE-0.6.0.md PRD-002, "Passo 1 — Reconhecimento"):
 // the glob-matchable documentation artifacts a brownfield adoption reads
-// before proposing anything. Module-comment scanning is explicitly not
-// here — that needs real per-language parsing, not a glob; deferred.
+// before proposing anything. Module-comment scanning (a separate signal,
+// scanModuleComments() below) is deliberately NOT one of these globs — it
+// reads file CONTENT, not a path shape, and it names source files that are
+// still live code, never something to hand to `adp archive`.
 // Exported: `core/archive.js`'s "Passo 3" re-scans with this exact list, so
 // the two steps can never independently drift on what counts as doc-shaped.
 export const RECOGNITION_GLOBS = [
@@ -77,6 +79,49 @@ export const RECOGNITION_GLOBS = [
   'CHANGELOG*',
   'CONTRIBUTING*',
 ];
+
+// Module-comment scanning, JS/TS only (PRD-002's own text names it without
+// specifying a language or a format — every other glob in RECOGNITION_GLOBS
+// has real spec detail behind it; this one doesn't, so it stays scoped to
+// this tool's own ecosystem rather than a guessed-at general parser). A
+// "module comment" is a `/** ... */` block or a leading run of `//` lines,
+// the first thing in the file (a shebang or a BOM doesn't count against
+// it), read as a documentation signal only past a minimum length — a
+// one-line `// eslint-disable` or `// TODO` is not a module's own
+// documentation, and counting it would make this noise, not signal.
+const MODULE_COMMENT_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx']);
+const MIN_MODULE_COMMENT_LENGTH = 80;
+
+export function leadingComment(content) {
+  let text = content.startsWith('#!') ? content.slice(content.indexOf('\n') + 1) : content;
+  text = text.replace(/^\uFEFF/, '').replace(/^\s+/, '');
+  if (text.startsWith('/*')) {
+    const end = text.indexOf('*/');
+    return end === -1 ? null : text.slice(2, end).trim();
+  }
+  if (text.startsWith('//')) {
+    const lines = [];
+    for (const line of text.split('\n')) {
+      if (!line.startsWith('//')) break;
+      lines.push(line.slice(2).trim());
+    }
+    return lines.join('\n').trim();
+  }
+  return null;
+}
+
+/** JS/TS source files whose own leading comment reads as real module documentation, not a one-line note. Content-based, so it is never part of RECOGNITION_GLOBS and never archived — these are live source files, not standalone docs. */
+export function scanModuleComments(rootDir, srcFiles) {
+  const found = [];
+  for (const f of srcFiles) {
+    if (!MODULE_COMMENT_EXTENSIONS.has(path.extname(f))) continue;
+    const raw = readIfExists(path.join(rootDir, f));
+    if (!raw) continue;
+    const comment = leadingComment(raw);
+    if (comment && comment.length >= MIN_MODULE_COMMENT_LENGTH) found.push(f);
+  }
+  return found;
+}
 
 /** HEAD, or null outside a git repository — self-contained, same as project.js's own version: a migration or an installer should not depend on application code free to change shape independently of it. */
 function currentGitRevForInit(rootDir) {
@@ -312,6 +357,12 @@ export function initProject(rootDir, opts = {}, config = {}) {
 
     const srcGlobs = config.srcGlobs ?? ['src/**'];
     const srcFiles = walkFiles(rootDir, { includeGlobs: srcGlobs, ignoreGlobs });
+
+    const moduleComments = scanModuleComments(rootDir, srcFiles);
+    if (moduleComments.length) {
+      report.notes.push(`${moduleComments.length} JS/TS source file(s) carry their own module-level documentation comment — a further signal for the archaeologist, not moved or archived (these are live source, not standalone docs)`);
+    }
+
     const commit = currentGitRevForInit(rootDir);
     const wrote = writeIfMissing(
       path.join(rootDir, '.spec', 'BASELINE.md'),
