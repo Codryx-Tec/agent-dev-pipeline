@@ -70,6 +70,54 @@ a door on the person's behalf when it materially changes what is owed** —
 if genuinely unsure, ask, the same rule as everything else this file marks
 as the human's call alone.
 
+### A decision can opt into a scored structure — and only that decision pays for it
+
+An `RFC-NNN` decision's default shape (alternatives, a chosen one) is enough
+most of the time. When a decision is genuinely close, or the reasoning needs
+to survive the person who made it, it can opt in to weighted criteria and a
+scoring matrix instead — declared, never inferred:
+
+```markdown
+### D-005 — Where to cache session state
+
+**Decision criteria:** W-001, W-002, W-003
+
+**Options considered**
+
+- **OPT-000 — Do nothing.** Keep sessions in memory, single instance only.
+- **OPT-001 — Redis with TTL.** Requires: redis
+
+**Scoring matrix**
+
+| Option | W-001 | W-002 | W-003 | Total |
+|---|---|---|---|---|
+| OPT-000 | 2 | 5 | 5 | 12 |
+| OPT-001 | 7 | 6 | 3 | 16 |
+
+**Recommendation:** OPT-001 — highest score, and the team already runs it.
+
+**Decision: OPT-001 — Redis with TTL.**
+```
+
+`W-xxx` criteria are declared once in `SCOPE.md`'s `## 11. Decision
+criteria`, weights summing to 100. Only a decision that declares `**Decision
+criteria:**` or `**Options considered**` itself reaches the stricter checks
+below — every decision written before this stays exactly as it was:
+
+- `CRITERIA_AFTER_OPTIONS` (G2, error) — criteria declared after options (or
+  a matrix with no criteria at all), fewer than 3 options, no `OPT-000`, or
+  a gap in the matrix — criteria decided in light of the options already
+  picked are a rationalization, not criteria.
+- `RECOMMENDATION_AGAINST_SCORE` (G2, error) — the recommendation names an
+  option that isn't top-scored, with no justification prose. A real
+  departure from the score is fine; a silent one is not.
+- `CONTEXT_NUMBER_WITHOUT_SOURCE` (G2, warning) — a number inside an
+  option's own prose with nothing backing it up.
+- `OPTION_BEYOND_TEAM` (G2, warning) — an option's `Requires: <tag>` names a
+  capability `adp profile --capabilities <list>` never declared. This also
+  auto-lights the `new-tech` ceremony signal for that feature, on top of
+  whatever `> signals:` its PRD declares by hand.
+
 ### Every PRD is in the MVP or nowhere at all
 
 A PRD sitting outside `SCOPE.md`'s "MVP (prioritized)" checklist is

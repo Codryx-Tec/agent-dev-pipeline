@@ -23,6 +23,27 @@ GRAMMAR:
 Gate G2 passes when every PRD that links here names an id that resolves, and
 every decision in every linked RFC records at least two alternatives and a
 chosen one.
+
+OPT-IN, for a decision genuinely close enough to need weighing (declaring
+`**Decision criteria:**` or `**Options considered**` is what opts in — every
+plain decision above is untouched):
+
+  ### D-002 — Decision title
+    **Decision criteria:** W-001, W-002    (ids from SCOPE.md's own §11)
+    **Options considered**
+    - **OPT-000 — Do nothing.** ...
+    - **OPT-001 — Name.** Requires: <capability tag>
+    **Scoring matrix**
+    | Option | W-001 | W-002 | Total |
+    |---|---|---|---|
+    | OPT-000 | 2 | 5 | 7 |
+    | OPT-001 | 7 | 6 | 13 |
+    **Recommendation:** OPT-001 — reason, especially if it isn't the top score.
+    **Decision: OPT-001 — name.**
+
+At least 3 options including OPT-000, every option scored against every
+criterion. A `Requires:` tag outside `adp profile --capabilities` is
+OPTION_BEYOND_TEAM and auto-lights the new-tech ceremony signal.
 -->
 
 ## Purpose

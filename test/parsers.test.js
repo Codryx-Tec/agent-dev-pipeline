@@ -275,6 +275,64 @@ test('an assumption never carries a door — only a question can be a one-way or
   assert.equal(spec.assumptions[0].door, null, 'an ASM-xxx is never a door, regardless of what the prose says');
 });
 
+const SCORED_DECISION = `### D-005 — Where to cache session state
+
+**Decision criteria:** W-001, W-002, W-003
+
+**Options considered**
+
+- **OPT-000 — Do nothing.** Keep sessions in memory, single instance only.
+- **OPT-001 — Redis with TTL.** Requires: redis
+- **OPT-002 — Postgres advisory locks.** Requires: postgres
+
+**Scoring matrix**
+
+| Option | W-001 | W-002 | W-003 | Total |
+|---|---|---|---|---|
+| OPT-000 | 2 | 5 | 5 | 12 |
+| OPT-001 | 7 | 6 | 3 | 16 |
+| OPT-002 | 6 | 5 | 6 | 17 |
+
+**Recommendation:** OPT-001 — close to the top score and the team already
+runs Redis in production; OPT-002's edge is thin enough not to justify the
+new operational surface.
+
+**Decision: OPT-001 — Redis with TTL.**
+`;
+
+test('a decision that opts into the scored structure parses its criteria, options, matrix and recommendation @spec:AC-123', () => {
+  const d = parseRfc(SCORED_DECISION, 'RFC.md').decisions[0];
+  assert.ok(d.scored, 'a decision declaring Decision criteria/Options considered opts in');
+  assert.deepEqual(d.scored.criteriaIds, ['W-001', 'W-002', 'W-003']);
+  assert.equal(d.scored.criteriaBeforeOptions, true);
+  assert.equal(d.scored.options.length, 3);
+  assert.deepEqual(
+    d.scored.options.map((o) => o.id),
+    ['OPT-000', 'OPT-001', 'OPT-002']
+  );
+  assert.deepEqual(d.scored.options[1].requires, ['redis']);
+  assert.equal(d.scored.matrix['OPT-002']['Total'], '17');
+  assert.equal(d.scored.recommendation.optId, 'OPT-001');
+  assert.match(d.scored.recommendation.justification, /Redis in production/);
+  // the scored options replace the plain numbered-list count for this dialect
+  assert.equal(d.alternatives, 3);
+  assert.equal(d.hasDoNothing, true);
+});
+
+test('a decision that never opts in stays scored: null — the plain-native shape is untouched @spec:AC-123', () => {
+  const doc = `### D-001 — x
+
+**Alternatives considered**
+1. *One.* first
+2. *Two.* second
+
+**Decision: alternative 1 — one.**
+`;
+  const d = parseRfc(doc, 'RFC.md').decisions[0];
+  assert.equal(d.scored, null);
+  assert.equal(d.alternatives, 2);
+});
+
 test('principle levels are read in both vocabularies @spec:AC-029', () => {
   const doc = `## P-001 [MUST] a
 

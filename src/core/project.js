@@ -43,6 +43,27 @@ function extractMvp(content) {
   return [...block.matchAll(RE_MVP_ITEM)].map((m) => m[1]);
 }
 
+// SCOPE-0.6.0.md §2.4: weighted decision criteria, project-wide, referenced
+// by id from an RFC decision that opts into the scoring-matrix structure
+// (rfc.js). Optional — a SCOPE.md with no `## 11. Decision criteria`
+// section, or an empty one, is a project that has never needed one yet.
+const RE_CRITERIA_SECTION = /^##\s+\d+\.\s+Decision criteria\s*$/m;
+const RE_CRITERION_ITEM = /^[ \t]*-\s*\*\*(W-\d+)\*\*\s*[—–-]\s*(.+?)\s*\(weight:\s*(\d+(?:\.\d+)?)\)/gm;
+
+function extractCriteria(content) {
+  if (!content) return [];
+  const header = content.match(RE_CRITERIA_SECTION);
+  if (!header) return [];
+  const rest = content.slice(header.index + header[0].length);
+  const stopIdx = rest.search(/\n##\s+/);
+  const block = stopIdx === -1 ? rest : rest.slice(0, stopIdx);
+  return [...block.matchAll(RE_CRITERION_ITEM)].map((m) => ({
+    id: m[1],
+    name: m[2].trim(),
+    weight: Number(m[3]),
+  }));
+}
+
 function rel(rootDir, p) {
   return path.relative(rootDir, p).split(path.sep).join('/');
 }
@@ -135,6 +156,7 @@ export function loadProject(config) {
       : [],
     // M2c-core: the feature slugs declared as in the MVP boundary.
     mvp: extractMvp(scopeRaw),
+    criteria: extractCriteria(scopeRaw),
     // The recorded viability decision — declarative, never enforced.
     decision: (() => {
       const raw = fold(scopeRaw?.match(RE_SCOPE_DECISION)?.[1] ?? '');

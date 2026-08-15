@@ -11,7 +11,7 @@ import { loadConfig } from './config.js';
 import { loadProject } from './core/project.js';
 import { auditProject } from './core/audit.js';
 import { evaluateGates, GATES, allMappedCodes } from './core/gates.js';
-import { projectCeremony } from './core/ceremony.js';
+import { projectCeremony, computeCeremonySignals } from './core/ceremony.js';
 import { renderTerminal, renderJson, renderGates, renderPrompt } from './core/report.js';
 import {
   initProject,
@@ -106,7 +106,10 @@ usage: adp <command> [options]
                             a portable viability snapshot — gates, ceremony,
                             MVP/backlog, the recorded decision, the estimate if one exists
   profile [--stack <s>] [--familiarity <l>] [--app-type <t>] [--brownfield] [--tests]
-                            declare the stack/team profile that adp estimate reads
+          [--capabilities <list>]
+                            declare the stack/team profile that adp estimate reads;
+                            --capabilities is what OPTION_BEYOND_TEAM (SCOPE-0.6.0.md §2.4)
+                            checks an OPT-xxx's own Requires: tags against
   estimate [--pf <n>] [--csv]
                             hours = Function Points x the profile's table row; PF comes
                             from a confirmed count (see --review/--confirm) or --pf by
@@ -176,6 +179,9 @@ options:
   --app-type <t>  ${APP_TYPES.join(' | ')} (profile) — APF measures the last three poorly
   --brownfield    existing codebase, not a fresh one (profile)
   --tests         the codebase already has automated tests (profile)
+  --capabilities <list>  comma-separated tags the team already has, e.g.
+                  "redis,postgres" (profile) — compared against an
+                  RFC's own OPT-xxx Requires: tags (§2.4)
   --pf <n>        declared Function Point count (estimate) — never machine-counted
   --hours <n>     real hours a feature took (close) — the one field nothing else supplies
   --csv           print CSV instead of Markdown (estimate)
@@ -526,6 +532,10 @@ export async function run(argv) {
       appType: appType ?? 'business-crud',
       brownfield: flags.brownfield !== undefined ? Boolean(flags.brownfield) : Boolean(existing.brownfield),
       hasTests: flags.tests !== undefined ? Boolean(flags.tests) : Boolean(existing.hasTests),
+      capabilities:
+        typeof flags.capabilities === 'string'
+          ? flags.capabilities.split(',').map((s) => s.trim()).filter(Boolean)
+          : existing.capabilities ?? [],
       declaredAt: new Date().toISOString(),
     };
     mkdirSync(path.dirname(p), { recursive: true });
@@ -758,7 +768,12 @@ export async function run(argv) {
   // ---- ring 3 ----
   const project = loadProject(config);
   const audit = auditProject(project, { ci: Boolean(flags.ci), strict: Boolean(flags.strict) });
-  const ceremony = projectCeremony(project.features);
+  // Mirrors audit.js's own ceremony computation exactly (SCOPE-0.6.0.md
+  // §2.4's new-tech auto-light included) — two independently computed
+  // ceremonies would let a gate's "due or not" disagree with the findings
+  // that drove it.
+  const capabilities = new Set((loadProfile(rootDir, config).capabilities ?? []).map((c) => c.toLowerCase()));
+  const ceremony = projectCeremony(project.features, computeCeremonySignals(project.features, project.rfcs, capabilities));
   const evaluation = evaluateGates(audit.findings, { ceremony });
 
   // Ring 3, and the only command that executes anything from the repository.

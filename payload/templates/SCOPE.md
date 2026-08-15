@@ -80,3 +80,12 @@ Project-level outcomes. The per-feature detail belongs in each feature's
 ## 10. Open scope items
 
 - [ ]
+
+## 11. Decision criteria
+
+Optional. Weighted criteria a scoring matrix judges options against — only
+an RFC decision that opts into that structure (SCOPE-0.6.0.md §2.4)
+references these, by id. Weights are a percentage split and should sum to
+100. Leave empty until an RFC actually needs one.
+
+- **W-001** — what matters and why (weight: n)

@@ -116,6 +116,20 @@ só um PRD promovido ganha um. Um item que já parece um código real
 promover um item: remova a linha, rode `adp new <slug-da-feature>`,
 acrescente o slug ao checklist — nenhum comando dedicado para isso.
 
+**Uma decisão pode optar por uma estrutura pontuada, mas só ela paga por
+isso.** A forma padrão do G2 (alternativas, uma escolhida) basta na maior
+parte do tempo. Uma decisão que declara `**Decision criteria:**` (ids
+`W-xxx` com peso, vindos do `## 11. Decision criteria` do próprio
+`SCOPE.md`) ou `**Options considered**` opta por verificações mais
+rígidas: ordem e completude (`CRITERIA_AFTER_OPTIONS`), uma recomendação
+que se afasta da nota mais alta sem justificar (`RECOMMENDATION_AGAINST_SCORE`),
+um número sem fonte dentro da prosa de uma opção
+(`CONTEXT_NUMBER_WITHOUT_SOURCE`), e uma tag `Requires:` de opção que nomeia
+uma capacidade que `adp profile --capabilities` nunca declarou
+(`OPTION_BEYOND_TEAM` — que também acende o sinal de cerimônia `new-tech`
+automaticamente). Toda decisão escrita antes disso permanece exatamente
+como estava.
+
 Só os achados do primeiro gate vermelho são impressos. Para um projeto cujo
 PRD ainda não foi escrito, imprimir todos eles enterraria a única coisa a
 fazer a seguir sob dezenas das suas próprias consequências.

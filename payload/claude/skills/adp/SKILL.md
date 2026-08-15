@@ -144,6 +144,26 @@ the same posture `STATUS_INVALID` already takes toward a missing status.
 owed** — ask, the same rule as every other judgment call this document
 reserves for the human.
 
+## A decision can opt into a scored structure — `Decision criteria`/`Options considered`
+
+The default RFC shape (alternatives, a chosen one) is enough most of the
+time. A decision that is genuinely close can opt into weighted criteria and
+a scoring matrix instead, declared by the decision itself, never inferred:
+`**Decision criteria:** W-001, W-002` (ids from `SCOPE.md`'s `## 11.
+Decision criteria`, weights summing to 100), `**Options considered**` with
+`- **OPT-xxx — Name.** Requires: <tag>` bullets (at least 3, including
+`OPT-000` for "do nothing"), a `**Scoring matrix**` table, and a
+`**Recommendation:** OPT-xxx — reason.` Only a decision carrying one of
+those two markers reaches the stricter checks: `CRITERIA_AFTER_OPTIONS`
+(order, completeness, the matrix has no gaps), `RECOMMENDATION_AGAINST_SCORE`
+(a recommendation off the top score needs real justification prose, not
+silence), `CONTEXT_NUMBER_WITHOUT_SOURCE` (a number in an option's own
+prose with nothing backing it), and `OPTION_BEYOND_TEAM` (an option's
+`Requires:` names a capability `adp profile --capabilities <list>` never
+declared — this also auto-lights the `new-tech` ceremony signal). Every
+decision written before this stays exactly as it was; opting in is a choice
+made once, by the decision, not a retrofit.
+
 ## The MVP boundary, and `BACKLOG.md`
 
 Every PRD that exists must be named in `SCOPE.md`'s "MVP (prioritized)"
@@ -474,6 +494,10 @@ grepping for it must find the same string on every machine.
 | RFC missing (`RFC_MISSING`) | this feature's ceremony level requires one and it's absent, or the `rfcs:` link doesn't resolve | `adp new --rfc <slug>`, then link it |
 | question does not declare whether it is a one-way or two-way door (`DOOR_UNDECLARED`) | a `Q-xxx` has no `Door:` field, answered or not | add `Door: one-way` or `Door: two-way` — ask the person if genuinely unsure |
 | a one-way-door question is still open with no RFC (`RFC_REQUIRED`) | `Door: one-way` and `status: open` together | write a real RFC — this decision is too costly to reverse to leave as a guess |
+| scored decision structure is malformed (`CRITERIA_AFTER_OPTIONS`) | criteria declared after options (or a matrix with none), too few options, no `OPT-000`, or a gap in the matrix | fix the order, add the missing option, or fill the gap |
+| recommendation contradicts the score with no justification (`RECOMMENDATION_AGAINST_SCORE`) | the recommended option isn't top-scored, and no reason is given | either recommend the top score, or write the reason for departing from it |
+| numeric claim in an option with no cited source (`CONTEXT_NUMBER_WITHOUT_SOURCE`) | a figure inside an option's own prose, nothing backing it | cite the source, or drop the number |
+| option requires a capability the team profile does not declare (`OPTION_BEYOND_TEAM`) | an `OPT-xxx`'s `Requires:` names something `adp profile --capabilities` never declared | declare the capability if the team has it, or budget for the learning curve |
 | RFC context has no measurable figure (`CONTEXT_WITHOUT_NUMBERS`) | the prose before the first decision is an impression, not evidence | ground it in a number |
 | decision without alternatives (`DECISION_WITHOUT_ALTERNATIVE`) | a habit, not a decision | record what you rejected |
 | decision without a chosen option (`DECISION_WITHOUT_CHOICE`) | alternatives listed, none picked | say which one, and why |

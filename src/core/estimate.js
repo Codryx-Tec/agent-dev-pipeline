@@ -29,6 +29,9 @@ const DEFAULT_PROFILE = {
   appType: 'business-crud',
   brownfield: false,
   hasTests: false,
+  // SCOPE-0.6.0.md §2.4 — what the team can already do, read by
+  // OPTION_BEYOND_TEAM (audit.js) against an OPT-xxx's own `Requires:` tags.
+  capabilities: [],
   declaredAt: null, // null means "nobody ran `adp profile`" — a fact worth showing, not hiding
 };
 

@@ -142,6 +142,7 @@ test('loadProfile returns the labelled default when adp profile never ran @spec:
     const profile = loadProfile(root, config);
     assert.equal(profile.declared, false);
     assert.equal(profile.appType, 'business-crud');
+    assert.deepEqual(profile.capabilities, [], '@spec:AC-127 — no declared capabilities by default');
   });
 });
 

@@ -111,6 +111,19 @@ promoted PRD earns one. An item that already looks like a real code
 promote an item: remove its line, run `adp new <feature-slug>`, add the
 slug to the checklist — no dedicated command for it.
 
+**A decision can opt into a scored structure, but only that decision pays
+for it.** The default G2 shape (alternatives, a chosen one) is enough most
+of the time. A decision that declares `**Decision criteria:**` (weighted
+`W-xxx` ids from `SCOPE.md`'s own `## 11. Decision criteria`) or `**Options
+considered**` itself opts into stricter checks: order and completeness
+(`CRITERIA_AFTER_OPTIONS`), a recommendation that departs from the top
+score without saying why (`RECOMMENDATION_AGAINST_SCORE`), an uncited
+number inside an option's own prose (`CONTEXT_NUMBER_WITHOUT_SOURCE`), and
+an option's `Requires:` tag naming a capability `adp profile
+--capabilities` never declared (`OPTION_BEYOND_TEAM` — which also
+auto-lights the `new-tech` ceremony signal). Every decision written before
+this stays exactly as it was.
+
 Only the first red gate's findings are printed. For a project whose PRD is not
 written yet, printing all of them buries the one thing to do next under dozens of
 its own consequences.

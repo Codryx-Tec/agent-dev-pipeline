@@ -149,6 +149,165 @@ test('one RFC shared by two PRDs is checked once, not once per PRD @spec:AC-007'
   );
 });
 
+// SCOPE-0.6.0.md §2.4 — opt-in only: appending a scored decision to
+// MINIMAL_RFC's own D-001 leaves that decision untouched (no `**Decision
+// criteria:**`/`**Options considered**` markers there) while giving these
+// tests a second, opted-in decision to check.
+const SCORED_RFC_GOOD = `${MINIMAL_RFC}
+### D-005 — Where to cache session state
+
+**Decision criteria:** W-001, W-002, W-003
+
+**Options considered**
+
+- **OPT-000 — Do nothing.** Keep sessions in memory, single instance only.
+- **OPT-001 — Redis with TTL.** Requires: redis
+- **OPT-002 — Postgres advisory locks.** Requires: postgres
+
+**Scoring matrix**
+
+| Option | W-001 | W-002 | W-003 | Total |
+|---|---|---|---|---|
+| OPT-000 | 2 | 5 | 5 | 12 |
+| OPT-001 | 7 | 6 | 3 | 16 |
+| OPT-002 | 6 | 5 | 6 | 17 |
+
+**Recommendation:** OPT-002 — highest score, and the team already runs
+Postgres in production.
+
+**Decision: OPT-002 — Postgres advisory locks.**
+`;
+
+test('a well-formed scored decision raises none of the §2.4 findings @spec:AC-124', () => {
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': SCORED_RFC_GOOD }));
+  assert.equal(has(audit, 'CRITERIA_AFTER_OPTIONS'), false);
+  assert.equal(has(audit, 'RECOMMENDATION_AGAINST_SCORE'), false);
+  assert.equal(has(audit, 'CONTEXT_NUMBER_WITHOUT_SOURCE'), false);
+});
+
+test('a decision that predates §2.4 stays untouched by it — no opt-in markers, no scored findings @spec:AC-124', () => {
+  const { audit } = auditOf(base());
+  assert.equal(has(audit, 'CRITERIA_AFTER_OPTIONS'), false);
+});
+
+test('declaring Decision criteria after Options considered is a finding @spec:AC-124', () => {
+  const rfc = SCORED_RFC_GOOD.replace(
+    '**Decision criteria:** W-001, W-002, W-003\n\n**Options considered**',
+    '**Options considered**'
+  ).replace(
+    '**Scoring matrix**',
+    '**Decision criteria:** W-001, W-002, W-003\n\n**Scoring matrix**'
+  );
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.match(findingsFor(audit, 'CRITERIA_AFTER_OPTIONS')[0].message, /D-005/);
+});
+
+test('a scoring matrix with no Decision criteria at all is a finding @spec:AC-124', () => {
+  const rfc = SCORED_RFC_GOOD.replace('**Decision criteria:** W-001, W-002, W-003\n\n', '');
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.ok(has(audit, 'CRITERIA_AFTER_OPTIONS'));
+});
+
+test('a scored decision with fewer than 3 options is a finding, even though 2 satisfies the generic rule @spec:AC-124', () => {
+  const rfc = SCORED_RFC_GOOD.replace('- **OPT-002 — Postgres advisory locks.** Requires: postgres\n', '')
+    .replace('| OPT-002 | 6 | 5 | 6 | 17 |\n', '')
+    .replace('**Recommendation:** OPT-002 — highest score, and the team already runs\nPostgres in production.', '**Recommendation:** OPT-001 — the only real contender.')
+    .replace('**Decision: OPT-002 — Postgres advisory locks.**', '**Decision: OPT-001 — Redis with TTL.**');
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.match(
+    findingsFor(audit, 'CRITERIA_AFTER_OPTIONS').map((f) => f.message).join(' | '),
+    /at least 3/
+  );
+});
+
+test('a scored decision missing OPT-000 is a finding — the baseline is not optional @spec:AC-124', () => {
+  const rfc = SCORED_RFC_GOOD.replace(
+    '- **OPT-000 — Do nothing.** Keep sessions in memory, single instance only.\n',
+    ''
+  );
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.match(
+    findingsFor(audit, 'CRITERIA_AFTER_OPTIONS').map((f) => f.message).join(' | '),
+    /OPT-000/
+  );
+});
+
+test('a gap in the scoring matrix is a finding @spec:AC-124', () => {
+  const rfc = SCORED_RFC_GOOD.replace('| OPT-002 | 6 | 5 | 6 | 17 |', '| OPT-002 | 6 |  | 6 | 17 |');
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.match(findingsFor(audit, 'CRITERIA_AFTER_OPTIONS')[0].message, /OPT-002.*W-002/);
+});
+
+test('a recommendation against the top score with no justification is a finding @spec:AC-125', () => {
+  const rfc = SCORED_RFC_GOOD.replace(
+    '**Recommendation:** OPT-002 — highest score, and the team already runs\nPostgres in production.',
+    '**Recommendation:** OPT-000 —'
+  );
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.match(findingsFor(audit, 'RECOMMENDATION_AGAINST_SCORE')[0].message, /OPT-000.*OPT-002/);
+});
+
+test('a recommendation against the top score WITH real justification prose clears @spec:AC-125', () => {
+  const rfc = SCORED_RFC_GOOD.replace(
+    '**Recommendation:** OPT-002 — highest score, and the team already runs\nPostgres in production.',
+    '**Recommendation:** OPT-001 — OPT-002 scores marginally higher, but nobody\non the team has run Postgres advisory locks in production before, and the\ntiming risk outweighs the one-point gap.'
+  );
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.equal(has(audit, 'RECOMMENDATION_AGAINST_SCORE'), false);
+});
+
+test('a numeric claim in an option with no cited source is a finding, narrow to opted-in decisions @spec:AC-126', () => {
+  const rfc = SCORED_RFC_GOOD.replace(
+    '- **OPT-001 — Redis with TTL.** Requires: redis',
+    '- **OPT-001 — Redis with TTL.** Requires: redis. Cuts latency by 80% for our users.'
+  );
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.match(findingsFor(audit, 'CONTEXT_NUMBER_WITHOUT_SOURCE')[0].message, /OPT-001/);
+});
+
+test('a numeric claim with a cited source clears @spec:AC-126', () => {
+  const rfc = SCORED_RFC_GOOD.replace(
+    '- **OPT-001 — Redis with TTL.** Requires: redis',
+    '- **OPT-001 — Redis with TTL.** Requires: redis. Cuts latency by 80% (source: https://example.com/bench).'
+  );
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': rfc }));
+  assert.equal(has(audit, 'CONTEXT_NUMBER_WITHOUT_SOURCE'), false);
+});
+
+test('an OPT-xxx Requires: tag outside the declared team profile is a finding @spec:AC-127', () => {
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': SCORED_RFC_GOOD }));
+  const messages = findingsFor(audit, 'OPTION_BEYOND_TEAM').map((f) => f.message).join(' | ');
+  assert.match(messages, /OPT-001.*redis/);
+  assert.match(messages, /OPT-002.*postgres/);
+});
+
+test('nobody ever running adp profile reads as no declared capabilities, not an error @spec:AC-127', () => {
+  const { audit } = auditOf(base({ '.spec/rfc/RFC-001-t.md': SCORED_RFC_GOOD }));
+  assert.equal(findingsFor(audit, 'OPTION_BEYOND_TEAM')[0].severity, 'warning');
+});
+
+test('a declared capability that covers every Requires: tag clears OPTION_BEYOND_TEAM @spec:AC-127', () => {
+  const { audit } = auditOf(
+    base({
+      '.spec/rfc/RFC-001-t.md': SCORED_RFC_GOOD,
+      '.spec/metrics/profile.json': JSON.stringify({ capabilities: ['redis', 'postgres'] }),
+    })
+  );
+  assert.equal(has(audit, 'OPTION_BEYOND_TEAM'), false);
+});
+
+test('a partial capability match still flags the option still missing one @spec:AC-127', () => {
+  const { audit } = auditOf(
+    base({
+      '.spec/rfc/RFC-001-t.md': SCORED_RFC_GOOD,
+      '.spec/metrics/profile.json': JSON.stringify({ capabilities: ['redis'] }),
+    })
+  );
+  const messages = findingsFor(audit, 'OPTION_BEYOND_TEAM').map((f) => f.message).join(' | ');
+  assert.equal(findingsFor(audit, 'OPTION_BEYOND_TEAM').length, 1);
+  assert.match(messages, /OPT-002.*postgres/);
+});
+
 test('a missing assumptions or questions section is a finding @spec:AC-008', () => {
   const spec = SPEC_OK.replace('## Assumptions', '## Notes');
   const { audit } = auditOf(base({ '.spec/features/f/SPEC.md': spec }));

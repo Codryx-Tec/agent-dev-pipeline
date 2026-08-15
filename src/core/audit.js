@@ -17,7 +17,8 @@ import { existsSync, statSync, readFileSync } from 'fs';
 import path from 'path';
 import { CI_ESCALATES, isDeferrable } from './gates.js';
 import { checkPrinciples } from './principles.js';
-import { SIGNALS, projectCeremony } from './ceremony.js';
+import { SIGNALS, projectCeremony, computeCeremonySignals, capabilityGapMultiplier } from './ceremony.js';
+import { loadProfile } from './estimate.js';
 import { grepPattern } from '../parsers/annotations.js';
 import { globToRegExp } from '../util/glob.js';
 
@@ -26,6 +27,18 @@ import { globToRegExp } from '../util/glob.js';
 // upgrade that hasn't seeded one). Kept tiny and unambiguous on purpose: the
 // full, editable list ships in payload/vocabulary/prd-forbidden.default.json.
 const FALLBACK_PRD_VOCABULARY = ['postgresql', 'mongodb', 'redis', 'docker', 'kubernetes', 'react', 'django'];
+
+// SCOPE-0.6.0.md §2.4 — same spirit as CONTEXT_WITHOUT_NUMBERS (a claim
+// grounded in a figure, not an impression), narrowed to a single option's own
+// prose and only checked once that decision has opted into the scored
+// structure (rfc.js's parseScoredStructure).
+// The symbol alternatives (%, currency) sit outside the trailing `\b`: a
+// word boundary can never follow a non-word character like `%` when what's
+// next is whitespace or end of string, so folding them into the same `\b`
+// as the word alternatives would make them permanently unmatchable.
+const RE_OPTION_NUMERIC_CLAIM =
+  /\d[\d.,]*\s*(?:%|r\$|us\$|\$|\b(?:ms|s|sec(?:onds?)?|segundos?|min(?:s|utos?|utes?)?|h(?:ours?|oras?)?|dias?|days?|semanas?|weeks?|meses?|months?|anos?|years?|usu[áa]rios?|users?|requests?|reqs?|rps)\b)/i;
+const RE_OPTION_SOURCE_CITED = /\[[^\]]*\]\([^)]+\)|\bsource:|\bfonte:|https?:\/\//i;
 
 // M3b, antipattern #7 (AI-review rule, not one of the six classics): a vague
 // adjective with no number attached is not something a test can check.
@@ -121,12 +134,21 @@ export function auditProject(project, { ci = false, strict = false, now = new Da
   const findings = [];
   const { config, features, scope, rfcs, backlog, baseline } = project;
 
+  // The declared team profile (`adp profile --capabilities`) — read once,
+  // used both by the ceremony auto-light below and by OPTION_BEYOND_TEAM
+  // further down. Absent entirely (nobody ever ran `adp profile`) reads as
+  // no declared capabilities, the same posture an undeclared stack/
+  // familiarity already takes for `adp estimate`.
+  const capabilities = new Set((loadProfile(project.rootDir, config).capabilities ?? []).map((c) => c.toLowerCase()));
+
   // The ceremony matrix (M2b, SCOPE-0.6.0.md §2.5): what each feature's
   // declared signals say G2/G3 are due, and whether the gate is due at all,
   // project-wide. Computed once, read by both the per-feature G2/G3 checks
   // below and by gates.js's evaluateGates() (see the CLI, which threads it
-  // through as `{ ceremony }`).
-  const ceremony = projectCeremony(features);
+  // through as `{ ceremony }`). SCOPE-0.6.0.md §2.4: a capability gap in a
+  // linked RFC's scored decision auto-lights `new-tech` here, on top of
+  // whatever `> signals:` a PRD declares by hand — see computeCeremonySignals.
+  const ceremony = projectCeremony(features, computeCeremonySignals(features, rfcs, capabilities));
 
   const emit = (code, severity, message, extra = {}) => {
     // The brownfield ratchet (M4-readonly-core): a finding tied to a file
@@ -246,6 +268,108 @@ export function auditProject(project, { ci = false, strict = false, now = new Da
         emit('STRAW_OPTION', 'warning',
           `${d.id}: "${opt.name}" ${opt.consWords === 0 ? 'declares no cons at all' : `declares only ${opt.consWords} words of cons, far short of the favorite's`} — a real option has real drawbacks, or it isn't really being weighed`,
           { file: d.file, line: d.line });
+      }
+
+      // SCOPE-0.6.0.md §2.4 — opt-in only: a decision reaches these the
+      // moment it declares `**Decision criteria:**` or `**Options
+      // considered**` itself. Every decision that predates this stays
+      // exactly as it was, unaffected — see rfc.js's parseScoredStructure.
+      if (d.scored) {
+        const { scored } = d;
+        const matrixDeclared = scored.matrixHeader.length > 0;
+
+        // Order (and presence, once a matrix exists) — folded under one
+        // code rather than a family of new ones, matching how
+        // DECISION_WITHOUT_ALTERNATIVE already covers "not enough options"
+        // generically.
+        if (scored.criteriaDeclared && !scored.criteriaBeforeOptions) {
+          emit('CRITERIA_AFTER_OPTIONS', 'error',
+            `${d.id} declares **Decision criteria:** after **Options considered** — criteria decided in light of the options already picked are not criteria, they are a rationalization`,
+            { file: d.file, line: d.line });
+        } else if (!scored.criteriaDeclared && matrixDeclared) {
+          emit('CRITERIA_AFTER_OPTIONS', 'error',
+            `${d.id} has a scoring matrix but never declares **Decision criteria:** — a score with nothing it is scoring against is not a score`,
+            { file: d.file, line: d.line });
+        }
+
+        if (scored.options.length > 0 && scored.options.length < 3) {
+          emit('CRITERIA_AFTER_OPTIONS', 'error',
+            `${d.id} opts into the scored structure with only ${scored.options.length} option(s) — a scoring matrix needs at least 3, including a "do nothing" (OPT-000)`,
+            { file: d.file, line: d.line });
+        }
+        if (scored.options.length > 0 && !scored.options.some((o) => o.id === 'OPT-000')) {
+          emit('CRITERIA_AFTER_OPTIONS', 'error',
+            `${d.id} opts into the scored structure with no OPT-000 — the "do nothing" option is not optional here, it is the baseline every score is measured against`,
+            { file: d.file, line: d.line });
+        }
+
+        // Matrix completeness: every declared option scored against every
+        // declared criterion, no gaps.
+        if (scored.criteriaIds.length > 0 && scored.options.length > 0) {
+          for (const opt of scored.options) {
+            const row = scored.matrix[opt.id];
+            if (!row) {
+              emit('CRITERIA_AFTER_OPTIONS', 'error',
+                `${d.id}: ${opt.id} has no row in the scoring matrix — every option needs a score, or it isn't really being weighed`,
+                { file: d.file, line: d.line });
+              continue;
+            }
+            const gaps = scored.criteriaIds.filter((w) => row[w] === undefined || row[w] === null || row[w] === '');
+            if (gaps.length > 0) {
+              emit('CRITERIA_AFTER_OPTIONS', 'error',
+                `${d.id}: ${opt.id} has no score for ${gaps.join(', ')} — a gap in the matrix is a decision hiding inside a spreadsheet`,
+                { file: d.file, line: d.line });
+            }
+          }
+        }
+
+        // The recommendation may depart from the top score — but only with
+        // real justification prose, not silently.
+        if (scored.recommendation) {
+          const scoreOf = (optId) => {
+            const row = scored.matrix[optId];
+            if (!row) return null;
+            const totalKey = scored.matrixHeader.find((h) => /^total$/i.test(h));
+            const raw = totalKey ? row[totalKey] : null;
+            if (raw != null && Number.isFinite(Number(raw))) return Number(raw);
+            const sum = Object.values(row)
+              .map(Number)
+              .filter((n) => Number.isFinite(n))
+              .reduce((a, b) => a + b, 0);
+            return sum;
+          };
+          const scores = scored.options.map((o) => ({ id: o.id, score: scoreOf(o.id) })).filter((s) => s.score !== null);
+          const top = scores.reduce((best, s) => (best === null || s.score > best.score ? s : best), null);
+          const recScore = scoreOf(scored.recommendation.optId);
+          const isPlaceholder = /^\[.*\]$/.test(scored.recommendation.justification);
+          const hasJustification = scored.recommendation.justification.length > 0 && !isPlaceholder;
+          if (top && recScore !== null && recScore < top.score && !hasJustification) {
+            emit('RECOMMENDATION_AGAINST_SCORE', 'error',
+              `${d.id} recommends ${scored.recommendation.optId} (score ${recScore}) over the top-scored ${top.id} (score ${top.score}) with no justification prose — a recommendation against the score needs a reason, not just a name`,
+              { file: d.file, line: d.line });
+          }
+        }
+
+        // A numeric claim inside an option's own prose, uncited — narrower
+        // than CONTEXT_WITHOUT_NUMBERS on purpose: only opted-in decisions
+        // reach this, not every RFC's free prose.
+        for (const opt of scored.options) {
+          if (RE_OPTION_NUMERIC_CLAIM.test(opt.prose) && !RE_OPTION_SOURCE_CITED.test(opt.prose)) {
+            emit('CONTEXT_NUMBER_WITHOUT_SOURCE', 'warning',
+              `${d.id}: ${opt.id} states a figure with no cited source — a number nobody can trace back is an impression wearing a costume`,
+              { file: d.file, line: d.line });
+          }
+          // A capability the team profile doesn't declare — informational,
+          // not enforced: no closure yet measures the real cost of a gap
+          // like this, so the multiplier reported is a flat guess, not a
+          // computed one (see ceremony.js's capabilityGapMultiplier).
+          const gaps = opt.requires.filter((r) => !capabilities.has(r.toLowerCase()));
+          if (gaps.length > 0) {
+            emit('OPTION_BEYOND_TEAM', 'warning',
+              `${d.id}: ${opt.id} requires ${gaps.join(', ')} — outside the team's declared capabilities (see \`adp profile --capabilities\`); treat this option's estimate as roughly ${capabilityGapMultiplier}x until it's been done once`,
+              { file: d.file, line: d.line });
+          }
+        }
       }
     }
   }

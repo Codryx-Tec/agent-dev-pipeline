@@ -49,6 +49,12 @@ export const GATES = [
       // SCOPE-0.6.0.md §2.3, the conditional RFC.
       'DOOR_UNDECLARED',
       'RFC_REQUIRED',
+      // SCOPE-0.6.0.md §2.4, the RFC's executable structure — opt-in, only
+      // decisions that declare a scoring matrix reach these.
+      'CRITERIA_AFTER_OPTIONS',
+      'RECOMMENDATION_AGAINST_SCORE',
+      'CONTEXT_NUMBER_WITHOUT_SOURCE',
+      'OPTION_BEYOND_TEAM',
     ],
   },
   {
@@ -163,6 +169,10 @@ export const LABELS = {
   OPTION_DO_NOTHING_MISSING: 'no option considers not doing this',
   DOOR_UNDECLARED: 'question does not declare whether it is a one-way or two-way door',
   RFC_REQUIRED: 'a one-way-door question is still open with no RFC',
+  CRITERIA_AFTER_OPTIONS: 'scored decision structure is malformed',
+  RECOMMENDATION_AGAINST_SCORE: 'recommendation contradicts the score with no justification',
+  CONTEXT_NUMBER_WITHOUT_SOURCE: 'numeric claim in an option with no cited source',
+  OPTION_BEYOND_TEAM: 'option requires a capability the team profile does not declare',
   SECTION_MISSING: 'required section missing',
   Q_BLOCKING_OPEN: 'blocking question still open',
   Q_OPEN: 'open question',

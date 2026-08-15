@@ -1381,6 +1381,85 @@ status already cannot.
   design; the fourth is neither, since answering the question is exactly
   what discharges a one-way door's obligation
 
+### US-038 — A decision can opt into a scored structure that pays for its own rigor
+
+As a reviewer reading an RFC, I want a genuinely close decision to show
+weighted criteria and a scoring matrix by choice, not have every decision
+faked into one, so that the reasoning survives scrutiny without taxing the
+decisions that never needed it.
+
+#### AC-123 — Only a decision declaring `**Decision criteria:**` or `**Options considered**` reads as scored; every other decision is untouched
+
+- **Given** a decision with neither marker (plain native dialect); separately
+  one declaring both, with `OPT-xxx` options, a scoring matrix, and a
+  `**Recommendation:**` line
+- **When** the RFC is parsed
+- **Then** the first decision's `scored` field is `null` and its
+  `alternatives`/`hasDoNothing` come from the plain numbered list,
+  unaffected; the second's `scored` field carries the parsed criteria ids,
+  options (with any `Requires:` tags), the matrix keyed by option and
+  criterion, and the recommendation's option id and full (possibly wrapped)
+  justification prose — and its `alternatives`/`hasDoNothing` are computed
+  from the `OPT-xxx` bullets, not the numbered list
+
+#### AC-124 — A scored decision's structure is checked for order and completeness
+
+- **Given** a scored decision where `**Decision criteria:**` appears after
+  `**Options considered**`, or is absent while a scoring matrix exists;
+  separately one with fewer than 3 options or missing `OPT-000`; separately
+  one with a gap in the scoring matrix (an option with no row, or a row
+  missing a criterion column)
+- **When** the audit runs
+- **Then** each is `CRITERIA_AFTER_OPTIONS` (G2, error), naming the decision
+  and the specific defect — order, missing criteria, option count, missing
+  `OPT-000`, or the exact option/criterion gap
+
+#### AC-125 — A recommendation departing from the top score needs real justification, not silence
+
+- **Given** a scored decision recommending an option that is not the
+  highest-scored row (by its matrix's `Total` column, or the sum of its
+  criteria columns when there is none), with an empty or placeholder
+  justification; separately the same departure with real justification
+  prose following it
+- **When** the audit runs
+- **Then** the first is `RECOMMENDATION_AGAINST_SCORE` (G2, error) naming
+  both the recommended and the top-scored option and their scores; the
+  second is clean — a documented override is not a defect
+
+#### AC-126 — A numeric claim inside an option's own prose needs a cited source
+
+- **Given** a scored decision's option whose own prose states a figure (a
+  count, a duration, a percentage) with nothing citing where it came from;
+  separately the same figure followed by a markdown link, a bare URL, or an
+  explicit "source:"/"fonte:" mention
+- **When** the audit runs
+- **Then** the first is `CONTEXT_NUMBER_WITHOUT_SOURCE` (G2, warning) naming
+  the option; the second is clean. Neither check reaches a decision that
+  never opted into the scored structure
+
+#### AC-127 — An option's `Requires:` tag is checked against the team's declared capabilities
+
+- **Given** `adp profile --capabilities <list>` never run, or run without
+  naming a capability a scored option's `Requires:` names; separately run
+  naming every capability every option in the RFC requires
+- **When** the audit runs
+- **Then** the first is `OPTION_BEYOND_TEAM` (G2, warning) per option per
+  missing capability, naming the gap and `ceremony.capabilityGapMultiplier`
+  as an informational estimate multiplier; the second is clean
+
+#### AC-128 — A capability gap auto-lights the `new-tech` ceremony signal
+
+- **Given** a feature whose PRD declares no `> signals:` at all, linked to
+  an RFC with a scored decision whose option requires a capability outside
+  the declared profile
+- **When** ceremony is computed — both by `adp audit` and by every other
+  command that evaluates gates
+- **Then** that feature's ceremony level reads `medium` (or higher, if
+  another declared signal already lifts it further) from `new-tech` alone,
+  without the PRD ever declaring it by hand — and both computations (inside
+  `auditProject` and the CLI's own gate evaluation) agree, since they
+  compute from the same function
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1949,5 +2028,13 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
 - Refs: AC-122
 - Files: src/parsers/spec.js, src/core/audit.js, src/core/gates.js, payload/templates/SPEC.md, payload/AGENTS.md, payload/claude/skills/adp/SKILL.md, .exemplo/.spec/features/class-enrolment/SPEC.md
 - Notes: Closes §2.3 of `.spec/BACKLOG.md`'s largest item — Part A of two ("Part B" is §2.4, the RFC's executable structure, a separate pass). `Door:` reads the same way `status:`/`**blocking**` already do (one inline regex, searched in the same body text), not a new grammar shape. `RFC_REQUIRED` is deliberately simpler than the source text's literal implication of citing a specific `RFC-NNN` id in the answering prose: `status: answered` already carries that obligation as free text a human writes and another reads, and mining prose for a citation pattern would be a brittle second rule doing the same job worse. `DOOR_UNDECLARED` is unconditional — every question owes a door, answered or not, the same posture `STATUS_INVALID` already takes toward a missing status — which meant retrofitting, not deferring: this repository's own 10 `Q-xxx` (all already answered, so only `DOOR_UNDECLARED` was ever retroactive) and `.exemplo/`'s 1 were each classified for real, not defaulted. `adp audit --ci` stayed green throughout — retrofitting a real, small backlog is what "not deferred" actually looks like, as opposed to leaving a warning nobody revisits.
+
+## T-063 — The RFC's executable structure: weighted criteria, a scoring matrix, and the capability-gap ceremony light [done]
+
+- Refs: AC-123, AC-124, AC-125, AC-126, AC-127, AC-128
+- Files: payload/templates/SCOPE.md, payload/templates/RFC.md, src/core/project.js, src/parsers/rfc.js, src/core/audit.js, src/core/gates.js, src/core/ceremony.js, src/core/estimate.js, src/cli.js, payload/AGENTS.md, payload/claude/skills/adp/SKILL.md, README.md, README.pt-BR.md, test/parsers.test.js, test/audit.test.js, test/ceremony.test.js, test/estimate.test.js
+- Notes: Closes §2.4 of `.spec/BACKLOG.md`'s largest item, Part B of two. Opt-in, not retroactive, the same posture `OPTION_DO_NOTHING_MISSING` already takes toward this repository's own 16 pre-existing decisions and `.exemplo/`'s 2: a decision reaches the stricter checks only by declaring `**Decision criteria:**` or `**Options considered**` itself — fabricating a scoring matrix onto an already-settled decision after the fact would be the antipattern this family exists to catch, not compliance with it. A score's `Total` column is read when the matrix names one; when it doesn't, the sum of an option's own criteria columns stands in, so `RECOMMENDATION_AGAINST_SCORE` still has a number to compare against either way. `OPTION_BEYOND_TEAM` and the `new-tech` auto-light share one function (`ceremony.js`'s `computeCeremonySignals`) called from both `auditProject` and the CLI's own separate `projectCeremony` call (used for gate applicability outside a full audit run) — two independently written computations would have let a gate's "due or not" quietly disagree with the finding that drove it, caught by testing the CLI path deliberately rather than assuming the shared import was enough.
+
+  Deliberately not built, matching PRD-003c-history-core's own already-recorded deferral rather than opening a new one: `capabilityGapMultiplier` (`ceremony.js`, default `1.5`) is a flat, informational guess, not a measured figure — no closure yet records which capabilities a feature actually exercised, so there is nothing yet to average instead of assume.
 
 ---

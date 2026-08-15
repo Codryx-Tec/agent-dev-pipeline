@@ -130,6 +130,23 @@ user content — what it cannot place automatically becomes a finding
   grammar it reads — `adp verify` then `adp audit --ci`, mirroring the
   existing check against `.exemplo/`. This is AC-P7's readiness criterion,
   wired in rather than checked by hand.
+- **The conditional RFC (`Door:` on `Q-xxx`).** Every open question, answered
+  or not, declares `Door: one-way` or `Door: two-way`. An undeclared door is
+  `DOOR_UNDECLARED`; a still-open one-way door is `RFC_REQUIRED` — an
+  irreversible or expensive-to-undo decision left open needs a real RFC, not
+  a guess.
+- **The RFC's executable structure.** A decision can opt into weighted
+  criteria (`SCOPE.md`'s new `## 11. Decision criteria`, `W-xxx`) and a
+  scoring matrix, by declaring `**Decision criteria:**` or `**Options
+  considered**` itself — every decision written before this stays
+  untouched. Opting in reaches four new checks: `CRITERIA_AFTER_OPTIONS`
+  (order, completeness, at least 3 options including `OPT-000`, no gaps in
+  the matrix), `RECOMMENDATION_AGAINST_SCORE` (a recommendation off the top
+  score needs real justification), `CONTEXT_NUMBER_WITHOUT_SOURCE` (a
+  number in an option's own prose with nothing backing it), and
+  `OPTION_BEYOND_TEAM` (an option's `Requires:` tag naming a capability
+  `adp profile --capabilities <list>` never declared — also auto-lights the
+  `new-tech` ceremony signal for that feature).
 
 ### Fixed
 
