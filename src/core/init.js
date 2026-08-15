@@ -150,6 +150,34 @@ export function detectAgent(rootDir, requested, config) {
   return { agent: 'claude', ambiguous: false, defaulted: true };
 }
 
+// Whether `adp init` should interactively ask which agent to use, rather
+// than keep today's silent auto-detect/default. Only when detectAgent()
+// itself couldn't confidently decide — ambiguous, or nothing found — AND a
+// human is actually at the keyboard to answer: a script or CI run always
+// gets today's unchanged behavior, the same way a missing consent never
+// blocks an unattended run elsewhere in this tool. Pulled out as its own
+// pure function so the decision is testable without a real terminal —
+// cli.js's own I/O (the prompt text, reading the answer) is not.
+export function shouldPromptForAgent(detected, isTTY) {
+  return Boolean((detected.ambiguous || detected.defaulted) && isTTY);
+}
+
+// Resolves a human's raw answer to the interactive agent prompt into an
+// agent name. Empty input accepts detectAgent()'s own pick; a list number
+// selects by position (`names.length + 1` is "none"); anything else — a
+// name typed outside the known list — is trusted as-is, the same way
+// `agent.skillsDir` already makes an unrecognised `--agent <name>` work
+// rather than guessing what the human meant.
+export function resolveAgentAnswer(answer, names, detected) {
+  const trimmed = String(answer ?? '').trim();
+  const defaultAgent = names.includes(detected.agent) ? detected.agent : names[0];
+  if (!trimmed) return defaultAgent;
+  const n = Number(trimmed);
+  if (Number.isInteger(n) && n >= 1 && n <= names.length) return names[n - 1];
+  if (Number.isInteger(n) && n === names.length + 1) return 'none';
+  return trimmed;
+}
+
 export function listPayloadSkills() {
   const dir = path.join(PAYLOAD_DIR, 'claude', 'skills');
   if (!existsSync(dir)) return [];

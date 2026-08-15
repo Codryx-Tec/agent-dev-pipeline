@@ -1505,6 +1505,25 @@ extended to a harness with no known headless-invocation flags.
   documents, while keeping finding codes, task statuses and field labels
   English, unconditionally, exactly as D-016 left them.
 
+#### AC-131 — `adp init` lets a human choose the agent interactively when detection can't, but never blocks a script
+
+- **Given** `adp init` run with no `--agent` flag and no `--yes`, in a real
+  terminal, where either no agent directory exists yet or more than one
+  does; separately the same two starting states with stdin not a terminal
+  (a script, CI, or another program driving it); separately `--yes` passed
+  in a real terminal; separately a single agent directory already
+  unambiguously present
+- **When** `adp init` runs
+- **Then** the first two each print a numbered list of every known agent
+  (candidates already on disk marked `(detected)`, defaulting to the one
+  `detectAgent` would have picked), read one line of input, and accept
+  either a list number, a typed name outside the list (honored via
+  `agent.skillsDir`, same as `--agent <name>` would), or an empty answer
+  for the default; the third and fourth never prompt at all — a
+  non-interactive run keeps exactly today's silent auto-detect/default
+  behavior, and `--yes` keeps it too even in a terminal; the fifth never
+  prompts either, since detection was never uncertain to begin with
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -2084,10 +2103,12 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
 
 ## T-064 — Six more agent harnesses, a config escape hatch for any other one, and a declared documentation language [done]
 
-- Refs: AC-129, AC-130
+- Refs: AC-129, AC-130, AC-131
 - Files: src/core/paths.js, src/core/install-map.js, src/core/init.js, src/core/upgrade.js, src/cli.js, src/core/project.js, payload/templates/SCOPE.md, payload/AGENTS.md, payload/claude/skills/adp/SKILL.md, src/parsers/spec.js, README.md, README.pt-BR.md, INSTALL.md, test/init.test.js, test/upgrade.test.js, test/report.test.js, test/parsers.test.js
 - Notes: Ideas borrowed (not copied — original implementation) from a comparative read of openspec.dev and open-gsd/gsd-core, then checked against what this repository already had. `windsurf`/`gemini`/`copilot`/`cline`/`opencode`/`kilocode` joined `AGENT_SKILL_DIRS`, each verified fresh against that tool's own current docs — one candidate from OpenSpec's own compatibility table (`.agent/skills` for Antigravity) turned out to be stale; this repo's existing `.agents/skills` entry was already correct and untouched. `agent.skillsDir` mirrors the escape hatch `agent.command`/`args` already gave headless invocation, extended to skill installation — read live from config in both `initProject` and `planUpgrade`, never cached into the lockfile, so editing `adp.config.json` takes effect on the very next `adp upgrade` with no migration.
 
   The `**Docs language:**` field closes a real gap `adp init` was quietly imposing: `AGENTS.md` mandated all generated prose in English, in every installed project, regardless of the team's own working language — well past what D-016 ever decided (that RFC fixed the engine's own token vocabulary only). The new field is declarative, free text, defaulting to English so no project already using this tool changes behavior. Reviewing D-016 for this pass also surfaced a real, if minor, inconsistency: `spec.js`'s `SECTIONS`/`CLAUSES` still silently accept Portuguese section headers and Given/When/Then markers, which D-016's own text never actually covered (its five token families are all values the engine compares or re-emits; a heading or a clause marker is a landmark the parser searches for, never one). Kept as-is rather than cut — breaking a Portuguese document mid-flight was never on the table for this pass — but formalized: the stale pre-D-016 comment is replaced with the real reasoning, and a regression test locks the behavior in on purpose.
+
+  Added after the rest, on request: `adp init` never let a human actually choose an agent — it silently auto-detected or defaulted to `claude`. `cli.js` now calls `detectAgent()` itself before `initProject()` to decide whether to ask; the decision (`shouldPromptForAgent`) and the answer parsing (`resolveAgentAnswer`) are pure functions in `init.js`, pulled out specifically so this AC could get a real automated test rather than resting on manual verification alone — `cli.js`'s own `run()` has no test file to add one to, by existing convention, but the logic that actually decides right from wrong here does now. `initProject()` itself stays untouched and un-prompted. Additionally verified by driving the real binary through a pseudo-tty (`pty.fork()`) end to end after the refactor: numbered choice, typed name, empty-answer-accepts-default, and the ambiguous-detection case all confirmed against the actual installed files, plus the non-TTY and `--yes` paths confirmed to still never block.
 
 ---

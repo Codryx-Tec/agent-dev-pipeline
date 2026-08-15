@@ -23,6 +23,9 @@ import {
   shellAliasBlock,
   shellRcPath,
   installShellAlias,
+  detectAgent,
+  shouldPromptForAgent,
+  resolveAgentAnswer,
 } from './core/init.js';
 import { verifyPayload, renderIntegrity } from './core/integrity.js';
 import { checkTrust, grantTrust, revokeTrust, renderRefusal, storePath, TRUST_ENV } from './core/trust.js';
@@ -152,8 +155,10 @@ usage: adp <command> [options]
   version | help
 
 options:
-  --agent <name>  ${Object.keys(AGENT_SKILL_DIRS).join(' | ')} | none  (init; auto-detected otherwise) —
-                  any other name works too if agent.skillsDir is set in adp.config.json
+  --agent <name>  ${Object.keys(AGENT_SKILL_DIRS).join(' | ')} | none  (init) —
+                  any other name works too if agent.skillsDir is set in adp.config.json.
+                  omitted: auto-detected when unambiguous; otherwise asks interactively
+                  in a terminal, or falls back the same way it always has in a script
   --project <s>   project name written into SCOPE.md (init)
   --owner <s>     scope owner written into SCOPE.md (init)
   --minimal       install only .spec/ and the adp skill (init)
@@ -188,7 +193,9 @@ options:
   --csv           print CSV instead of Markdown (estimate)
   --port <n>      port for the monitor (default 7788)
   --host <addr>   bind address for the monitor (default 127.0.0.1, loopback)
-  --yes           skip the confirmation prompt (trust, run, rerun)
+  --yes           skip the confirmation prompt (trust, run, rerun); skip the
+                  interactive agent choice and keep today's auto-detected
+                  default (init)
   --lane <id>     execute only this lane (run)
   --allow-edits   let the agent write to the worktree unasked (run, rerun)
   --no-lane-tests skip the approved test command after each task (run, rerun)
@@ -218,6 +225,26 @@ function ask(question) {
     });
     process.stdin.resume();
   });
+}
+
+// The decision (shouldPromptForAgent) and the answer parsing
+// (resolveAgentAnswer) are pure functions in init.js, tested there without a
+// real terminal. This is only the I/O around them — rendering the list and
+// reading one line — the same untested-by-convention layer `ask()` itself
+// already lives in.
+async function promptForAgent(detected) {
+  const names = Object.keys(AGENT_SKILL_DIRS);
+  const isCandidate = (name) => detected.ambiguous && detected.candidates.includes(name);
+  console.log('');
+  console.log("which AI coding agent should read this project's skills?");
+  console.log('');
+  names.forEach((name, i) => {
+    console.log(`  ${i + 1}. ${name}${isCandidate(name) || name === detected.agent ? '  (detected)' : ''}`);
+  });
+  console.log(`  ${names.length + 1}. none`);
+  const defaultIndex = names.includes(detected.agent) ? names.indexOf(detected.agent) + 1 : 1;
+  const answer = await ask(`> agent [${defaultIndex}] (Enter to accept, or a number/name): `);
+  return resolveAgentAnswer(answer, names, detected);
 }
 
 function parseFlags(args) {
@@ -323,8 +350,15 @@ export async function run(argv) {
   // no .spec/ is exactly the case they exist for, and paying for a full walk of
   // the repository to scaffold three files would be absurd.
   if (command === 'init') {
+    let agentChoice = typeof flags.agent === 'string' ? flags.agent : undefined;
+    if (agentChoice === undefined && !flags.yes) {
+      const detected = detectAgent(rootDir, undefined, config);
+      if (shouldPromptForAgent(detected, process.stdin.isTTY)) {
+        agentChoice = await promptForAgent(detected);
+      }
+    }
     const report = initProject(rootDir, {
-      agent: typeof flags.agent === 'string' ? flags.agent : undefined,
+      agent: agentChoice,
       project: typeof flags.project === 'string' ? flags.project : undefined,
       owner: typeof flags.owner === 'string' ? flags.owner : undefined,
       minimal: Boolean(flags.minimal),

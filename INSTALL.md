@@ -113,8 +113,10 @@ what is on disk.
 
 The agent is detected from the directories already present — `.claude/`,
 `.cursor/`, `.agents/`, `.windsurf/`, `.gemini/`, `.github/skills/`, `.cline/`,
-`.opencode/`, `.kilocode/`. If more than one exists, it says so instead of
-guessing silently. Override with `--agent
+`.opencode/`, `.kilocode/`. When it can't tell — nothing found, or more than
+one — and you're at a real terminal, it asks; a script or CI run gets
+exactly today's silent default instead, and `--yes` skips the question even
+interactively. Override with `--agent
 claude|codex|cursor|antigravity|windsurf|gemini|copilot|cline|opencode|kilocode|none`
 — or any other name at all, once `agent.skillsDir` names where to install it
 in `adp.config.json`.

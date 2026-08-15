@@ -243,7 +243,9 @@ ferramenta; `--no-roles`, `--no-docs`, `--no-memory`, `--no-skills`,
 `--no-agents-md` pulam uma parte cada. `--agent
 claude|cursor|codex|antigravity|windsurf|gemini|copilot|cline|opencode|kilocode|none`
 escolhe o harness; do contrário ele é detectado a partir dos diretórios já
-presentes, e um projeto ambíguo é **avisado**, não decidido no palpite.
+presentes, e quando a detecção realmente não consegue decidir — nada
+encontrado, ou mais de um — ele pergunta, só num terminal de verdade; um
+script ou `--yes` recebem o mesmo default silencioso de sempre.
 Qualquer outro harness também funciona — defina `agent.skillsDir` no
 `adp.config.json` apontando de onde ele lê skills, a mesma saída de escape
 que `agent.command`/`args` já dão a um harness sem invocação headless

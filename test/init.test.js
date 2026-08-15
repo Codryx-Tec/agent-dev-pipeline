@@ -13,6 +13,8 @@ import {
   shellAliasBlock,
   shellRcPath,
   installShellAlias,
+  shouldPromptForAgent,
+  resolveAgentAnswer,
 } from '../src/core/init.js';
 import { VERSION } from '../src/version.js';
 import { createHash } from 'crypto';
@@ -198,6 +200,33 @@ test('agent.skillsDir overrides even a known agent name @spec:AC-129', () => {
 test('an unknown agent name with no skillsDir configured is still refused @spec:AC-129', () => {
   assert.throws(() => detectAgent('/tmp', 'emacs', {}), /unknown agent/);
   assert.throws(() => detectAgent('/tmp', 'emacs', { agent: {} }), /unknown agent/);
+});
+
+test('adp init only prompts for an agent when detection is genuinely uncertain, and only at a real terminal @spec:AC-131', () => {
+  assert.equal(shouldPromptForAgent({ ambiguous: true, agent: 'cursor', candidates: ['cursor', 'claude'] }, true), true);
+  assert.equal(shouldPromptForAgent({ ambiguous: false, defaulted: true, agent: 'claude' }, true), true);
+  // detection was confident — nothing to ask
+  assert.equal(shouldPromptForAgent({ ambiguous: false, agent: 'cursor' }, true), false);
+  // a real terminal is required either way — a script/CI run is never blocked
+  assert.equal(shouldPromptForAgent({ ambiguous: true, agent: 'cursor', candidates: ['cursor', 'claude'] }, false), false);
+  assert.equal(shouldPromptForAgent({ ambiguous: false, defaulted: true, agent: 'claude' }, false), false);
+});
+
+test('resolveAgentAnswer accepts a list number, a typed name outside the list, or an empty answer for the default @spec:AC-131', () => {
+  const names = Object.keys(AGENT_SKILL_DIRS);
+  const detected = { agent: 'claude', ambiguous: false, defaulted: true };
+  assert.equal(resolveAgentAnswer('', names, detected), 'claude');
+  assert.equal(resolveAgentAnswer('   ', names, detected), 'claude');
+  assert.equal(resolveAgentAnswer('1', names, detected), names[0]);
+  assert.equal(resolveAgentAnswer(String(names.length), names, detected), names[names.length - 1]);
+  assert.equal(resolveAgentAnswer(String(names.length + 1), names, detected), 'none');
+  assert.equal(resolveAgentAnswer('emacs', names, detected), 'emacs');
+});
+
+test('resolveAgentAnswer defaults to the detected agent among candidates when ambiguous @spec:AC-131', () => {
+  const names = Object.keys(AGENT_SKILL_DIRS);
+  const detected = { agent: 'cursor', ambiguous: true, candidates: ['cursor', 'claude'] };
+  assert.equal(resolveAgentAnswer('', names, detected), 'cursor');
 });
 
 test('a stale singular .claude/skill directory is called out @spec:AC-002', () => {

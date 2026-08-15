@@ -230,7 +230,9 @@ Flags trim it: `--minimal` installs only `.spec/` and the engine's own skill;
 skip one part. `--agent
 claude|cursor|codex|antigravity|windsurf|gemini|copilot|cline|opencode|kilocode|none`
 picks the harness; otherwise it is detected from the directories already
-present, and an ambiguous project is **told**, not gambled on. Any other
+present, and if detection genuinely can't tell — nothing found, or more than
+one — it asks, in a real terminal only; a script or `--yes` gets today's
+silent default instead. Any other
 harness works too — set `agent.skillsDir` in `adp.config.json` to where it
 reads skills from, the same escape hatch `agent.command`/`args` already give
 a harness with no built-in headless invocation. `--brownfield` scans an existing codebase
