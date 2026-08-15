@@ -61,7 +61,7 @@ const SPEC_OK = `# SPEC
 
 ## Open questions
 
-- **Q-001** — something asked *(status: answered)*
+- **Q-001** — something asked *(status: answered, Door: two-way)*
 
 ## T-001 — do it [pending]
 

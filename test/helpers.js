@@ -48,7 +48,7 @@ export const MINIMAL_SPEC_TAIL = `## Assumptions
 
 ## Open questions
 
-- **Q-001** — something asked *(status: answered)*
+- **Q-001** — something asked *(status: answered, Door: two-way)*
 `;
 
 export function makeProject(files, configOverrides = {}) {

@@ -39,7 +39,17 @@ export const GATES = [
     id: 'G2',
     title: 'Path decided',
     question: 'Is the path decided, with alternatives recorded?',
-    codes: ['RFC_MISSING', 'DECISION_WITHOUT_ALTERNATIVE', 'DECISION_WITHOUT_CHOICE', 'CONTEXT_WITHOUT_NUMBERS', 'STRAW_OPTION', 'OPTION_DO_NOTHING_MISSING'],
+    codes: [
+      'RFC_MISSING',
+      'DECISION_WITHOUT_ALTERNATIVE',
+      'DECISION_WITHOUT_CHOICE',
+      'CONTEXT_WITHOUT_NUMBERS',
+      'STRAW_OPTION',
+      'OPTION_DO_NOTHING_MISSING',
+      // SCOPE-0.6.0.md §2.3, the conditional RFC.
+      'DOOR_UNDECLARED',
+      'RFC_REQUIRED',
+    ],
   },
   {
     id: 'G3',
@@ -151,6 +161,8 @@ export const LABELS = {
   CONTEXT_WITHOUT_NUMBERS: 'RFC context has no measurable figure',
   STRAW_OPTION: 'option propped up with weak or missing cons',
   OPTION_DO_NOTHING_MISSING: 'no option considers not doing this',
+  DOOR_UNDECLARED: 'question does not declare whether it is a one-way or two-way door',
+  RFC_REQUIRED: 'a one-way-door question is still open with no RFC',
   SECTION_MISSING: 'required section missing',
   Q_BLOCKING_OPEN: 'blocking question still open',
   Q_OPEN: 'open question',
@@ -192,10 +204,11 @@ export const LABELS = {
 
 // The ten codes SCOPE-0.6.0.md §12.1 names as never-deferrable, regardless of
 // gate: "não se adia decidir, e não se adia a recusa sobre a qual tudo se
-// apoia." Several of these (RFC_REQUIRED, DOOR_UNDECLARED, MVP_WIDENED,
-// BASELINE_WIDENED, HOURS_IMPLAUSIBLE) are not implemented yet — kept here
-// anyway so the day they land they are excluded from birth, not by a second
-// patch someone has to remember to write.
+// apoia." RFC_REQUIRED/DOOR_UNDECLARED are G2 (§2.3) — already excluded by
+// isDeferrable()'s G5/G6-only rule below, kept here too as the belt this set
+// always was. MVP_WIDENED, BASELINE_WIDENED and HOURS_IMPLAUSIBLE are still
+// not implemented — kept here anyway so the day they land they are excluded
+// from birth, not by a second patch someone has to remember to write.
 export const NEVER_DEFERRABLE = new Set([
   'TASK_DONE_WITHOUT_PROOF',
   'AC_WITHOUT_PROOF',

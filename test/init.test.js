@@ -291,7 +291,7 @@ test('an empty folder reaches every gate green once the documents are filled in 
       '### US-001 — a visitor is greeted\n\n#### AC-001 — it names them\n\n' +
         '- **Given** a visitor\n- **When** greeted\n- **Then** the name appears\n\n' +
         '## Assumptions\n\n- **ASM-001** — names exist *(status: confirmed)*\n\n' +
-        '## Open questions\n\n- **Q-001** — anonymous? *(status: answered)*\n\n' +
+        '## Open questions\n\n- **Q-001** — anonymous? *(status: answered, Door: two-way)*\n\n' +
         '## T-001 — greeting [pending]\n\n- Refs: AC-001\n- Files: src/greet.js\n'
     );
     mkdirSync(path.join(root, 'src'), { recursive: true });

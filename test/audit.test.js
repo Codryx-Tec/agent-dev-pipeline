@@ -30,7 +30,7 @@ const SPEC_OK = `# SPEC
 
 ## Open questions
 
-- **Q-001** — something asked *(status: answered)*
+- **Q-001** — something asked *(status: answered, Door: two-way)*
 
 ## T-001 — do it [pending]
 
@@ -309,6 +309,70 @@ test('an invalid regex is reported even when the glob matches nothing @spec:AC-0
 test('duplicate traceability codes are caught across documents @spec:AC-005', () => {
   const { audit } = auditOf(base({ '.spec/features/g/SPEC.md': SPEC_OK }));
   assert.ok(has(audit, 'ID_DUPLICATE'), 'codes are unique project-wide, not per document');
+});
+
+// ------------------------------------------------ §2.3, the conditional RFC
+
+const SPEC_WITH_QUESTION = (questionLine) => `# SPEC
+
+### US-001 — a story
+
+#### AC-001 — a criterion
+
+- **Given** a
+- **When** b
+- **Then** c
+
+## Assumptions
+
+- **ASM-001** — something assumed *(status: confirmed)*
+
+## Open questions
+
+${questionLine}
+
+## T-001 — do it [pending]
+
+- Refs: AC-001
+- Files: src/a.js
+`;
+
+test('a question with no Door: is DOOR_UNDECLARED, regardless of status @spec:AC-122', () => {
+  const openNoDoor = auditOf(base({
+    '.spec/features/f/SPEC.md': SPEC_WITH_QUESTION('- **Q-001** — a *(status: open)*'),
+  }));
+  assert.ok(has(openNoDoor.audit, 'DOOR_UNDECLARED'));
+
+  const answeredNoDoor = auditOf(base({
+    '.spec/features/f/SPEC.md': SPEC_WITH_QUESTION('- **Q-001** — a *(status: answered)*'),
+  }));
+  assert.ok(
+    has(answeredNoDoor.audit, 'DOOR_UNDECLARED'),
+    'an answered question still owes a door — the field is about the decision, not its current status'
+  );
+});
+
+test('an open one-way-door question is RFC_REQUIRED @spec:AC-122', () => {
+  const { audit, gates } = auditOf(base({
+    '.spec/features/f/SPEC.md': SPEC_WITH_QUESTION('- **Q-001** — a *(status: open, Door: one-way)*'),
+  }));
+  assert.ok(has(audit, 'RFC_REQUIRED'));
+  assert.equal(has(audit, 'DOOR_UNDECLARED'), false);
+  assert.equal(gate(gates, 'G2').state, 'red');
+});
+
+test('an open two-way-door question is not RFC_REQUIRED @spec:AC-122', () => {
+  const { audit } = auditOf(base({
+    '.spec/features/f/SPEC.md': SPEC_WITH_QUESTION('- **Q-001** — a *(status: open, Door: two-way)*'),
+  }));
+  assert.equal(has(audit, 'RFC_REQUIRED'), false);
+});
+
+test('an answered one-way-door question is not RFC_REQUIRED — closing it is what discharges the obligation @spec:AC-122', () => {
+  const { audit } = auditOf(base({
+    '.spec/features/f/SPEC.md': SPEC_WITH_QUESTION('- **Q-001** — a *(status: answered, Door: one-way)*'),
+  }));
+  assert.equal(has(audit, 'RFC_REQUIRED'), false);
 });
 
 test('CI mode escalates the softer findings to errors @spec:AC-010', () => {

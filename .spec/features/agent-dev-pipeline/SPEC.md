@@ -1359,6 +1359,28 @@ to remember to check by hand.
   `process.env` by default, so its correctness does not depend on who
   invoked it
 
+### US-037 — An open question is never silent about how costly it is to leave unanswered
+
+As a captain reading a feature's open questions, I want every one of them to
+say whether the decision behind it is cheap or expensive to reverse, so that
+an irreversible choice never sits open by accident — the same way a missing
+status already cannot.
+
+#### AC-122 — Every `Q-xxx` declares `Door: one-way` or `Door: two-way`; a one-way door left open needs a real RFC
+
+- **Given** a question with no `Door:` field at all, whatever its status;
+  separately one declaring `Door: one-way` while `status: open`; separately
+  one declaring `Door: two-way` while open; separately one declaring
+  `Door: one-way` while `status: answered`
+- **When** the audit runs
+- **Then** the first is `DOOR_UNDECLARED` regardless of status — the field
+  is about the decision itself, not whether it happens to be settled yet;
+  the second is `RFC_REQUIRED` — an irreversible or expensive-to-undo
+  decision left open is not something a stated door alone excuses; the
+  third is neither, since a two-way door may stay open without an RFC by
+  design; the fourth is neither, since answering the question is exactly
+  what discharges a one-way door's obligation
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1445,20 +1467,21 @@ Status values: `open` · `answered`. A question marked **blocking** must be
 answered before G2 can pass.
 
 - **Q-001** — Which scope does the repository root own: Agent Dev Pipeline or Portal
-  Proauto? *(status: answered — the repository root owns **Agent Dev
+  Proauto? *(status: answered, Door: one-way — the repository root owns **Agent Dev
   Pipeline**, and nothing else. The tool was extracted from `Projeto_Agent` into a
   repository of its own; Portal Proauto stays where it is and becomes one of the
   tool's consumers rather than its host. This is the arrangement the third option
   described, and it is the only one that survives the tool being published: a
   package cannot ship a host product's scope document inside it.)*
 - **Q-002** — Does Agent Dev Pipeline get its own repository, or stay a folder inside
-  `Projeto_Agent`? *(status: answered — its own: `Codryx-Tec/agent-dev-pipeline`,
+  `Projeto_Agent`? *(status: answered, Door: one-way — its own: `Codryx-Tec/agent-dev-pipeline`,
   published to npm as `@codryx/agent-dev-pipeline`. Staying a subfolder was
   incompatible with being installed into other projects, which is the entire
   point of the tool.)*
 - **Q-003** — Is `agent-dev-pipeline` the final name? It appears in the port number
   documentation, the skill name, the config filename and the container image tag,
-  so renaming later is cheap now and expensive after M4. *(status: answered —
+  so renaming later is cheap now and expensive after M4. *(status: answered,
+  Door: one-way —
   the product is `agent-dev-pipeline`, published as `@codryx/agent-dev-pipeline`;
   the command, the config file and the engine's own skill are `adp`. The package
   name stays descriptive so the registry is searchable, while the binary stays
@@ -1468,9 +1491,11 @@ answered before G2 can pass.
 - **Q-004** — Retired with Docker (D-013). It asked whether the agent CLI would
   run inside the container with mounted credentials or on the host. There is no
   container, so credentials never leave the machine they were installed on.
-  *(status: answered — the question dissolved with the container)*
+  *(status: answered, Door: two-way — moot: the container itself was
+  removed, so nothing hinges on this answer any longer)*
 - **Q-005** — What is the retention policy for run events and worker output
-  streams? *(status: answered — the last **ten** runs' streams, pruned
+  streams? *(status: answered, Door: two-way — a retention count is an
+  ordinary config value, cheap to change later; the last **ten** runs' streams, pruned
   automatically after every run. The reason is token economy, not disk: worker
   transcripts are the bulk of what this tool produces and the least re-read part
   of it, and ten covers "what went wrong in the last few attempts", which is the
@@ -1480,9 +1505,11 @@ answered before G2 can pass.
   captain edits a document on the page while an agent writes the same file. The
   tool no longer writes documents at all — only `init` and `new` create files, and
   neither overwrites — so the conflict it guarded against cannot arise.
-  *(status: answered — dissolved with the page in D-011, and kept dissolved by D-013: the page came back with no write path)*
+  *(status: answered, Door: two-way — dissolved with the page in D-011, and kept dissolved by D-013: the page came back with no write path)*
 - **Q-007** — Does the tool need to keep working when the host project's test
-  suite takes minutes rather than seconds? *(status: answered — yes, and the
+  suite takes minutes rather than seconds? *(status: answered, Door: two-way —
+  additive (`--background` alongside the synchronous default, nothing removed
+  if reversed later); yes, and the
   answer is `adp verify --background`: the run is detached, its progress is
   written to the event ledger, and `adp verify --status` reports it. Synchronous
   stays the DEFAULT, because a fast suite finishing in front of you is better
@@ -1490,7 +1517,9 @@ answered before G2 can pass.
   Nothing about the verdict changes — a background run writes the same proof
   record, so the audit cannot tell the difference and neither can a gate.)*
 - **Q-008** — Under which permission mode does the executor invoke the agent?
-  *(status: answered — behind an explicit `adp run --allow-edits`, and off by
+  *(status: answered, Door: one-way — a security default, once workflows and
+  muscle memory assume it, is expensive to flip without a breaking change;
+  behind an explicit `adp run --allow-edits`, and off by
   default. The other two options were rejected for the same reason: carrying the
   flag in the default args grants an agent silent write access to a repository,
   which is precisely what `adp trust` exists to prevent for a mere test command;
@@ -1520,7 +1549,8 @@ answered before G2 can pass.
   the diff is reviewed before it merges. Handing it those rights by default, and
   silently, is the same mistake `adp trust` was built to prevent.)*
 - **Q-009** — Should a worker be able to run the tests it writes? *(status:
-  answered — no, and it does not need to. The question assumed the only way to
+  answered, Door: two-way — an internal implementation choice (where tests
+  run), not a public contract; revisable without breaking anyone. No, and it does not need to. The question assumed the only way to
   get a test result inside a lane was to let the worker produce it. The
   orchestrator can run the tests itself, in the worktree, using consent it
   already holds, and attribute the result to the task that just committed. See
@@ -1540,7 +1570,9 @@ answered before G2 can pass.
   execution required approval". They happened to be correct. The next four might
   not be, and nothing in the lane would notice.)*
 - **Q-010** — How does a task declare that it runs after another one? *(status:
-  answered — with `Depends on: T-001`, and the companion it turned out to need,
+  answered, Door: one-way — a grammar decision: once real `SPEC.md` files use
+  `Depends on:`/`Reads:`, changing the syntax is a breaking migration, the
+  same kind M2's own codemod exists for. With `Depends on: T-001`, and the companion it turned out to need,
   `Reads:` for files a task reads without writing. See D-014.*
 
   *The question as asked has a one-line answer, and answering only that would
@@ -1911,5 +1943,11 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 Running that full sequence for real surfaced a second, genuine bug: under `ADP_TRUST_TEST_COMMAND=1` (the CI escape hatch, which `adp verify` sets for its own outer approval and which a spawned child `node --test` process inherits regardless of relevance), `test/plan.test.js`'s AC-048 test failed — `makeLaneTestRunner`'s untrusted-command check read the ambient variable by default and reported a command as trusted that nothing had actually approved, exactly the scenario the test exists to refuse. Not a flake: 100% reproducible once traced to its actual cause (confirmed by replaying `verify.js`'s own `spawnSync` call in isolation, then feeding its captured TAP output through the same parser `runVerification` uses), and latent since the moment `ADP_TRUST_TEST_COMMAND` was introduced — nothing had ever run this repository's own test suite (which itself contains tests *of* the trust mechanism) under that variable before this pass, because the only prior use of it in CI verified `.exemplo/`, a project with no lane/trust tests of its own to collide with. Fixed by isolating the test's own consent environment explicitly (`{ env: { ...process.env, [TRUST_ENV]: undefined } }`) rather than inheriting `process.env`, so the test's correctness no longer depends on who invokes it. This is exactly what self-hosting is for: "se a ferramenta não consegue se auditar, ela não está pronta para auditar terceiro" (PRD-006) found a real bug the moment it was actually exercised end to end, not by construction.
 
 `package.json` bumped `0.5.0` → `0.6.0` and `CHANGELOG.md`'s `[Unreleased]` closed into `[0.6.0]` — AC-P7's readiness criterion, self-audit green, is what this bump asserts. Bumping `VERSION` (every command reads it live from `package.json`) immediately surfaced a third real bug, the same way: `test/upgrade.test.js`'s `AC-056` test asserted exactly one pending migration from a `0.4.0` install, true only by coincidence while the tool's own `VERSION` happened to still be `0.5.0` — `0.6.0.js`'s migration already existed and was already registered, just excluded from `pendingMigrations()` by the version ceiling. From the real, current `VERSION`, both migrations chain, `TDD.md` becomes `DESIGN.md` (empty here) plus a new `SPEC.md` carrying the translated task — verified by actually running both migrations against the test's fixture before rewriting its assertions to match.
+
+## T-062 — The conditional RFC: `Door:` on every `Q-xxx` [done]
+
+- Refs: AC-122
+- Files: src/parsers/spec.js, src/core/audit.js, src/core/gates.js, payload/templates/SPEC.md, payload/AGENTS.md, payload/claude/skills/adp/SKILL.md, .exemplo/.spec/features/class-enrolment/SPEC.md
+- Notes: Closes §2.3 of `.spec/BACKLOG.md`'s largest item — Part A of two ("Part B" is §2.4, the RFC's executable structure, a separate pass). `Door:` reads the same way `status:`/`**blocking**` already do (one inline regex, searched in the same body text), not a new grammar shape. `RFC_REQUIRED` is deliberately simpler than the source text's literal implication of citing a specific `RFC-NNN` id in the answering prose: `status: answered` already carries that obligation as free text a human writes and another reads, and mining prose for a citation pattern would be a brittle second rule doing the same job worse. `DOOR_UNDECLARED` is unconditional — every question owes a door, answered or not, the same posture `STATUS_INVALID` already takes toward a missing status — which meant retrofitting, not deferring: this repository's own 10 `Q-xxx` (all already answered, so only `DOOR_UNDECLARED` was ever retroactive) and `.exemplo/`'s 1 were each classified for real, not defaulted. `adp audit --ci` stayed green throughout — retrofitting a real, small backlog is what "not deferred" actually looks like, as opposed to leaving a warning nobody revisits.
 
 ---

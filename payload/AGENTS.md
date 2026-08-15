@@ -50,6 +50,26 @@ signals and scaffolds only what that level needs; `adp status` shows the
 level and signals per feature. Getting this wrong costs a re-read, not a
 rewrite — edit the `signals:` line and re-audit.
 
+### Every open question declares its door
+
+The machine cannot tell whether a decision is cheap to reverse. It can tell
+whether anyone was ever asked, so every `Q-xxx` — answered or not — must
+carry `Door: one-way` or `Door: two-way`:
+
+```markdown
+- **Q-005** — Which cache backend? *(status: open, Door: one-way)*
+```
+
+`Door: one-way` (irreversible, or expensive to undo) plus `status: open` is
+`RFC_REQUIRED` (G2, error) — a decision this costly to get wrong needs a
+real RFC, not a guess left open. `Door: two-way` (cheap to reverse) can stay
+open or get answered in the question's own prose; no RFC is owed. The field
+missing entirely is `DOOR_UNDECLARED` (G2, error), regardless of status —
+silence on reversibility is exactly the loophole this closes. **Never guess
+a door on the person's behalf when it materially changes what is owed** —
+if genuinely unsure, ask, the same rule as everything else this file marks
+as the human's call alone.
+
 ### Every PRD is in the MVP or nowhere at all
 
 A PRD sitting outside `SCOPE.md`'s "MVP (prioritized)" checklist is

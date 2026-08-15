@@ -16,7 +16,11 @@ GRAMMAR — the engine reads these shapes and nothing else:
   - **Then** ...       (or **Então**)
 
   - **ASM-001** — text *(status: open|confirmed|invalidated)*
-  - **Q-001** — text *(status: open|answered)*  add **blocking** if it gates the path
+  - **Q-001** — text *(status: open|answered, Door: one-way|two-way)*  add
+    **blocking** if it gates the path. Door is mandatory on every question:
+    one-way (irreversible or expensive to undo — needs a real RFC before it
+    can stay open) or two-way (cheap to reverse — proceeding without one is
+    a stated choice, not silence).
 
   ## T-001 — Task title [pending]
   - Refs: US-001, AC-001
@@ -31,6 +35,10 @@ has all three clauses, both the Assumptions and Open questions sections exist
 with every item carrying a status, no question marked blocking is still open,
 every criterion in this document is referenced by some task, every reference
 resolves, and every task carries a valid status.
+
+Gate G2 also reads Door: every question missing it is DOOR_UNDECLARED; a
+one-way-door question left open is RFC_REQUIRED — write a real RFC instead
+of letting a decision this costly to reverse stay a guess.
 -->
 
 ## Stories

@@ -125,6 +125,25 @@ scaffolds only what the computed level needs; `adp status` and `adp report`
 both show the level and which signals lit it — never just the verdict, always
 the reasoning behind it.
 
+## Every open question declares its door — `Q-xxx`'s `Door:` field
+
+You cannot judge whether a decision is cheap to reverse; you can make sure
+someone was asked. Every `Q-xxx`, answered or not, must carry `Door:
+one-way` or `Door: two-way`:
+
+```markdown
+- **Q-005** — Which cache backend? *(status: open, Door: one-way)*
+```
+
+`Door: one-way` (irreversible, or expensive to undo) plus `status: open` is
+`RFC_REQUIRED` — write a real RFC, don't leave it a guess. `Door: two-way`
+(cheap to reverse) can stay open or close in the question's own prose; no
+RFC owed. The field missing at all is `DOOR_UNDECLARED`, unconditionally —
+the same posture `STATUS_INVALID` already takes toward a missing status.
+**Never assign a door on the person's behalf when it changes what is
+owed** — ask, the same rule as every other judgment call this document
+reserves for the human.
+
 ## The MVP boundary, and `BACKLOG.md`
 
 Every PRD that exists must be named in `SCOPE.md`'s "MVP (prioritized)"
@@ -453,6 +472,8 @@ grepping for it must find the same string on every machine.
 | PRD names a technical solution (`PRD_WITH_SOLUTION`) | a database, framework or library name in `PRD.md` | describe the problem, not the technology — that belongs in the RFC or DESIGN |
 | backlog item carries a real tracking code (`BACKLOG_ITEM_WITH_CODE`) | a `BACKLOG.md` line looks like a declared criterion | remove the code, or promote it to a real PRD |
 | RFC missing (`RFC_MISSING`) | this feature's ceremony level requires one and it's absent, or the `rfcs:` link doesn't resolve | `adp new --rfc <slug>`, then link it |
+| question does not declare whether it is a one-way or two-way door (`DOOR_UNDECLARED`) | a `Q-xxx` has no `Door:` field, answered or not | add `Door: one-way` or `Door: two-way` — ask the person if genuinely unsure |
+| a one-way-door question is still open with no RFC (`RFC_REQUIRED`) | `Door: one-way` and `status: open` together | write a real RFC — this decision is too costly to reverse to leave as a guess |
 | RFC context has no measurable figure (`CONTEXT_WITHOUT_NUMBERS`) | the prose before the first decision is an impression, not evidence | ground it in a number |
 | decision without alternatives (`DECISION_WITHOUT_ALTERNATIVE`) | a habit, not a decision | record what you rejected |
 | decision without a chosen option (`DECISION_WITHOUT_CHOICE`) | alternatives listed, none picked | say which one, and why |

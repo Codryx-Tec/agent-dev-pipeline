@@ -52,6 +52,12 @@ export const Q_STATUSES = ['open', 'answered'];
 
 const RE_ITEM = /^\s*[-*]\s*\*\*((?:ASM|Q)-\d+)\*\*/gm;
 const RE_STATUS_IN = /status:\s*([a-zà-ú-]+)/i;
+// SCOPE-0.6.0.md §2.3: a `Q-xxx` names whether the decision it stands for is
+// a one-way door (irreversible/expensive to undo — an RFC is owed) or a
+// two-way one (cheap to reverse — proceeding without an RFC is fine, as long
+// as that is a stated choice, not silence). `ASM-xxx` has no door — only a
+// question blocks a path.
+const RE_DOOR_IN = /door:\s*(one-way|two-way)/i;
 // table rows: | ASM-001 | text | ... |   or   | 1 | text | ... |
 const RE_TABLE_ROW = /^\|\s*((?:ASM|Q)-\d+|\d+)\s*\|([^|]*)\|(.*)$/gm;
 
@@ -92,6 +98,7 @@ function parseTableItems(scan, content, file, sectionRe, kind) {
       // reported as missing rather than silently mapped onto one.
       status: raw ? fold(raw) : null,
       blocking: /\*\*blocking\*\*|\*\*bloqueante\*\*/i.test(tail),
+      door: kind === 'question' ? (tail.match(RE_DOOR_IN)?.[1]?.toLowerCase() ?? null) : null,
       text,
       fromTable: true,
     });
@@ -180,13 +187,15 @@ export function parseSpec(content, file) {
   // ---- assumptions / questions ----
   const bulletItems = blocksBetween(scan, [...scan.matchAll(RE_ITEM)]).map(({ match, body }) => {
     const raw = body.match(RE_STATUS_IN)?.[1] ?? null;
+    const kind = match[1].startsWith('ASM') ? 'assumption' : 'question';
     return {
       id: match[1],
-      kind: match[1].startsWith('ASM') ? 'assumption' : 'question',
+      kind,
       file,
       line: lineOf(content, match.index),
       status: raw ? fold(raw) : null,
       blocking: /\*\*blocking\*\*|\*\*bloqueante\*\*/i.test(body),
+      door: kind === 'question' ? (body.match(RE_DOOR_IN)?.[1]?.toLowerCase() ?? null) : null,
       text: body.split('\n')[0].trim(),
       fromTable: false,
     };

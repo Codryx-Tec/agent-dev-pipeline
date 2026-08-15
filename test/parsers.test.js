@@ -249,6 +249,32 @@ test('a question marked blocking is a distinct field, not a text convention @spe
   assert.equal(spec.assumptions[0].status, 'open');
 });
 
+test('a question\'s Door: is a distinct field, case-insensitive, absent by default @spec:AC-122', () => {
+  const doc = `## Open questions
+
+- **Q-001** — one-way? *(status: open, Door: one-way)*
+- **Q-002** — two-way? *(status: answered, door: two-way)*
+- **Q-003** — undeclared? *(status: open)*
+`;
+  const spec = parseSpec(doc, 'SPEC.md');
+  assert.equal(spec.questions[0].door, 'one-way');
+  assert.equal(spec.questions[1].door, 'two-way');
+  assert.equal(spec.questions[2].door, null);
+});
+
+test('an assumption never carries a door — only a question can be a one-way or two-way decision @spec:AC-122', () => {
+  const doc = `## Assumptions
+
+- **ASM-001** — a *(status: confirmed, Door: one-way)*
+
+## Open questions
+
+- **Q-001** — a *(status: answered, Door: two-way)*
+`;
+  const spec = parseSpec(doc, 'SPEC.md');
+  assert.equal(spec.assumptions[0].door, null, 'an ASM-xxx is never a door, regardless of what the prose says');
+});
+
 test('principle levels are read in both vocabularies @spec:AC-029', () => {
   const doc = `## P-001 [MUST] a
 

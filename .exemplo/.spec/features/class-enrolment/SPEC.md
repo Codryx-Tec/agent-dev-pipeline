@@ -45,7 +45,7 @@ data has a legal basis.
 
 ## Open questions
 
-- **Q-001** — is a guardian's e-mail stored separately from the student's? *(status: answered)*
+- **Q-001** — is a guardian's e-mail stored separately from the student's? *(status: answered, Door: two-way — a storage-layout choice, migratable later without losing data)*
 
 ## Tasks
 

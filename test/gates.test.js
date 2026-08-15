@@ -129,7 +129,7 @@ test('a clean project exits 0 with no red gate @spec:AC-018', () => {
     '.spec/features/f/SPEC.md':
       '### US-001 — x\n\n#### AC-001 — y\n\n- **Given** a\n- **When** b\n- **Then** c\n\n' +
       '## Assumptions\n\n- **ASM-001** — a *(status: confirmed)*\n\n' +
-      '## Open questions\n\n- **Q-001** — a *(status: answered)*\n\n' +
+      '## Open questions\n\n- **Q-001** — a *(status: answered, Door: two-way)*\n\n' +
       '## T-001 — x [pending]\n\n- Refs: AC-001\n- Files: src/a.js\n',
     'src/a.js': 'export const a = 1;\n',
     'test/a.test.js': "test('y @spec:AC-001', () => {});\n",

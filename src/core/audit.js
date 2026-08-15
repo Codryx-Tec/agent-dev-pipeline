@@ -505,6 +505,22 @@ export function auditProject(project, { ci = false, strict = false, now = new Da
             { feature: f.name, file: q.file, line: q.line });
         }
       }
+      // SCOPE-0.6.0.md §2.3, "a RFC condicional": the machine cannot know
+      // whether a decision is a one-way door, but it can know whether anyone
+      // was ever asked — so every question must declare it, answered or not,
+      // the same unconditional posture STATUS_INVALID already takes toward a
+      // missing status. A one-way door left open is DIFFERENT from an
+      // ordinary open question: silence on "was this ever answered with a
+      // real path recorded" is exactly the loophole this closes.
+      if (!q.door) {
+        emit('DOOR_UNDECLARED', 'error',
+          `${q.id} declares no Door: — is this one-way (needs an RFC) or two-way (fine to proceed without one)?`,
+          { feature: f.name, file: q.file, line: q.line });
+      } else if (q.door === 'one-way' && q.status === 'open') {
+        emit('RFC_REQUIRED', 'error',
+          `${q.id} is a one-way door and still open — an irreversible or expensive-to-undo decision needs a real RFC, not a guess`,
+          { feature: f.name, file: q.file, line: q.line });
+      }
     }
     // An open assumption is a warning while the work runs and an error once
     // the feature claims to be done — the same fact, two postures. Document
