@@ -52,6 +52,21 @@ test('ARCHITECTURE.md describes the current four-document chain, not the pre-0.6
   );
 });
 
+test('CI verifies and audits this repository\'s own .spec/ fresh, on every push @spec:AC-120', () => {
+  const ci = read('.github/workflows/ci.yml');
+  assert.match(ci, /bin\/adp\.js verify/, 'CI must run this repository\'s own verify, not only .exemplo/\'s');
+  assert.match(ci, /bin\/adp\.js audit --ci/, 'CI must audit this repository\'s own .spec/, not only .exemplo/\'s');
+  // The step must run BEFORE the audit line, in source order, or the audit
+  // would read a proof record from a previous run — or none at all.
+  assert.ok(ci.indexOf('bin/adp.js verify') < ci.indexOf('bin/adp.js audit --ci'));
+  const gitignore = read('.gitignore');
+  assert.match(
+    gitignore,
+    /^\.spec\/verification\/\*\.json$/m,
+    'a committed proof record is proof of the parent commit, not this one — it must be gitignored, not checked in'
+  );
+});
+
 test('CHANGELOG.md names the exit-code and file-path breaks explicitly, old to new @spec:AC-117', () => {
   const changelog = read('CHANGELOG.md');
   assert.match(changelog, /G0–G5|G0-G5/);

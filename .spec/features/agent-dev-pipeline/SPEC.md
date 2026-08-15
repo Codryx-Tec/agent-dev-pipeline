@@ -1325,6 +1325,40 @@ aspirational.
   function `START-HERE.md` and `README.md` both call out as untested —
   is genuinely called by no test
 
+### US-036 — The tool proves it can audit itself before it is trusted to audit anyone else
+
+As the maintainer preparing to publish 0.6.0, I want this repository's own
+`adp audit --ci` to run in CI itself, on a fresh checkout, and I want the
+test suite to pass under the exact consent conditions CI actually uses, so
+that "the tool audits itself" is a running gate rather than a claim I have
+to remember to check by hand.
+
+#### AC-120 — CI verifies this repository's own `.spec/` fresh, then audits it, on every push
+
+- **Given** a freshly checked-out commit, with no committed proof record —
+  `.spec/verification/*.json` is gitignored for the same reason
+  `.exemplo/`'s own copy already was: a copy verified before a commit
+  reads `PROOF_STALE` against that same commit the moment it lands, since
+  the proof was necessarily taken against the parent
+- **When** CI's self-audit step runs
+- **Then** `adp verify` runs the suite fresh and records proof against the
+  commit actually checked out, and `adp audit --ci` exits 0 against it —
+  proven by actually cloning this repository fresh and running both, not
+  only by inspecting the workflow file
+
+#### AC-121 — A test asserting the unapproved-consent path is not fooled by the CI escape hatch it runs under
+
+- **Given** `ADP_TRUST_TEST_COMMAND=1` set in the ambient environment —
+  exactly what CI's self-audit step sets for its own outer `adp verify`
+  approval, which a child test process spawned by that same `adp verify`
+  inherits whether or not it is relevant to what that child is testing
+- **When** `test/plan.test.js`'s AC-048 test checks that an unapproved (or
+  since-changed) test command is refused
+- **Then** it is refused regardless of that ambient variable — the test
+  controls its own consent environment explicitly rather than reading
+  `process.env` by default, so its correctness does not depend on who
+  invoked it
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -1867,5 +1901,13 @@ Using the shipped example as the fixture means this test also fails the day `.ex
 - Notes: Closes M6b's examples half, PRD-007 "os dois exemplos, porque são duas histórias diferentes" — deliberately sequenced after the documentation half (this session confirmed the split rather than assuming it, given `.exemplo-legado/`'s own spec calls for demonstrating the archiving step, which is not built). `.exemplo/` was already on the new grammar; this pass added what PRD-007 names and this engine actually has: `BACKLOG.md` populated from `SCOPE.md`'s own "Out of scope" section, a real `adp profile`/`adp estimate --confirm`/`adp close` run (14 PF, cold-start 112/168/252h, closed at 180h for +7.1%, recalibrating `business-crud/delivered` to `measured` — `adp.config.json` points `metrics.historyPath` inside the example folder so running `adp close` here never touches a real machine's own cross-project history), and a "do nothing" alternative added to both of `RFC-001`'s decisions so the shipped example is clean under its own `OPTION_DO_NOTHING_MISSING` check. Discovered and deliberately NOT attempted: SCOPE-0.6.0.md §2.3 (`Door:`/`RFC_REQUIRED`/`DOOR_UNDECLARED`) and §2.4 (weighted criteria, `CRITERIA_AFTER_OPTIONS`, `RECOMMENDATION_AGAINST_SCORE`, `CONTEXT_NUMBER_WITHOUT_SOURCE`, `OPTION_BEYOND_TEAM`) were never implemented in any milestone — recorded in `.spec/BACKLOG.md` as its own item, sizeable enough to be a future milestone rather than a line inside this one; the "break it" list names real, reachable codes instead (`PRD_UNPLACED`, `BACKLOG_ITEM_WITH_CODE`, `PRD_WITH_SOLUTION`).
 
 `.exemplo-legado/` is new: a small, real "invoice-tools" project (two source files, one fully untested, a partial test suite, a loose ADR, a `docs/SPEC.md` that has actually drifted from the code — no rounding claimed where the code rounds, a fixed tax rate claimed where the code takes one as a parameter, discounts and printing claimed "not planned" where both exist) — plausible legacy debt, not a contrived one. Ships in its raw, pre-adoption state: no `.spec/`, no `.git/`, because a real legacy repo has neither, and because the ratchet genuinely needs a real commit to compare against — `START-HERE.md` (kept outside every brownfield recognition glob on purpose, unlike the fictional `README.md` it walks around) has the reader run `git init` themselves before `adp init --brownfield`. Every command and every line of sample output in `START-HERE.md` was run for real against a throwaway copy first, including the ratchet demonstration itself: before touching anything, `--ci` reports both pre-existing files as warnings; after appending one line to `src/invoice.js`, that file alone escalates to `FILE_ORPHAN` error while the untouched `src/discount.js` stays exactly where it was. `PB-007`'s "arqueologia" step is described narratively rather than scripted — it depends on an actual AI session reading the recognition notes, which nothing in a static example can reproduce deterministically. `test/examples.test.js` (AC-118/AC-119) guards the internal consistency of what shipped, the same posture `test/docs.test.js` already takes toward the top-level documentation.
+
+## T-061 — Wire the self-audit into CI, and fix what running it for real found [done]
+
+- Refs: AC-120, AC-121
+- Files: .github/workflows/ci.yml, .gitignore, test/plan.test.js
+- Notes: Closes M7. PRD-006's own plan named this step ("o CI ganha um segundo job: `node bin/adp.js audit --ci`") years before this pass got to it — the migration to the new grammar had already happened, but nothing ever ran the audit against a fresh checkout to prove it actually stayed green. Doing that once, by hand, immediately failed with `PROOF_STALE`: `.spec/verification/agent-dev-pipeline.json` was committed, and proof taken before a commit is proof of the parent commit, not that one — the exact reasoning `.exemplo/`'s own copy was already gitignored for, never applied one level up. Untracked it, added the same `.gitignore` entry, and CI's new "Self-audit" step runs `adp verify` fresh before `adp audit --ci`, exactly mirroring the existing "Audit the example project" step.
+
+Running that full sequence for real surfaced a second, genuine bug: under `ADP_TRUST_TEST_COMMAND=1` (the CI escape hatch, which `adp verify` sets for its own outer approval and which a spawned child `node --test` process inherits regardless of relevance), `test/plan.test.js`'s AC-048 test failed — `makeLaneTestRunner`'s untrusted-command check read the ambient variable by default and reported a command as trusted that nothing had actually approved, exactly the scenario the test exists to refuse. Not a flake: 100% reproducible once traced to its actual cause (confirmed by replaying `verify.js`'s own `spawnSync` call in isolation, then feeding its captured TAP output through the same parser `runVerification` uses), and latent since the moment `ADP_TRUST_TEST_COMMAND` was introduced — nothing had ever run this repository's own test suite (which itself contains tests *of* the trust mechanism) under that variable before this pass, because the only prior use of it in CI verified `.exemplo/`, a project with no lane/trust tests of its own to collide with. Fixed by isolating the test's own consent environment explicitly (`{ env: { ...process.env, [TRUST_ENV]: undefined } }`) rather than inheriting `process.env`, so the test's correctness no longer depends on who invokes it. This is exactly what self-hosting is for: "se a ferramenta não consegue se auditar, ela não está pronta para auditar terceiro" (PRD-006) found a real bug the moment it was actually exercised end to end, not by construction.
 
 ---

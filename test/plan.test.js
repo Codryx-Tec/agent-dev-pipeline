@@ -14,7 +14,7 @@ import path from 'path';
 import { buildPlan, renderPlan } from '../src/core/plan.js';
 import { runLane, mergeLane, git, filesInCommit, linkIntoWorktree } from '../src/core/executor.js';
 import { makeLaneTestRunner } from '../src/core/verify.js';
-import { grantTrust } from '../src/core/trust.js';
+import { grantTrust, TRUST_ENV } from '../src/core/trust.js';
 import { rerunLane } from '../src/core/rerun.js';
 import { append, read, progress, prune, streamPath, ledgerPath } from '../src/core/ledger.js';
 import { buildPrompt } from '../src/core/prompts.js';
@@ -493,9 +493,17 @@ test('a lane whose tests pass finishes normally @spec:AC-047', () => {
   assert.ok(read(cfg, { runId: 'rt2' }).events.some((e) => e.type === 'task-tests-passed'));
 });
 
-test('lane tests need no grant beyond the one already given @spec:AC-048', () => {
+test('lane tests need no grant beyond the one already given @spec:AC-048 @spec:AC-121', () => {
   const root = gitRepo();
   const project = { rootDir: root, features: [] };
+  // Isolated from the ambient environment on purpose: this whole test's point
+  // is "no grant recorded means refused," and ADP_TRUST_TEST_COMMAND=1 — the
+  // CI escape hatch — is exactly the kind of ambient state that would make
+  // that false. `adp verify` (M7's self-audit) sets that variable for its own
+  // outer approval and it leaks to every child process, this test's own
+  // included, so relying on `process.env` here made the test's correctness
+  // depend on who was invoking it rather than on what it declares.
+  const noEscape = { env: { ...process.env, [TRUST_ENV]: undefined } };
 
   // Nothing to run.
   const none = makeLaneTestRunner(project, state());
@@ -505,13 +513,13 @@ test('lane tests need no grant beyond the one already given @spec:AC-048', () =>
   // A command, but nobody approved it. The lane worktree is still this machine,
   // and a command out of the repository is still a stranger's code.
   const cfg = { ...state(), testCommand: MARKER_TEST };
-  const untrusted = makeLaneTestRunner(project, cfg);
+  const untrusted = makeLaneTestRunner(project, cfg, noEscape);
   assert.equal(untrusted.runner, null);
   assert.match(untrusted.reason, /adp trust/);
 
   // Approval of a DIFFERENT command does not carry over.
   grantTrust(root, 'npm run something-else', cfg);
-  assert.match(makeLaneTestRunner(project, cfg).reason, /changed since it was approved/);
+  assert.match(makeLaneTestRunner(project, cfg, noEscape).reason, /changed since it was approved/);
 
   // And a run with no test runner is still a run: the check is optional, so its
   // absence costs the run its attribution, not its result.
