@@ -74,9 +74,10 @@ export const DEFAULT_CONFIG = {
     '.spec/**',
     '.venv/**',
     '__pycache__/**',
-    // the worked example is a project of its own; auditing it from here would
-    // mix its traceability codes into this repository's
+    // the worked examples are projects of their own; auditing them from here
+    // would mix their traceability codes into this repository's
     '.exemplo/**',
+    '.exemplo-legado/**',
   ],
 
   // M4 — the read-only monitor. Loopback by default and never anything else

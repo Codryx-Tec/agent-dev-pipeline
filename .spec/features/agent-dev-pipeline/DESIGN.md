@@ -394,4 +394,6 @@ pre-flight screen prints it on its own `model :` line too.
 `README.pt-BR.md` was regenerated from the finished English file, not patched — patching produced the self-contradicting document PRD-007 itself gives as its cautionary example.
 `test/docs.test.js` (AC-117) greps each file for those fossils.
 
+**The two worked examples** (M6b, PRD-007). `.exemplo/` gained `BACKLOG.md`, a real `adp profile`/`estimate`/`close` cycle (`metrics.historyPath` kept inside the folder, so `adp close` never touches a real machine's own state), and a "do nothing" alternative on both RFC decisions. `.exemplo-legado/` is new: a small, real legacy project — untested function, drifted `docs/SPEC.md` — shipped raw (no `.spec/`, no `.git/`); `START-HERE.md` walks `git init` → `init --brownfield` → the ratchet, every line of output run for real first. `§2.3`/`§2.4` (`Door:`, weighted criteria) were found unbuilt and recorded in `BACKLOG.md`, not attempted here. `test/examples.test.js` (AC-118/AC-119) guards both.
+
 ---

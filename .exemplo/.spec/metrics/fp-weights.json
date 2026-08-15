@@ -1,0 +1,24 @@
+{
+  "_comment": "Function Point weight table (SCOPE-0.6.0.md PRD-003), the standard IFPUG CPM 4.3.1 values also published in the SISP v2.3 roteiro (public domain). Five function types: ALI/AIE are data functions (internal logical file / external interface file), EE/CE/SE are transactional functions (external input / external inquiry / external output). Each is weighted low/medium/high complexity — the complexity band itself is asserted by whoever counts, cited to a source, not derived from a DET/RET/FTR formula (deferred; see PRD-003-full-core's plan for why).",
+  "rows": [
+    { "type": "ALI", "complexity": "low", "pf": 7 },
+    { "type": "ALI", "complexity": "medium", "pf": 10 },
+    { "type": "ALI", "complexity": "high", "pf": 15 },
+
+    { "type": "AIE", "complexity": "low", "pf": 5 },
+    { "type": "AIE", "complexity": "medium", "pf": 7 },
+    { "type": "AIE", "complexity": "high", "pf": 10 },
+
+    { "type": "EE", "complexity": "low", "pf": 3 },
+    { "type": "EE", "complexity": "medium", "pf": 4 },
+    { "type": "EE", "complexity": "high", "pf": 6 },
+
+    { "type": "CE", "complexity": "low", "pf": 3 },
+    { "type": "CE", "complexity": "medium", "pf": 4 },
+    { "type": "CE", "complexity": "high", "pf": 6 },
+
+    { "type": "SE", "complexity": "low", "pf": 4 },
+    { "type": "SE", "complexity": "medium", "pf": 5 },
+    { "type": "SE", "complexity": "high", "pf": 7 }
+  ]
+}

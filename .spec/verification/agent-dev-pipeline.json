@@ -3,11 +3,11 @@
   "reporter": "tap",
   "command": "node --test --test-reporter=tap \"test/*.test.js\"",
   "exitCode": 1,
-  "durationMs": 8492,
-  "verifiedAt": "2026-08-14T23:47:32.723Z",
-  "gitRev": "101057a2a77cae72de69a3f86eade79448b2e1fc",
+  "durationMs": 8578,
+  "verifiedAt": "2026-08-15T00:26:17.329Z",
+  "gitRev": "e013cb86711377fafd2325fe4eda2740b9ec7140",
   "gitDirty": true,
-  "codeMtime": 1786750979498.7283,
+  "codeMtime": 1786753488989.8567,
   "results": {
     "AC-001": {
       "status": "pass",
@@ -2029,6 +2029,36 @@
         },
         {
           "title": "CHANGELOG.md names the exit-code and file-path breaks explicitly, old to new @spec:AC-117",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-118": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": ".exemplo/ only promises \"break it\" findings this engine actually implements @spec:AC-118",
+          "status": "pass"
+        },
+        {
+          "title": ".exemplo/'s estimate and closure artifacts are internally consistent @spec:AC-118",
+          "status": "pass"
+        },
+        {
+          "title": ".exemplo/'s RFC resolves OPTION_DO_NOTHING_MISSING for both of its decisions @spec:AC-118",
+          "status": "pass"
+        }
+      ]
+    },
+    "AC-119": {
+      "status": "pass",
+      "tests": [
+        {
+          "title": ".exemplo-legado/ ships in its raw, pre-adoption state @spec:AC-119",
+          "status": "pass"
+        },
+        {
+          "title": ".exemplo-legado/'s partial test suite matches what its own README and START-HERE.md claim @spec:AC-119",
           "status": "pass"
         }
       ]

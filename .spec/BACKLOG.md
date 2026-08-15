@@ -56,3 +56,26 @@
   alias-into-the-profile half is deferred, same reasoning M4's archiving
   step used: an unverified edit to a file this tool cannot check risks
   corrupting it, and that is worse than not offering the shortcut yet.
+- **SCOPE-0.6.0.md §2.3 and §2.4 in full — the conditional RFC and the
+  RFC's executable structure.** Discovered late (M6b's examples pass),
+  not part of any milestone this repository's own SPEC.md ever recorded
+  as done, and not named anywhere as deferred before now. Six finding
+  codes, all G2, none implemented: `RFC_REQUIRED`/`DOOR_UNDECLARED` (a
+  `Door: one-way | two-way` field on `Q-xxx` — an open, one-way-door
+  question with no linked RFC is `RFC_REQUIRED`; the field itself missing
+  is `DOOR_UNDECLARED`); `CRITERIA_AFTER_OPTIONS` (weighted decision
+  criteria, from the SCOPE's `W-xxx`, must be written before the options
+  they judge — enforced by document order, not just presence);
+  `RECOMMENDATION_AGAINST_SCORE` (a recommendation that isn't the
+  highest-scored option needs a written justification);
+  `CONTEXT_NUMBER_WITHOUT_SOURCE` (warning — a context figure with no
+  cited source); `OPTION_BEYOND_TEAM` (an option's declared `Requires:`
+  exceeding the team profile's declared capability, which is also meant
+  to auto-light the ceremony matrix's `new-tech` signal and feed a
+  capability-gap hours multiplier into `adp estimate` — none of that
+  wiring exists either). `.exemplo/`'s own `RFC-001-class-enrolment.md`
+  cannot demonstrate the `Door:`/one-way-vs-two-way distinction the
+  worked example is supposed to show (PRD-007, "os dois exemplos") until
+  this exists. Sizeable enough to be its own milestone, not a line item
+  inside documentation or examples work — build and review it on its
+  own, the same posture as the archiving step above.

@@ -29,6 +29,9 @@ decision exists to prevent.
    caller can forget, and one that forgets overfills the class.
 3. *In a transaction wrapper.* Correct under concurrency, and far more machinery
    than a teaching example can justify.
+4. *Do nothing — keep counting seats by hand, outside the code.* Costs no
+   engineering time today. Loses the one guarantee this whole feature exists
+   for: nothing stops a 31st enrolment, because nothing is actually counting.
 
 **Decision: alternative 1 — inside the enrolment function.**
 
@@ -49,6 +52,10 @@ scope; the day two enrolments race, alternative 3 is where to start.
    — an ordinary, expected outcome — into an exceptional one.
 2. *Return a verdict object with `ok` and a reason.* Refusal becomes data, and
    the caller has to look at it to learn anything.
+3. *Do nothing: return `undefined` on refusal, same as on success.* No new
+   shape to design. The caller cannot tell "enrolled" from "refused" without
+   inspecting the class object itself, which is exactly the silent failure
+   AC-002 exists to prevent.
 
 **Decision: alternative 2 — a verdict object.**
 

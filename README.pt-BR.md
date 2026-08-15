@@ -53,12 +53,20 @@ um pacote pequeno e o executa; nada é adicionado ao seu projeto e nenhum
 que fixar a versão no CI, e como a ferramenta continua instalável na versão
 que você fixou depois que uma nova for publicada.
 
-Ou leia um projeto pronto em vez disso: **[`.exemplo/`](.exemplo/)** é um
-projeto completo e executável que chega a um `audit --ci` limpo em três
-comandos — `trust`, `verify`, `audit`. Ele chega **sem prova, de propósito**:
-prova não é um arquivo que alguém te entrega, é o resultado de rodar os
-testes na sua máquina. O README dele lista quatro formas de quebrá-lo para
-você ver cada gate disparar.
+Ou leia um projeto pronto em vez disso — dois, na verdade, um para cada
+porta de entrada: **[`.exemplo/`](.exemplo/)** é um projeto completo e
+executável que chega a um `audit --ci` limpo em três comandos — `trust`,
+`verify`, `audit`. Ele chega **sem prova, de propósito**: prova não é um
+arquivo que alguém te entrega, é o resultado de rodar os testes na sua
+máquina. O README dele lista oito formas de quebrá-lo para você ver cada
+gate disparar, e percorre uma estimativa em Ponto de Função recalibrada por
+um `adp close` de verdade. **[`.exemplo-legado/`](.exemplo-legado/)** é a
+outra porta: um código pequeno, real e pré-existente — testes parciais, um
+ADR solto, uma spec que já derivou do código — adotado com `adp init
+--brownfield`. O [`START-HERE.md`](.exemplo-legado/START-HERE.md) dele
+percorre o escaneamento de reconhecimento, o baseline e o mecanismo de
+ratchet que mantém o primeiro audit de um projeto legado em poucas linhas,
+não num muro.
 
 ---
 
@@ -279,6 +287,10 @@ deliberadamente não construído ainda: é o único passo em toda esta
 ferramenta que moveria um arquivo real do usuário, e sai sozinho quando
 existir, não junto com a metade segura e somente-leitura.
 
+Veja isso acontecer contra um código legado pequeno e real em
+[`.exemplo-legado/`](.exemplo-legado/) — reconhecimento, o arqueólogo, o
+baseline e o ratchet, cada um com seu próprio comando e saída reais.
+
 ## Convivendo com um achado real de propósito
 
 Nem todo achado real é corrigido hoje, e a resposta honesta para isso não é
@@ -331,6 +343,7 @@ scripts/             build-manifest.js — o manifesto SHA-256 do payload
 test/                374 testes, node:test, sem framework
 payload/             O QUE É INSTALADO — templates, AGENTS.md, skills, agents, hooks, docs
 .exemplo/            um projeto pronto, verde e executável para ler e quebrar
+.exemplo-legado/     um código pré-existente pequeno, adotado com --brownfield
 ARCHITECTURE.md      por que o motor é do jeito que é — leia antes de mudar algo
 INSTALL.md           a única rota de instalação, e por que o CI deve fixar uma versão
 ```

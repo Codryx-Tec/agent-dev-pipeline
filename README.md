@@ -51,11 +51,19 @@ appears in it. See [`INSTALL.md`](INSTALL.md) — including why you should pin t
 version in CI, and how the tool stays installable on the version you pinned
 after a new one ships.
 
-Or read a finished project instead: **[`.exemplo/`](.exemplo/)** is a complete,
-runnable project that reaches a clean `audit --ci` in three commands — `trust`,
-`verify`, `audit`. It arrives **unproven on purpose**: proof is not a file
-somebody hands you, it is the result of running the tests on your machine. Its
-README lists four ways to break it so you can watch each gate fire.
+Or read a finished project instead — two of them, one for each door in:
+**[`.exemplo/`](.exemplo/)** is a complete, runnable project that reaches a
+clean `audit --ci` in three commands — `trust`, `verify`, `audit`. It arrives
+**unproven on purpose**: proof is not a file somebody hands you, it is the
+result of running the tests on your machine. Its README lists eight ways to
+break it so you can watch each gate fire, and walks through a Function Point
+estimate that gets recalibrated by a real `adp close`.
+**[`.exemplo-legado/`](.exemplo-legado/)** is the other door: a small,
+real, pre-existing codebase — partial tests, a loose ADR, a spec that has
+drifted from the code — adopted with `adp init --brownfield`. Its
+[`START-HERE.md`](.exemplo-legado/START-HERE.md) walks through the
+recognition scan, the baseline, and the ratchet mechanism that keeps a
+legacy project's first audit to a handful of lines instead of a wall.
 
 ---
 
@@ -264,6 +272,10 @@ not built yet: it is the one step in this whole tool that would move a
 user's real files, and it ships on its own once it exists, not bundled
 behind the safe, read-only half.
 
+See it happen against a real, small legacy codebase in
+[`.exemplo-legado/`](.exemplo-legado/) — recognition, the archaeologist,
+the baseline, and the ratchet, each with its own real command and output.
+
 ## Living with a real finding on purpose
 
 Not every real finding gets fixed today, and the honest answer to that is
@@ -314,6 +326,7 @@ scripts/             build-manifest.js — the payload's SHA-256 manifest
 test/                374 tests, node:test, no framework
 payload/             WHAT GETS INSTALLED — templates, AGENTS.md, skills, agents, hooks, docs
 .exemplo/            a finished, green, runnable project to read and break
+.exemplo-legado/     a small pre-existing codebase, adopted with --brownfield
 ARCHITECTURE.md      why the engine looks like it does — read before changing it
 INSTALL.md           the one install route, and why CI should pin a version
 ```

@@ -36,9 +36,13 @@ Then break it on purpose — that is the part worth doing:
 ```sh
 # delete the @spec:AC-002 annotation from a test title  -> G5 goes red: AC_WITHOUT_TEST
 # change a task's status to [done]                 -> G6 goes red: TASK_DONE_WITHOUT_PROOF
-# remove one alternative from D-001 in RFC.md           -> G2 goes red: DECISION_WITHOUT_ALTERNATIVE
+# remove one alternative from D-001 in .spec/rfc/RFC-001-class-enrolment.md
+#                                                        -> G2 goes red: DECISION_WITHOUT_ALTERNATIVE
 # add a criterion to SPEC.md with no task               -> G4 warns: AC_WITHOUT_TASK
-# remove the "signals:" line from PRD.md                -> G2 reads n/a; RFC.md is no longer required
+# remove the "signals:" line from PRD.md                -> G2 reads n/a; the RFC is no longer required
+# remove the "class-enrolment" line from SCOPE.md's MVP  -> G1 goes red: PRD_UNPLACED
+# add "- see AC-099" to BACKLOG.md                       -> G1 warns: BACKLOG_ITEM_WITH_CODE
+# write "use PostgreSQL with a row lock" in PRD.md       -> G1 goes red: PRD_WITH_SOLUTION
 ```
 
 Each time, `node ../bin/adp.js prompt` gives you the exact text to paste
@@ -47,23 +51,58 @@ back to an AI to fix it.
 ## What is in here
 
 ```
-.spec/SCOPE.md            approved — this is what opens G0
+.spec/SCOPE.md            approved — this is what opens G0; MVP checklist
+                           names "class-enrolment" by slug
+.spec/BACKLOG.md          what SCOPE.md's own "Out of scope" section named
+                           (payment, cancellation, a waiting list) — plain
+                           prose, no tracking code
 .spec/CONSTITUTION.md     four principles; P-004 is executed against a test tag
+.spec/ESTIMATE.md         a Function Point estimate, cold-start, labeled as
+                           such — see "Estimate and close" below
+.spec/metrics/            profile.json · count-confirmed.json · estimate.json ·
+                           closures.jsonl · hours-history.jsonl · the seeded
+                           hours-per-fp.json/fp-weights.json tables
 .spec/features/class-enrolment/
     PRD.md                prose only — what, for whom, why; declares
                            "signals: multiple-teams", which is what puts
                            this feature at rfc-first ceremony and keeps
                            G2/G3 due (see "break it" above)
-    RFC.md                2 decisions with alternatives     (owns D-xxx)
-    DESIGN.md             the technical shape, in prose
-    SPEC.md               2 stories, 3 criteria, 2 assumptions, 1 question,
+    DESIGN.md              the technical shape, in prose
+    SPEC.md                2 stories, 3 criteria, 2 assumptions, 1 question,
                            3 tasks — the layer the machine confers
                            (owns US-xxx, AC-xxx, ASM-xxx, Q-xxx, T-xxx)
+.spec/rfc/RFC-001-class-enrolment.md
+                           2 decisions with alternatives, flat and global
+                           (owns D-xxx) — not nested under the feature
 src/enrolment.js          every rule, in one function
 test/enrolment.test.js    one test per criterion, annotated in the TITLE
-adp.config.json       where the tests are and how to run them
+adp.config.json           where the tests are and how to run them; also
+                           points the shared hours-history at a path
+                           inside this folder, so running `adp close`
+                           here never touches your own machine's real
+                           cross-project history
 AGENTS.md                 the contract the AI follows here
 ```
+
+## Estimate and close — the loop, not just the number
+
+```sh
+node ../bin/adp.js estimate --review    # the confirmed function count, already recorded
+cat .spec/ESTIMATE.md                   # 14 PF x the business-crud/delivered cold-start row
+```
+
+`ESTIMATE.md` is dated before this feature shipped: 14 PF, sourced `cold-start`
+— a market-anchored number with zero project history behind it, and the tool
+says so out loud rather than letting it look like more than it is. `adp close
+--hours 180` was run once the feature actually shipped, seven days later,
+recording a **+7.1%** deviation and a one-line note about why. That closure
+did two things a single number never could: it wrote a local audit trail
+(`.spec/metrics/closures.jsonl`) and, since it also fed the shared,
+identity-free `hours-history.jsonl` this config points inside the example
+folder, it **recalibrated** the `business-crud/delivered` row in
+`hours-per-fp.json` — `source` there now reads `measured`, not `cold-start`.
+Run `node ../bin/adp.js estimate --pf 14` again and watch it use that
+recalibrated row instead of the market seed.
 
 ## The feature, in one paragraph
 
@@ -78,9 +117,10 @@ five tests.
 `AC-001`; `T-001` declares `Refs: US-001, AC-001`; the test title carries
 `@spec:AC-001`. Cut any link and a gate turns red naming the one you cut.
 
-**The RFC records what was rejected.** `D-001` weighs three ways to decrement the
-seat count and says why two lost, and what the winner costs. That is the
-difference between a decision and a habit — and the gate counts the alternatives.
+**The RFC records what was rejected — including doing nothing.** `D-001`
+weighs four ways to decrement the seat count, one of them "do nothing," and
+says why three lost and what the winner costs. That is the difference
+between a decision and a habit — and the gate counts the alternatives.
 
 **The tasks all touch the same file, so the planner will put them in one lane.**
 That is the correct answer, not a limitation. The `Files:` list exists so the

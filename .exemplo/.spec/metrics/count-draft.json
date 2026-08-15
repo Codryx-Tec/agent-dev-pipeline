@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Class roster (seats and enrolled students)",
+    "type": "ALI",
+    "complexity": "low",
+    "source": "PRD.md: \"a class has a finite number of seats\""
+  },
+  {
+    "name": "Enrol a visitor",
+    "type": "EE",
+    "complexity": "medium",
+    "source": "SPEC.md AC-001/AC-002: accepts when a seat is free, refuses without touching the count when it is not"
+  },
+  {
+    "name": "Guardian consent check",
+    "type": "EE",
+    "complexity": "low",
+    "source": "SPEC.md AC-003: blocks a minor's enrolment without guardian data, before the seat check runs"
+  }
+]

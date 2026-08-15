@@ -80,6 +80,7 @@ scripts/           build-manifest.js — the payload's SHA-256 manifest
 test/              374 tests, node:test, no framework
 payload/           WHAT GETS INSTALLED — templates, AGENTS.md, skills, agents, hooks, docs
 .exemplo/          a finished, green, runnable project to read and break
+.exemplo-legado/   a small pre-existing codebase, adopted with --brownfield
 package.json       bin, exports, files — this folder IS the package
 ```
 

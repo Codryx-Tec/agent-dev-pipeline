@@ -30,6 +30,7 @@
     "scripts/",
     ".exemplo/",
     "!.exemplo/.spec/verification/*.json",
+    ".exemplo-legado/",
     "README.md",
     "README.pt-BR.md",
     "THIRD-PARTY-NOTICES.md",
