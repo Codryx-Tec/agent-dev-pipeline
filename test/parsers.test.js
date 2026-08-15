@@ -338,6 +338,41 @@ test('a decision that opts into the scored structure parses its criteria, option
   assert.equal(d.hasDoNothing, true);
 });
 
+test('scored.decidedOptionId names which option the Decision: line actually chose @spec:AC-123', () => {
+  const d = parseRfc(SCORED_DECISION, 'RFC.md').decisions[0];
+  assert.equal(d.scored.decidedOptionId, 'OPT-001');
+});
+
+test('an option whose bold title wraps onto a second line is still parsed, not silently dropped @spec:AC-123', () => {
+  const doc = `### D-005 — Where to cache session state
+
+**Decision criteria:** W-001, W-002
+
+**Options considered**
+
+- **OPT-000 — Do nothing.** Keep sessions in memory.
+- **OPT-001 — A long option title that keeps going and eventually
+  wraps onto a second line before it closes.** Requires: redis
+
+**Scoring matrix**
+
+| Option | W-001 | W-002 | Total |
+|---|---|---|---|
+| OPT-000 | 2 | 5 | 7 |
+| OPT-001 | 7 | 6 | 13 |
+
+**Recommendation:** OPT-001 — reason.
+
+**Decision: OPT-001 — the long-titled one.**
+`;
+  const d = parseRfc(doc, 'RFC.md').decisions[0];
+  assert.equal(d.scored.options.length, 2);
+  const wrapped = d.scored.options.find((o) => o.id === 'OPT-001');
+  assert.ok(wrapped, 'OPT-001 must still be parsed even though its title spans two lines');
+  assert.match(wrapped.name, /wraps onto a second line/);
+  assert.deepEqual(wrapped.requires, ['redis']);
+});
+
 test('a decision that never opts in stays scored: null — the plain-native shape is untouched @spec:AC-123', () => {
   const doc = `### D-001 — x
 

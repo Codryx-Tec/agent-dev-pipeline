@@ -16,6 +16,7 @@ import {
   appendClosure,
   loadClosures,
   saveHoursTable,
+  capabilitiesExercised,
 } from '../src/core/closure.js';
 
 function fresh(fn) {
@@ -57,6 +58,87 @@ test('recordClosure works with no prior estimate — hours recorded alone @spec:
 test('recordClosure refuses a non-positive or non-numeric hours @spec:AC-072', () => {
   assert.throws(() => recordClosure({ hours: 0, estimate: null }), /positive/);
   assert.throws(() => recordClosure({ hours: NaN, estimate: null }), /positive/);
+});
+
+test('recordClosure defaults capabilities to empty when no caller supplies it @spec:AC-140', () => {
+  const c = recordClosure({ hours: 100, estimate: null });
+  assert.deepEqual(c.capabilities, { exercised: [], gaps: [] });
+});
+
+test('recordClosure carries whatever capabilitiesExercised() computed @spec:AC-140', () => {
+  const c = recordClosure({ hours: 100, estimate: null, capabilities: { exercised: ['redis'], gaps: ['redis'] } });
+  assert.deepEqual(c.capabilities, { exercised: ['redis'], gaps: ['redis'] });
+});
+
+// ------------------------------------------------------ capabilitiesExercised
+
+const SCORED_RFC = (decidedOpt) => `# RFC: t
+
+### D-005 — Where to cache session state
+
+**Decision criteria:** W-001
+
+**Options considered**
+
+- **OPT-000 — Do nothing.** No new capability needed.
+- **OPT-001 — Redis with TTL.** Requires: redis
+- **OPT-002 — Postgres advisory locks.** Requires: postgres, sql
+
+**Scoring matrix**
+
+| Option | W-001 | Total |
+|---|---|---|
+| OPT-000 | 1 | 1 |
+| OPT-001 | 5 | 5 |
+| OPT-002 | 7 | 7 |
+
+**Recommendation:** ${decidedOpt} — reason given.
+
+**Decision: ${decidedOpt} — chosen.**
+`;
+
+test('capabilitiesExercised reads Requires: only from the DECIDED option, not every option considered @spec:AC-140', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
+    writeFileSync(path.join(root, '.spec', 'rfc', 'RFC-001-t.md'), SCORED_RFC('OPT-001'));
+    const result = capabilitiesExercised(root, { rfcDir: '.spec/rfc' }, new Set());
+    assert.deepEqual(result.exercised, ['redis']);
+  });
+});
+
+test('capabilitiesExercised marks a tag as a gap only when it is outside the declared profile @spec:AC-140', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
+    writeFileSync(path.join(root, '.spec', 'rfc', 'RFC-001-t.md'), SCORED_RFC('OPT-002'));
+    const noneDeclared = capabilitiesExercised(root, { rfcDir: '.spec/rfc' }, new Set());
+    assert.deepEqual(noneDeclared.exercised.sort(), ['postgres', 'sql']);
+    assert.deepEqual(noneDeclared.gaps.sort(), ['postgres', 'sql']);
+
+    const partiallyDeclared = capabilitiesExercised(root, { rfcDir: '.spec/rfc' }, new Set(['postgres']));
+    assert.deepEqual(partiallyDeclared.gaps, ['sql']);
+
+    const fullyDeclared = capabilitiesExercised(root, { rfcDir: '.spec/rfc' }, new Set(['postgres', 'sql']));
+    assert.deepEqual(fullyDeclared.gaps, []);
+  });
+});
+
+test('capabilitiesExercised ignores an option that was considered but not chosen @spec:AC-140', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
+    // OPT-000 (no Requires:) is what got decided — OPT-001/OPT-002's own
+    // Requires: tags must never leak in just because they were on the table.
+    writeFileSync(path.join(root, '.spec', 'rfc', 'RFC-001-t.md'), SCORED_RFC('OPT-000'));
+    const result = capabilitiesExercised(root, { rfcDir: '.spec/rfc' }, new Set());
+    assert.deepEqual(result.exercised, []);
+    assert.deepEqual(result.gaps, []);
+  });
+});
+
+test('capabilitiesExercised with no .spec/rfc directory at all reports empty, not an error @spec:AC-140', () => {
+  fresh((root) => {
+    const result = capabilitiesExercised(root, { rfcDir: '.spec/rfc' }, new Set());
+    assert.deepEqual(result, { exercised: [], gaps: [] });
+  });
 });
 
 // -------------------------------------------------------------- recalibrateRow

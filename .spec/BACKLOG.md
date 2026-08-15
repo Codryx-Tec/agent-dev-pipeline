@@ -39,9 +39,11 @@
   use: an unverified edit to a file this tool cannot check risks
   corrupting it, and that is worse than not offering the shortcut yet.
 - The capability-gap hours multiplier (`ceremony.capabilityGapMultiplier`,
-  §2.4) is a flat, informational `1.5x`, not a measured one — no closure
-  yet records which capabilities a feature actually exercised, so there is
-  nothing yet to average instead of assume. Matches the deferral
-  PRD-003c-history-core already recorded for the rest of `adp close`'s own
-  metrics; revisit once enough closures against `OPTION_BEYOND_TEAM`
-  features exist to make a real number worth computing.
+  §2.4) is still a flat, informational `1.5x`, not a measured one. `adp
+  close` now records `capabilities: { exercised, gaps }` per closure (the
+  data-collection half), but nothing yet reads that history back to
+  average a real multiplier from it — the same "histórico é a verdade"
+  posture `history.js` already takes for `hours-per-fp.json`'s own
+  recalibration, not yet extended to this number. Revisit once enough
+  closures with real capability gaps exist to make an average worth
+  computing over a flat guess.

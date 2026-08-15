@@ -70,6 +70,7 @@ import {
   recalibrateRow,
   calibrationLabel,
   saveHoursTable,
+  capabilitiesExercised,
 } from './core/closure.js';
 import {
   loadDraft,
@@ -125,7 +126,11 @@ usage: adp <command> [options]
   close --hours <n> [--note "<s>"]
                             record the real hours a feature took; recalibrates the
                             table row adp estimate last used, from the shared
-                            cross-project history (see metrics below)
+                            cross-project history (see metrics below); also records
+                            which OPT-xxx Requires: tags the project's own decided
+                            RFCs actually exercised, and which were capability gaps
+                            at the time — informational, feeds a future measured
+                            capability-gap multiplier, not computed yet
   metrics import <file>    bring another project's/team's hours-history.jsonl
                             records into yours; each one is marked imported
   metrics export [<path>] [--csv]
@@ -775,15 +780,27 @@ export async function run(argv) {
       console.error('recording the hours alone.');
     }
 
+    // Data-collection groundwork for the capability-gap multiplier
+    // eventually becoming measured (SCOPE-0.6.0.md §2.4's own recorded
+    // deferral) — not the computation itself, just what future closures
+    // will have to average over instead of assume.
+    const declaredCapabilities = new Set(
+      (loadProfile(rootDir, config).capabilities ?? []).map((c) => c.toLowerCase())
+    );
+    const capabilities = capabilitiesExercised(rootDir, config, declaredCapabilities);
+
     let closure;
     try {
-      closure = recordClosure({ hours, note, estimate });
+      closure = recordClosure({ hours, note, estimate, capabilities });
     } catch (err) {
       console.error(`error: ${err.message}`);
       return 2;
     }
     appendClosure(rootDir, config, closure);
     console.log(`recorded : ${hours}h` + (closure.deviationPct !== null ? ` (estimate said ${closure.estimate.likely}h — ${closure.deviationPct > 0 ? '+' : ''}${closure.deviationPct}%)` : ''));
+    if (capabilities.gaps.length) {
+      console.log(`capability gap(s) exercised: ${capabilities.gaps.join(', ')} — informational, feeds a future measured multiplier`);
+    }
 
     if (closure.rowUsed && closure.observedHoursPerFp !== null) {
       // Shared history first — this closure has to be in it before the

@@ -79,8 +79,12 @@ const RE_SCORED_OPTIONS_MARKER = /^\*\*Options considered\*\*\s*$/m;
 const RE_SCORING_MATRIX_MARKER = /^\*\*Scoring matrix\*\*\s*$/m;
 // "- **OPT-001 — Redis with TTL.** Requires: redis" — the name ends at the
 // first period inside the bold span; anything after the closing `**` on the
-// same line is the option's own prose, where `Requires:` lives.
-const RE_OPT_ITEM = /^[ \t]*-\s*\*\*(OPT-\d+)\s*[—–-]\s*(.+?)\.\*\*(.*)$/gm;
+// same line is the option's own prose, where `Requires:` lives. `[\s\S]+?`
+// (not `.+?`) for the name: a longer option title routinely wraps onto a
+// second line before its closing `**`, and `.` alone — which never matches
+// a newline — would silently drop that option from `options` entirely,
+// found the hard way against this repo's own D-017.
+const RE_OPT_ITEM = /^[ \t]*-\s*\*\*(OPT-\d+)\s*[—–-]\s*([\s\S]+?)\.\*\*(.*)$/gm;
 const RE_REQUIRES = /Requires:\s*(.+)$/im;
 // The justification is prose that can wrap onto following lines — captured
 // separately below, since `$` with the `m` flag would otherwise cut it off
@@ -90,6 +94,10 @@ const RE_REQUIRES = /Requires:\s*(.+)$/im;
 const RE_RECOMMENDATION = /^\*\*Recommendation:\*\*[ \t]*(OPT-\d+)[ \t]*[—–-]?[ \t]*/m;
 const RE_TABLE_ROW_RAW = /^\|(.+)\|[ \t]*$/gm;
 const RE_TABLE_SEPARATOR = /^[ \t:|-]+$/;
+// "**Decision: OPT-001 — Redis with TTL.**" — which option a scored
+// decision actually landed on, read by core/closure.js so adp close can
+// record which Requires: tags a project's real, decided path exercised.
+const RE_DECIDED_OPTION = /\*\*Decision:\s*(OPT-\d+)/;
 
 /** One markdown table's rows, header first, as arrays of trimmed cells. */
 function parseTableRows(text) {
@@ -172,6 +180,7 @@ function parseScoredStructure(body) {
     matrixHeader: header ?? [],
     matrix,
     recommendation,
+    decidedOptionId: body.match(RE_DECIDED_OPTION)?.[1] ?? null,
   };
 }
 

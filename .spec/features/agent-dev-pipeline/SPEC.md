@@ -777,6 +777,23 @@ here has confirmed.
   changes only the `rows` field — any other top-level field the file
   carries (`_comment`, seeded from the shipped default) survives untouched
 
+#### AC-140 — `adp close` records which `Requires:` capabilities the project's decided RFCs actually exercised, and which were gaps
+
+- **Given** a project whose `.spec/rfc/*.md` files carry a scored decision
+  with `Requires:` tags on several options, only one of them actually
+  decided (`**Decision: OPT-xxx**`); separately no `.spec/rfc/` directory
+  at all; separately a declared profile (`adp profile --capabilities`)
+  covering some, all, or none of the decided option's tags
+- **When** `adp close --hours <n>` runs
+- **Then** the closure record's `capabilities.exercised` lists only the
+  `Requires:` tags on the option that was actually chosen — an option
+  that was considered and rejected contributes nothing, even if its own
+  tags never appear anywhere else; `capabilities.gaps` is the subset of
+  `exercised` outside the declared profile at close time; no RFC directory
+  reads as `{ exercised: [], gaps: [] }`, never an error; and the terminal
+  output names any gap inline as informational, feeding a future measured
+  `capabilityGapMultiplier` — not computed yet, only collected
+
 ### US-024 — The captain gets a Function Point count the AI proposed, structurally honest before anyone confirms it
 
 As a captain, I want the count the AI proposes to be checked for shape and
@@ -2278,5 +2295,13 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
 - Notes: Closes the gap `T-065` surfaced while drafting `D-017`'s own matrix and deliberately did not fix there. `RECOMMENDATION_AGAINST_SCORE`'s `scoreOf()` now computes a weighted average — `sum(cell × weight) / sum(weight)` across the criteria a decision actually cited — instead of trusting a hand-typed `Total` column or a plain unweighted sum. Normalizes by the cited criteria's own weight sum rather than assuming 100, so a project's `W-xxx` scale (1–5, 1–10, a percentage split) never has to add up to a fixed total; `payload/templates/SCOPE.md`'s own guidance updated to say so instead of asserting a "should sum to 100" rule the formula never actually needed. No declared weight for any criterion a decision cites (most projects, most of the time — including every one of this repo's own pre-`D-017` fixtures) falls back to the plain sum unchanged, so nothing already using the unweighted mechanism regresses.
 
   Verified the fix actually changes ranking, not just arithmetic: a fixture where `W-001` outweighs `W-002` 9-to-1 has one option winning by plain sum and a different one winning once weighted — recommending the true (weighted) winner with no justification clears; recommending the plain-sum winner instead now correctly fires. Also re-ran this repo's own `D-017` under the new formula for real (`adp audit --ci`) to confirm its own recommendation — already carrying real justification prose — still clears regardless of which option the weighting puts on top.
+
+## T-070 — `adp close` records which capabilities were exercised, and a real parser bug the work surfaced [done]
+
+- Refs: AC-140
+- Files: src/core/closure.js, src/cli.js, src/parsers/rfc.js, .spec/BACKLOG.md, test/closure.test.js, test/parsers.test.js
+- Notes: The data-collection half of the capability-gap multiplier's own recorded deferral (§2.4) — not the measured computation itself, which still needs real accumulated history to average over, the same "histórico é a verdade" posture `history.js` already takes for the hours table. `capabilitiesExercised()` (`closure.js`) reads every `.spec/rfc/*.md` file directly — deliberately not `loadProject()`, the same "read only the small slice this needs" posture `adp profile`/`adp estimate` already take — and collects `Requires:` tags from each DECIDED scored decision's actually-chosen option only; an option that was considered and rejected teaches nothing about what a closure's real hours reflect. `adp close` now prints any gap inline and persists `capabilities: { exercised, gaps }` on every closure record, additively — a caller that never supplies it (or reads an older closure that predates this field) gets `{ exercised: [], gaps: [] }`, never a thrown error.
+
+  Extracting the chosen option required knowing WHICH `OPT-xxx` a decision landed on, which `rfc.js` never exposed structurally before — added `scored.decidedOptionId`, read from the same `**Decision: OPT-xxx**` line `decided` already tests for presence, just capturing the id this time. Building and testing that against this repo's own real `D-017` surfaced a genuine, unrelated parser bug: `RE_OPT_ITEM` used `.+?` for an option's bold title, and `.` never matches a newline — `D-017`'s own `OPT-003` wraps its title onto a second line and was silently missing from `scored.options` entirely (present in the scoring matrix and gap-checks via direct lookup, just absent from the options list itself, which meant the matrix-completeness gap check never actually walked its row). Fixed with `[\s\S]+?`, verified against this repo's own RFC file for real before trusting the new regression test alone.
 
 ---

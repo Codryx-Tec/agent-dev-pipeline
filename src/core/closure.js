@@ -17,11 +17,60 @@
 // "Horas declaradas são declaração, não prova" — same category as
 // `verification(gate)` in the constitution. Nothing here is a gate.
 
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import path from 'path';
+import { parseRfc } from '../parsers/rfc.js';
 
 export function closurePath(rootDir, config) {
   return path.join(rootDir, config.specDir ?? '.spec', 'metrics', 'closures.jsonl');
+}
+
+const RE_RFC_FILENAME = /^(RFC-\d+)-(.+)\.md$/i;
+
+/**
+ * Every `Requires:` tag exercised by a decision this project actually
+ * settled on — SCOPE-0.6.0.md §2.4's own already-recorded deferral,
+ * data-collection groundwork for it: `ceremony.capabilityGapMultiplier`
+ * stays a flat, informational `1.5x` until enough of these accumulate to
+ * average instead of assume. Reads every `.spec/rfc/*.md` file directly
+ * (not `loadProject()` — a full project walk is more than this needs, the
+ * same reasoning `adp profile`/`adp estimate` already read their own small
+ * slice of the project rather than the whole thing) and looks only at
+ * DECIDED scored decisions' actually-chosen option — an option that was
+ * considered and rejected teaches nothing about what this closure's real
+ * hours reflect.
+ *
+ * @returns {{exercised: string[], gaps: string[]}} `exercised`: every
+ *   `Requires:` tag on a decided, scored decision's chosen option, deduped.
+ *   `gaps`: the subset that was outside the declared profile's
+ *   capabilities at close time.
+ */
+export function capabilitiesExercised(rootDir, config, capabilities) {
+  const rfcRoot = path.join(rootDir, config.rfcDir ?? '.spec/rfc');
+  const exercised = new Set();
+  const gaps = new Set();
+  if (!existsSync(rfcRoot)) return { exercised: [], gaps: [] };
+
+  for (const entry of readdirSync(rfcRoot, { withFileTypes: true })) {
+    if (!entry.isFile() || !RE_RFC_FILENAME.test(entry.name)) continue;
+    let raw;
+    try {
+      raw = readFileSync(path.join(rfcRoot, entry.name), 'utf8');
+    } catch {
+      continue;
+    }
+    const rfc = parseRfc(raw, entry.name);
+    for (const d of rfc.decisions) {
+      if (!d.scored || !d.decided || !d.scored.decidedOptionId) continue;
+      const chosen = d.scored.options.find((o) => o.id === d.scored.decidedOptionId);
+      if (!chosen) continue;
+      for (const tag of chosen.requires) {
+        exercised.add(tag);
+        if (!capabilities.has(tag.toLowerCase())) gaps.add(tag);
+      }
+    }
+  }
+  return { exercised: [...exercised], gaps: [...gaps] };
 }
 
 export function appendClosure(rootDir, config, record) {
@@ -54,9 +103,12 @@ export function loadClosures(rootDir, config) {
  * Build one closure record. `hours` is the one field nothing else can
  * supply. Everything tied to the estimate (PF, the row it used, the
  * declared range) is carried along so the record means something on its
- * own, even if `hours-per-fp.json` changes shape later.
+ * own, even if `hours-per-fp.json` changes shape later. `capabilities`
+ * (from `capabilitiesExercised()` above) is optional and additive — a
+ * caller with no RFCs, no profile, or an older call site that never reads
+ * it back just gets `{ exercised: [], gaps: [] }`, not a thrown error.
  */
-export function recordClosure({ hours, note, estimate }) {
+export function recordClosure({ hours, note, estimate, capabilities }) {
   if (!Number.isFinite(hours) || hours <= 0) {
     throw new Error('--hours must be a positive number');
   }
@@ -76,6 +128,7 @@ export function recordClosure({ hours, note, estimate }) {
     observedHoursPerFp,
     deviationPct,
     note: note ?? null,
+    capabilities: capabilities ?? { exercised: [], gaps: [] },
   };
 }
 
