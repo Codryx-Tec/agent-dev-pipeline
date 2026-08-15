@@ -61,9 +61,8 @@ revise it by hand or through the normal `business-analyst` flow instead.
    evidence the feature still exists — say what the code shows, cite the
    stale doc as context for why the two disagree.
 5. **Never touch `project_old_artifacts/` or propose moving anything.**
-   Archiving old documentation into that directory is a separate,
-   deliberately deferred capability (see `.spec/BACKLOG.md`) with its own
-   consent gate; this role reads files where they already are.
+   `adp archive` does that, on its own explicit consent gate, separate from
+   this role; this role only reads files where they already are.
 
 ## Handoff
 

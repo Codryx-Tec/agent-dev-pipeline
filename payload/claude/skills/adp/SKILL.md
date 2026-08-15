@@ -203,9 +203,14 @@ same full-strength check as any new file. This is what keeps a legacy
 repository's first `adp audit` **legible** instead of a wall. The
 **archaeologist** role reads the recognition inventory and the code and
 proposes a `Draft` `SCOPE.md`, every claim cited — invoke it once, right
-after `--brownfield`, never for a project born with this tool. Archiving old
-documentation (`git mv` to `project_old_artifacts/`) is not built yet; don't
-imply it exists.
+after `--brownfield`, never for a project born with this tool. `adp archive`
+does the archiving itself, on its own explicit consent gate, separate from
+`init`: copies the recognized documentation into `project_old_artifacts/`
+by default, or moves it via `git mv` under `--move`. Refuses outside a git
+repository or on a dirty tree, in either mode, with no override; `README.md`/
+`LICENSE`/`CONTRIBUTING.md`/`SECURITY.md`/`CODE_OF_CONDUCT.md` (by basename)
+and anything a CI workflow references always stay copied. Dry-run by
+default — show the human that output before ever suggesting `--apply`.
 
 ## Living with a real finding on purpose — `DEFERRALS.md`
 

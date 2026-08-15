@@ -286,10 +286,18 @@ finding in its own right. This is what keeps a legacy repository's first
 The `archaeologist` role reads the recognition inventory and the code itself
 and proposes a `Draft` `SCOPE.md`, every claim cited to its source file — a
 starting point for the human who owns the scope, never a finished one.
-Archiving old documentation into `project_old_artifacts/` is deliberately
-not built yet: it is the one step in this whole tool that would move a
-user's real files, and it ships on its own once it exists, not bundled
-behind the safe, read-only half.
+
+`adp archive` is the step that actually moves files, on its own explicit
+consent gate, separate from `init`'s — the one operation in this whole tool
+capable of touching a user's real files, so it never runs bundled behind
+anything else. It **copies** recognized documentation into
+`project_old_artifacts/` by default; `--move` opts into `git mv` instead.
+Three guards apply either way, with no override: refuses outside a git
+repository, refuses on a dirty working tree, and always copies (never
+moves) `README.md`/`LICENSE`/`CONTRIBUTING.md`/`SECURITY.md`/
+`CODE_OF_CONDUCT.md` — matched by basename, wherever they live — plus any
+path a CI workflow's own text references. Dry-run by default; `--apply`
+writes, gated behind typing `yes` unless `--yes` is passed.
 
 See it happen against a real, small legacy codebase in
 [`.exemplo-legado/`](.exemplo-legado/) — recognition, the archaeologist,

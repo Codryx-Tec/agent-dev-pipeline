@@ -285,10 +285,20 @@ of the user's:
   file. This is what keeps the first `adp audit` on a legacy codebase
   readable instead of a wall of `FILE_ORPHAN`.
 
-**Not built yet:** the archiving step (`git mv` old documentation into
-`project_old_artifacts/`) and `BASELINE_WIDENED` (catching an attempt to
-re-grow the baseline after it shrinks) — both named in `.spec/BACKLOG.md`.
-Don't imply either exists.
+**`adp archive`** does "Passo 3": copies recognized documentation into
+`project_old_artifacts/` by default; `--move` opts into `git mv` instead.
+Three guards apply in both modes, with no override on any of them: refuses
+outside a git repository, refuses on a dirty working tree, and always
+copies (never moves) `README.md`/`LICENSE`/`CONTRIBUTING.md`/
+`SECURITY.md`/`CODE_OF_CONDUCT.md` (matched by basename, wherever they
+live) plus any path a CI workflow's own text references. Dry-run by
+default; `--apply` writes, gated behind typing `yes` unless `--yes` is
+passed. Never suggest running it without showing the human the dry-run
+output first.
+
+**Not built yet:** `BASELINE_WIDENED` (catching an attempt to re-grow the
+baseline after it shrinks) — named in `.spec/BACKLOG.md`. Don't imply it
+exists.
 
 ### Living with a real finding on purpose — `DEFERRALS.md`
 

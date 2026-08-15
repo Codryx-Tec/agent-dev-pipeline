@@ -60,7 +60,9 @@ function today() {
 // the glob-matchable documentation artifacts a brownfield adoption reads
 // before proposing anything. Module-comment scanning is explicitly not
 // here — that needs real per-language parsing, not a glob; deferred.
-const RECOGNITION_GLOBS = [
+// Exported: `core/archive.js`'s "Passo 3" re-scans with this exact list, so
+// the two steps can never independently drift on what counts as doc-shaped.
+export const RECOGNITION_GLOBS = [
   'README*',
   'docs/**',
   'doc/**',
@@ -288,8 +290,8 @@ export function initProject(rootDir, opts = {}, config = {}) {
 
   // ---- brownfield (M4-readonly-core, SCOPE-0.6.0.md PRD-002): recognition
   // and BASELINE.md only — nothing here moves or rewrites a single file of
-  // the user's. The archiving step (git mv to project_old_artifacts/) is a
-  // separate, deliberately deferred pass; see .spec/BACKLOG.md ----
+  // the user's. Archiving into project_old_artifacts/ is `adp archive`, its
+  // own command with its own consent gate (D-017) ----
   if (opts.brownfield) {
     const ignoreGlobs = config.ignoreGlobs ?? [];
     // One walk per glob, not per file — a glob can list which files it
@@ -303,7 +305,7 @@ export function initProject(rootDir, opts = {}, config = {}) {
       if (matched.length) byGroup.push([glob, matched.length]);
     }
     if (seen.size) {
-      report.notes.push(`brownfield recognition found ${seen.size} existing doc-like file(s): ${byGroup.map(([g, n]) => `${g} (${n})`).join(', ')} — a starting point for the archaeologist role, nothing was moved`);
+      report.notes.push(`brownfield recognition found ${seen.size} existing doc-like file(s): ${byGroup.map(([g, n]) => `${g} (${n})`).join(', ')} — a starting point for the archaeologist role; run \`adp archive\` when ready to move or copy any of it`);
     } else {
       report.notes.push('brownfield recognition found no existing README/docs/ADR/OpenAPI/CHANGELOG-shaped files');
     }

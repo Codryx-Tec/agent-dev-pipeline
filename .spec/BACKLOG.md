@@ -23,17 +23,6 @@
   ceremony for its own sake, exactly what this whole antipattern family
   exists to catch elsewhere. Revisit case by case if any of these
   decisions are ever reopened, rather than as a batch.
-- M4's archiving step: `git mv` of recognized documentation into
-  `project_old_artifacts/`, with the three guards SCOPE-0.6.0.md §PRD-002
-  names as non-negotiable (`git mv` never `mv`, refuse on a dirty tree, an
-  untouchable list — README/LICENSE/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT
-  and anything a CI workflow references — copied, never moved) and its own
-  explicit consent gate, separate from `init`'s. Deliberately deferred from
-  M4-readonly-core: this is the one step in the whole 0.6.0 scope that
-  moves a user's real files, and shipping it alongside the safe,
-  read-only half (recognition, `BASELINE.md`, the archaeologist role)
-  would mean a bug in the safe half ships untested next to the dangerous
-  one. Build and review it on its own.
 - `BASELINE_WIDENED` — SCOPE-0.6.0.md's rule that `BASELINE.md` may only
   shrink, never regrow, needs walking that file's own git history to
   detect a removed entry coming back. No payoff until teams are actually
@@ -42,8 +31,8 @@
   or `git diff` fails. M4-readonly-core's ratchet only discounts severity
   when git succeeds; without it, a baselined file gets no discount at all
   rather than a less-precise guess. Brownfield adoption already assumes
-  git everywhere else in the source design (the deferred archiving step
-  refuses outside one); this keeps that assumption for the ratchet too.
+  git everywhere else in the source design (`adp archive`, D-017, refuses
+  outside one too); this keeps that assumption for the ratchet.
 - Module-comment scanning as a recognition source. The glob-matchable
   cases (README/docs/ADR/OpenAPI/migrations/CHANGELOG/CONTRIBUTING) are
   built; scanning source comments for documentation needs real parsing
@@ -53,8 +42,8 @@
   `$PROFILE` file, which this Linux development environment has no way to
   test. `./adp`/`adp.cmd` themselves ship regardless — they are plain
   files, not an edit to something outside the project — only the opt-in
-  alias-into-the-profile half is deferred, same reasoning M4's archiving
-  step used: an unverified edit to a file this tool cannot check risks
+  alias-into-the-profile half is deferred, same reasoning `D-017`'s guards
+  use: an unverified edit to a file this tool cannot check risks
   corrupting it, and that is worse than not offering the shortcut yet.
 - The capability-gap hours multiplier (`ceremony.capabilityGapMultiplier`,
   §2.4) is a flat, informational `1.5x`, not a measured one — no closure
@@ -63,3 +52,12 @@
   PRD-003c-history-core already recorded for the rest of `adp close`'s own
   metrics; revisit once enough closures against `OPTION_BEYOND_TEAM`
   features exist to make a real number worth computing.
+- The §2.4 scoring matrix's `Total` column is a plain sum, not weighted by
+  the declared `W-xxx` values arithmetically — the weights order which
+  criteria get cited in `**Decision criteria:**` and feed
+  `OPTION_BEYOND_TEAM`'s ceremony logic, but nothing in `audit.js`
+  multiplies a cell by its column's weight. Surfaced while drafting `D-017`
+  (a `W-001`/`W-002`-weight-5 criterion sits in the same unweighted sum as
+  `W-005`/`W-006`-weight-3 ones), not fixed there. A human filling in raw
+  per-criterion scores can under- or over-represent a heavily-weighted
+  criterion next to a lightly-weighted one without the tool ever noticing.

@@ -1524,6 +1524,65 @@ extended to a harness with no known headless-invocation flags.
   behavior, and `--yes` keeps it too even in a terminal; the fifth never
   prompts either, since detection was never uncertain to begin with
 
+### US-040 — A legacy project's old documentation can be triaged without risking the files that keep the repository working
+
+As a captain adopting a brownfield project, I want `adp archive` to default
+to copying and require deliberate opt-in to move, refusing outright when
+there is no safety net to undo it with, so that the one operation in this
+tool capable of touching my real files can never run by accident or without
+an undo path.
+
+#### AC-132 — Dry-run by default; `--apply` writes; copy is the default action, `--move` switches eligible files to `git mv`
+
+- **Given** a git repository with recognized documentation
+  (`RECOGNITION_GLOBS`) and a clean working tree; separately the same
+  repository archived once already, then run again after a second commit
+- **When** `adp archive` runs with no flags, then with `--apply`, then with
+  `--apply --move`
+- **Then** no flags prints the plan and writes nothing; `--apply` copies
+  every eligible file into `project_old_artifacts/<original-path>`,
+  originals untouched; `--apply --move` moves eligible files via `git mv`
+  instead (tracked as a rename, original gone) while non-eligible ones
+  still copy; a destination that already exists is reported `skipped`,
+  never overwritten, and `project_old_artifacts/` itself is excluded from
+  every scan so a second run never offers to archive the archive
+
+#### AC-133 — Refuses outside a git repository and on a dirty working tree, in both modes, with no override
+
+- **Given** a directory with recognized documentation but no git
+  repository; separately a git repository with uncommitted changes
+- **When** `adp archive` runs, in copy mode and in `--move` mode, with or
+  without `--yes`
+- **Then** every combination refuses before touching anything — no git
+  repository means no `git reset` exists to undo a mistake with; a dirty
+  tree means the undo commit would carry the operator's own unrelated work
+  along with it. Unlike `adp run`/`adp rerun`'s own dirty-tree check,
+  neither refusal has a `--yes` override
+
+#### AC-134 — The untouchable list and any CI-workflow-referenced path stay copied even under `--move`
+
+- **Given** a recognized `README.md` at the project root; separately a
+  `docs/CODE_OF_CONDUCT.md` (same untouchable name, not at the root);
+  separately a `docs/api.md` whose path appears literally inside a
+  `.github/workflows/*.yml` file's own text; separately a same-shaped
+  `docs/other.md` named in no workflow
+- **When** `adp archive --move` runs
+- **Then** the first three all classify as `copy` regardless of `--move`
+  (`README.md`/`docs/CODE_OF_CONDUCT.md` matched by basename — not exact
+  root path, since `RECOGNITION_GLOBS`'s own `docs/**` can reach a
+  community-health file that isn't at the root — and `docs/api.md` matched
+  by the literal CI-reference check); the fourth classifies as `move`
+
+#### AC-135 — `--apply` is gated behind a typed confirmation unless `--yes` is passed
+
+- **Given** `adp archive --apply` run at a real terminal with no `--yes`;
+  separately the same command with stdin not a terminal; separately
+  `--apply --yes`
+- **When** the command runs
+- **Then** the first prints the plan and asks the human to type the literal
+  word `yes` before writing anything; the second refuses outright rather
+  than prompting into a void; the third writes immediately, no prompt
+
 ## Assumptions
 
 Status values: `open` · `confirmed` · `invalidated`.
@@ -2110,5 +2169,17 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
   The `**Docs language:**` field closes a real gap `adp init` was quietly imposing: `AGENTS.md` mandated all generated prose in English, in every installed project, regardless of the team's own working language — well past what D-016 ever decided (that RFC fixed the engine's own token vocabulary only). The new field is declarative, free text, defaulting to English so no project already using this tool changes behavior. Reviewing D-016 for this pass also surfaced a real, if minor, inconsistency: `spec.js`'s `SECTIONS`/`CLAUSES` still silently accept Portuguese section headers and Given/When/Then markers, which D-016's own text never actually covered (its five token families are all values the engine compares or re-emits; a heading or a clause marker is a landmark the parser searches for, never one). Kept as-is rather than cut — breaking a Portuguese document mid-flight was never on the table for this pass — but formalized: the stale pre-D-016 comment is replaced with the real reasoning, and a regression test locks the behavior in on purpose.
 
   Added after the rest, on request: `adp init` never let a human actually choose an agent — it silently auto-detected or defaulted to `claude`. `cli.js` now calls `detectAgent()` itself before `initProject()` to decide whether to ask; the decision (`shouldPromptForAgent`) and the answer parsing (`resolveAgentAnswer`) are pure functions in `init.js`, pulled out specifically so this AC could get a real automated test rather than resting on manual verification alone — `cli.js`'s own `run()` has no test file to add one to, by existing convention, but the logic that actually decides right from wrong here does now. `initProject()` itself stays untouched and un-prompted. Additionally verified by driving the real binary through a pseudo-tty (`pty.fork()`) end to end after the refactor: numbered choice, typed name, empty-answer-accepts-default, and the ambiguous-detection case all confirmed against the actual installed files, plus the non-TTY and `--yes` paths confirmed to still never block.
+
+## T-065 — Brownfield archiving: copy by default, `--move` opts into `git mv`, three non-negotiable guards [done]
+
+- Refs: AC-132, AC-133, AC-134, AC-135
+- Files: src/core/archive.js, src/core/init.js, src/cli.js, .spec/SCOPE.md, .spec/rfc/RFC-001-agent-dev-pipeline.md, .spec/BACKLOG.md, payload/AGENTS.md, payload/claude/skills/adp/SKILL.md, payload/claude/skills/project-archaeology/SKILL.md, payload/claude/agents/archaeologist.md, README.md, README.pt-BR.md, test/archive.test.js
+- Notes: Closes `.spec/BACKLOG.md`'s highest-risk remaining item — SCOPE-0.6.0.md PRD-002's "Passo 3", deliberately deferred out of M4-readonly-core because it's the one operation in the whole tool that moves a user's real files. `D-017` records the decision (`RFC-001-agent-dev-pipeline.md`), scored against the §2.4 structure per SCOPE-0.6.0.md §11's own explicit instruction that this exact decision be a scored RFC — which surfaced a real, separate gap while drafting it: this repo's own `SCOPE.md` had never actually grown a `## 11. Decision criteria` section, even though the §2.4 mechanism it feeds has existed since T-063. Added the six `W-xxx` weights `SCOPE-0.6.0.md` §4 already confirmed (`Q-009`), carried over rather than invented, so `D-017` cites real criteria instead of dangling ids.
+
+  `src/core/archive.js` mirrors `upgrade.js`'s pure plan/apply split: `planArchive()` writes nothing, re-scans `RECOGNITION_GLOBS` (exported from `init.js` so Passo 1 and Passo 3 can never independently drift on what counts as doc-shaped) and classifies every match's action; `applyArchive()` re-checks the git-repo/dirty-tree guards itself rather than trusting a plan computed moments before the confirmation prompt closed the gap. Every destination goes through `assertInside` (`core/integrity.js`, P-007) before any write. The untouchable list matches by basename, not exact root path — `docs/CODE_OF_CONDUCT.md` is real and reachable through `RECOGNITION_GLOBS`'s own `docs/**` pattern, and a broader match only ever costs an unnecessary copy, never a wrongly-moved file. The CI-workflow-reference guard is a literal substring check against `.github/workflows/**`'s raw text, not a YAML/glob-aware one — a known, documented limitation (a workflow naming its inputs indirectly can still lose a file to `--move`), not a silently assumed completeness.
+
+  Verified for real, not only by the test suite: a throwaway git repo with an untouchable file, a CI-referenced file, and a plain doc, run through dry-run, `--apply` (copy), and `--apply --move` via a real pseudo-tty for the typed-`yes` prompt — confirmed actual file placement and `git status` output matched the plan exactly, including that `git mv` created the missing destination directory correctly (this session's `mkdirSync` runs regardless, so the empirical answer didn't change the code, only retired the uncertainty). `cli.js`'s own I/O (the prompt itself) stays untested by the same existing convention `T-064` already established — the confirmation matching (`isConfirmed`) is its own pure function in `archive.js` specifically so AC-135 gets a real test, same move `T-064` made for `shouldPromptForAgent`/`resolveAgentAnswer`.
+
+  Deliberately not attempted, noted for later: `.exemplo-legado/`'s own `START-HERE.md` still narrates this step in prose rather than running the real command — wiring that walkthrough is its own pass, not bundled here. Also surfaced while drafting `D-017`'s matrix and worth a future `BACKLOG.md` line: the §2.4 scoring mechanism's `Total` column is a plain sum, not weighted by the declared `W-xxx` values arithmetically — the weights order which criteria are cited and feed `OPTION_BEYOND_TEAM`, but nothing multiplies a cell by its column's weight, so a human filling in raw scores can under- or over-represent a weight-5 criterion next to a weight-3 one without the tool noticing.
 
 ---

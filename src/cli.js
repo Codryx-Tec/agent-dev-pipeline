@@ -48,6 +48,7 @@ import {
   loadLockfile,
   describeVersionDrift,
 } from './core/upgrade.js';
+import { planArchive, applyArchive, renderArchivePlan, renderArchiveApplied, isConfirmed } from './core/archive.js';
 import { fileURLToPath } from 'url';
 import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import path from 'path';
@@ -151,6 +152,12 @@ usage: adp <command> [options]
   upgrade [--apply] [--only-migrations] [--json]
                             compare .spec/.adp-install.json against the current
                             payload; dry-run unless --apply is passed
+  archive [--apply] [--move] [--yes] [--json]
+                            brownfield "Passo 3" (D-017): copies recognized
+                            documentation into project_old_artifacts/; --move
+                            uses git mv instead. Dry-run unless --apply is
+                            passed; refuses outside a git repo or on a dirty
+                            tree, no override, in either mode
   trust [--revoke] [--yes]  approve this project's test command for execution
   version | help
 
@@ -174,8 +181,11 @@ options:
   --signals <list>  comma-separated: multiple-teams, hard-to-reverse,
                     money-or-pii, new-tech, large-estimate (new) — decides
                     the ceremony level: which of RFC/DESIGN are due
-  --apply         write what upgrade would otherwise only report (upgrade)
+  --apply         write what upgrade would otherwise only report (upgrade); archive the files
+                  listed instead of only reporting them (archive)
   --only-migrations  run pending .spec/** migrations without touching payload files (upgrade)
+  --move          git mv instead of copy for eligible files (archive) — untouchable and
+                  CI-referenced files stay copied regardless
   --ci            escalate the softer findings to errors (use this in a pipeline)
   --strict        ignore every entry in DEFERRALS.md — the real state, deferred or not (audit, gates, status)
   --json          machine-readable output
@@ -344,6 +354,63 @@ export async function run(argv) {
       console.log(renderApplied(applied));
     }
     return 0;
+  }
+
+  // Ring 2 (SCOPE-0.6.0.md PRD-002 "Passo 3", D-017): the one command in this
+  // tool that moves a user's real files. Copy by default; --move opts into
+  // git mv. Three guards, no override: not a git repo, a dirty tree, or
+  // (regardless of mode) an untouchable/CI-referenced file.
+  if (command === 'archive') {
+    const plan = planArchive(rootDir, config, { move: Boolean(flags.move) });
+
+    if (plan.refused === 'not-a-git-repository') {
+      console.error('error: archiving requires a git repository.');
+      console.error('  run `git init` first — moving documentation with no safety net');
+      console.error('  is not something this tool offers, even in copy mode.');
+      return 2;
+    }
+    if (plan.refused === 'dirty-working-tree') {
+      console.error('error: the working tree has uncommitted changes.');
+      console.error('  commit or stash first. This guard has no override — the whole');
+      console.error('  point of archiving via git is that it is undoable with a single');
+      console.error('  `git reset`, and that stops being true the moment the rescue');
+      console.error('  commit mixes in work of your own.');
+      return 2;
+    }
+    if (!plan.items.length) {
+      console.log(renderArchivePlan(plan));
+      return 0;
+    }
+
+    if (flags.json && !flags.apply) {
+      console.log(JSON.stringify(plan, null, 2));
+      return 0;
+    }
+    console.log(renderArchivePlan(plan));
+
+    if (!flags.apply) {
+      console.log('');
+      console.log('DRY RUN — nothing was written. Re-run with --apply to write.');
+      return 0;
+    }
+
+    if (!flags.yes) {
+      if (!process.stdin.isTTY) {
+        console.error('refusing to archive without confirmation: stdin is not a terminal.');
+        console.error('use --yes deliberately.');
+        return 2;
+      }
+      const answer = await ask('type the word yes to archive the files listed above: ');
+      if (!isConfirmed(answer)) {
+        console.log('not archived — nothing was written.');
+        return 0;
+      }
+    }
+
+    const result = applyArchive(rootDir, plan);
+    if (flags.json) console.log(JSON.stringify(result, null, 2));
+    else console.log(renderArchiveApplied(result));
+    return result.errors.length ? 1 : 0;
   }
 
   // init and new deliberately run BEFORE the project is loaded: a folder with

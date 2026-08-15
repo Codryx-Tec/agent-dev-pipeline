@@ -52,9 +52,9 @@ skill exists to make the second one the only kind this role ever produces.
 - Not a rewrite of the project's actual documentation. The README, the
   ADRs, the OpenAPI spec stay exactly where they are; this skill only
   reads them.
-- Not the archiving step (`git mv` to `project_old_artifacts/`). That is
-  a separate, deliberately deferred capability with its own consent gate
-  — see `.spec/BACKLOG.md`. Nothing this skill does moves a file.
+- Not the archiving step. `adp archive` (copy by default, `--move` for
+  `git mv`) is a separate command with its own consent gate — nothing this
+  skill does moves or copies a file; it only reads.
 - Not a substitute for the human reviewing the draft. `Draft` status means
   exactly that: propose, don't decide.
 

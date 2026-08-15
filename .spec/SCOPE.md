@@ -106,3 +106,16 @@
 - [x] **Q-003** — Is `agent-dev-pipeline` the final name? — yes, published as `@codryx/agent-dev-pipeline`.
 - [x] To confirm: whether the existing eight sub-agents in `.claude/agents/` map onto pipeline roles, or whether the executor introduces its own worker roles. — neither. Those agents stayed behind in `Projeto_Agent` when the tool was extracted (Q-002); the executor invokes one configured CLI and takes its division of labour from the task graph. Recorded as ASM-007, invalidated.
 - [ ] To confirm: retention policy for worker output streams (how many runs are kept before pruning).
+
+## 11. Decision criteria
+
+Confirmed in `SCOPE-0.6.0.md` §4/`Q-009`, carried over here now that a
+scored RFC decision (`D-017`) actually needs them. Weights are a 1–5 scale,
+not a percentage split.
+
+- **W-001** — Security / blast radius — writes an executable hook and AI instructions inside someone else's repository (weight: 5)
+- **W-002** — Never destroy the user's work — 0.6 is the first version that moves files at all (weight: 5)
+- **W-003** — Maintainability — zero dependencies is a choice that is paid for in the tool's own code (weight: 4)
+- **W-004** — Honesty of the verdict — a false green destroys the whole tool (weight: 5)
+- **W-005** — Development time — matters, but loses to the three above (weight: 3)
+- **W-006** — Operator ergonomics — where `PB-004` came from (weight: 3)

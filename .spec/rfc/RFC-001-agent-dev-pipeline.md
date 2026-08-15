@@ -607,5 +607,98 @@ users to carry across; writing it now would be building for an installed base
 that has not been observed to exist, and the rewrite is a find-and-replace that
 takes longer to describe than to run.
 
+### D-017 — Brownfield archiving copies by default; `--move` opts into `git mv`, and three guards apply to both
+
+**Decision criteria:** W-001, W-002, W-003, W-005, W-006
+
+**Options considered**
+
+- **OPT-000 — Do nothing.** Ship Passo 1 (recognition) and Passo 2 (the
+  consent listing) only, indefinitely. `project_old_artifacts/` never gets
+  built; a legacy project's old documentation stays exactly where it already
+  was, un-triaged, forever.
+- **OPT-001 — Copy only, no move mode at all.** Every archived file is
+  duplicated into `project_old_artifacts/`; the original never moves,
+  `git mv` is never invoked, and the tool carries no code path that removes a
+  file from where it already lives.
+- **OPT-002 — `git mv` by default, no copy mode.** Archiving always moves; a
+  project that wants a duplicate instead of a move runs its own `cp` first,
+  outside the tool.
+- **OPT-003 — Copy by default, `--move` opts into `git mv`, three guards in
+  both modes.** Refuse outside a git repository, refuse on a dirty working
+  tree, and an untouchable list (`README.md`, `LICENSE`, `CONTRIBUTING.md`,
+  `SECURITY.md`, `CODE_OF_CONDUCT.md`, and any path a CI workflow's own text
+  references) stays copied regardless of mode.
+
+**Scoring matrix**
+
+| Option | W-001 | W-002 | W-003 | W-005 | W-006 | Total |
+|---|---|---|---|---|---|---|
+| OPT-000 | 9 | 9 | 10 | 10 | 1 | 39 |
+| OPT-001 | 8 | 9 | 8 | 8 | 5 | 38 |
+| OPT-002 | 3 | 3 | 7 | 7 | 6 | 26 |
+| OPT-003 | 8 | 9 | 6 | 6 | 9 | 38 |
+
+**Recommendation:** OPT-003 — do nothing scores highest only because four of
+its five criteria (`W-001`, `W-002`, `W-003`, `W-005`) measure the *absence*
+of risk or cost, and any option that ships nothing trivially maximizes all
+four. `W-006` — does this actually solve `PB-002` — is the one criterion
+that inverts the ranking, and it is not a minor one: the entire reason
+`PRD-002` exists is that a legacy project's documentation stays mixed with
+current, live docs otherwise, which is the exact complaint the archaeologist
+role and the ratchet baseline were both built to answer. `OPT-001` scores
+within one point of `OPT-000` for the same reason and shares its actual
+defect: a "copy forever, never move" tool teaches every adopting project to
+carry two permanent copies of everything it archives, which is not what
+`git mv`'s history-preserving, revertible-with-`git reset` promise —
+`PRD-002`'s own stated reason for choosing `git mv` over plain `mv` — is
+for. `OPT-002` loses outright: a destructive default is exactly the shape of
+mistake `W-001`/`W-002` (the two highest-weighted criteria) exist to catch,
+independent of any guard sitting in front of it.
+
+**Decision: OPT-003 — copy by default, `--move` opts into `git mv`, guards apply to both.**
+
+**Rationale.** `SCOPE-0.6.0.md` §PRD-002's own text is unambiguous that this
+is the one feature in the whole 0.6.0 scope that moves a user's real files,
+and `Q-005` already answers the shape verbatim — this decision records that
+answer in this repository's own decision log rather than re-deriving it, the
+same way `D-016` recorded a choice `SCOPE-0.6.0.md` had already made. Copy as
+the default matches the posture every other write-capable command in this
+tool already takes (`upgrade` dry-runs by default, `init` never overwrites):
+the safe path costs nothing extra to try, and the destructive path is
+something an operator reaches for on purpose. The three guards are not
+independent knobs so much as one property stated three ways — "this can
+always be undone" — and each closes a different way that property would
+otherwise fail: no git repository means no `git reset` exists to undo
+anything with; a dirty tree means the undo commit would carry the operator's
+own unrelated work along with it; and the untouchable list exists because
+some files' *location*, not their content, is load-bearing (`README.md` is
+GitHub's landing page; a CI-referenced path is a build input), so moving
+them is a different kind of mistake than moving a stale ADR — one this tool
+would have made while presenting itself as the thing that organizes the
+house.
+
+**Consequences.** `.spec/BACKLOG.md`'s M4-archiving-step entry is removed by
+this pass, not left behind as done-but-undocumented debt. The untouchable
+list is matched by basename, not exact root-relative path, because
+`RECOGNITION_GLOBS`'s own `docs/**` pattern can reach a
+`docs/CODE_OF_CONDUCT.md` GitHub itself would still treat as a community
+health file — a broader match only ever costs an unnecessary copy, never a
+wrongly-moved file. The CI-workflow-reference guard is a literal substring
+check of each candidate's path against `.github/workflows/**`'s raw text; it
+does not resolve a glob or a templated path inside a workflow, so a
+workflow that names its inputs indirectly can still lose a file to `--move`
+that a human would have flagged — documented in `adp archive --help` rather
+than solved, since solving it properly means parsing YAML and step syntax
+for a case this project has not yet observed happening. `.exemplo-legado/`'s
+own `START-HERE.md` still narrates this step in prose rather than running it
+for real; wiring that walkthrough to the actual command is its own pass, not
+part of this one. And the dirty-working-tree refusal, unlike the same check
+`adp run`/`adp rerun` already perform, has no `--yes` override — the three
+guards this decision names are stated as non-negotiable in the source text,
+and `run`'s override exists for a different reason (letting an operator
+proceed against their *own* uncommitted work on purpose), which does not
+apply here.
+
 ---
 

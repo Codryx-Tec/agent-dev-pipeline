@@ -302,10 +302,20 @@ dezenas de linhas reais, não um muro.
 O papel `archaeologist` lê o inventário de reconhecimento e o próprio
 código e propõe um `SCOPE.md` em `Draft`, cada afirmação citando o arquivo
 de origem — um ponto de partida para o humano dono do escopo, nunca um
-acabado. Arquivar a documentação antiga em `project_old_artifacts/` está
-deliberadamente não construído ainda: é o único passo em toda esta
-ferramenta que moveria um arquivo real do usuário, e sai sozinho quando
-existir, não junto com a metade segura e somente-leitura.
+acabado.
+
+`adp archive` é o passo que de fato move arquivos, com seu próprio gate de
+consentimento explícito, separado do `init` — a única operação em toda
+essa ferramenta capaz de tocar num arquivo real do usuário, por isso nunca
+roda junto com mais nada. **Copia** a documentação reconhecida para
+`project_old_artifacts/` por padrão; `--move` opta por `git mv` em vez
+disso. Três guardas valem nos dois modos, sem exceção: recusa fora de um
+repositório git, recusa em árvore suja, e sempre copia (nunca move)
+`README.md`/`LICENSE`/`CONTRIBUTING.md`/`SECURITY.md`/`CODE_OF_CONDUCT.md`
+— por nome do arquivo, onde quer que estejam — mais qualquer caminho que
+um workflow de CI referencie no próprio texto. Dry-run por padrão;
+`--apply` escreve, atrás da confirmação digitando `yes`, a menos que
+`--yes` seja passado.
 
 Veja isso acontecer contra um código legado pequeno e real em
 [`.exemplo-legado/`](.exemplo-legado/) — reconhecimento, o arqueólogo, o
