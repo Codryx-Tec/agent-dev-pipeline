@@ -6,9 +6,11 @@ This file starts at 0.5.0. Earlier releases are described from their commits and
 are summarised here for completeness rather than reconstructed in detail — the
 git history is the authority for anything before this file existed.
 
-## [Unreleased]
+## [0.6.0] — 2026-08-14
 
-Work toward 0.6.0, per `.spec/SCOPE-0.6.0.md`.
+Per `.spec/SCOPE-0.6.0.md`. This repository's own `adp audit --ci` is green
+under this grammar, self-audited in CI on every push (AC-P7) — the readiness
+criterion the scope document set for this release.
 
 ### ⚠️ Breaking
 
@@ -117,6 +119,30 @@ user content — what it cannot place automatically becomes a finding
   `parallel.model`) lets a headless run request a specific model; a
   harness with no known model flag refuses rather than silently running
   its own default.
+- **README/README.pt-BR/ARCHITECTURE/INSTALL/`payload/AGENTS.md`/the `adp`
+  skill, rewritten** against what actually shipped, not what was assumed
+  current. Two worked examples: `.exemplo/` gained `BACKLOG.md`, a real
+  Function Point estimate and `adp close`, and a "do nothing" RFC
+  alternative; `.exemplo-legado/` is new — a small, real pre-existing
+  project adopted with `--brownfield`, demonstrating recognition, the
+  archaeologist, `BASELINE.md`, and the ratchet.
+- **CI now audits this repository's own `.spec/` on every push**, in the
+  grammar it reads — `adp verify` then `adp audit --ci`, mirroring the
+  existing check against `.exemplo/`. This is AC-P7's readiness criterion,
+  wired in rather than checked by hand.
+
+### Fixed
+
+- `.spec/verification/agent-dev-pipeline.json` was committed. Proof taken
+  before a commit is proof of the parent commit, not that one, so a
+  tracked copy read `PROOF_STALE` on the very next checkout — gitignored,
+  same reasoning `.exemplo/`'s own copy already had.
+- A test asserting that an unapproved test command is refused
+  (`test/plan.test.js`, `lane tests need no grant beyond the one already
+  given`) read `ADP_TRUST_TEST_COMMAND` from the ambient environment by
+  default, so it passed for the wrong reason whenever that CI escape
+  hatch was set around it — found by actually running the self-audit
+  above end to end. Now isolates its own consent environment explicitly.
 
 ## [0.5.0] — 2026-08-04
 

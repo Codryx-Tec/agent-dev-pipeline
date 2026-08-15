@@ -234,15 +234,22 @@ test('--only-migrations runs pending migrations without touching payload files o
 
     const config = loadConfig(root);
     const plan = planUpgrade(root, config, { payloadDir });
-    assert.equal(plan.migrations.length, 1);
+    // From 0.4.0, the current VERSION owes both registered migrations —
+    // 0.5.0's token rename, then 0.6.0's PRD/RFC/TDD -> PRD/RFC/DESIGN/SPEC
+    // codemod — chained, not just the one immediately after the lockfile.
+    assert.equal(plan.migrations.length, 2);
 
     const applied = applyUpgrade(root, config, plan, { payloadDir, onlyMigrations: true });
-    assert.equal(applied.migrationsRun.length, 1);
+    assert.equal(applied.migrationsRun.length, 2);
     assert.equal(applied.wrote.length, 0);
     assert.equal(applied.sidecars.length, 0);
     assert.equal(existsSync(path.join(root, 'AGENTS.md.new')), false);
     assert.equal(readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), 'STILL MINE\n');
-    assert.match(readFileSync(path.join(root, '.spec', 'features', 'legacy', 'TDD.md'), 'utf8'), /\[pending\]/);
+    // TDD.md itself moved: DESIGN.md keeps the prose (empty here — the fixture
+    // had none), SPEC.md gets T-001, translated into English by the first
+    // migration and carried by the second.
+    assert.equal(existsSync(path.join(root, '.spec', 'features', 'legacy', 'TDD.md')), false);
+    assert.match(readFileSync(path.join(root, '.spec', 'features', 'legacy', 'SPEC.md'), 'utf8'), /\[pending\]/);
 
     const lockfile = loadLockfile(root, config);
     assert.equal(lockfile.installedVersion, '0.4.0', 'a migrations-only run must not claim the whole upgrade happened');
