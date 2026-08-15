@@ -105,18 +105,85 @@ test('a baselined file edited (even uncommitted) after the recorded commit is in
   });
 });
 
-test('outside a git repository, BASELINE.md is still read but touchedSet stays empty — no discount without git @spec:AC-095', () => {
+test('outside a git repository, a file untouched since the baseline (by mtime) is not in touchedSet @spec:AC-137', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'adp-baseline-nogit-'));
+  try {
+    writeFileSync(path.join(root, 'adp.config.json'), JSON.stringify({ testGlobs: ['test/**'], srcGlobs: ['src/**'] }));
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'src', 'legacy.js'), 'module.exports = 1;\n');
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    // generated AFTER the file was written — nothing has touched it since
+    writeFileSync(
+      path.join(root, '.spec', 'BASELINE.md'),
+      renderBaselineMd({
+        commit: 'deadbeef',
+        generatedAt: new Date(Date.now() + 60_000).toISOString(),
+        files: ['src/legacy.js'],
+      })
+    );
+    const project = loadProject(loadConfig(root));
+    assert.equal(project.baseline.present, true);
+    assert.equal(project.baseline.touchedSet.has('src/legacy.js'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('outside a git repository, a file whose mtime is after the baseline is in touchedSet @spec:AC-137', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'adp-baseline-nogit-'));
+  try {
+    writeFileSync(path.join(root, 'adp.config.json'), JSON.stringify({ testGlobs: ['test/**'], srcGlobs: ['src/**'] }));
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    // generated BEFORE the file below is written — the mtime fallback reads
+    // this as "modified since the baseline"
+    writeFileSync(
+      path.join(root, '.spec', 'BASELINE.md'),
+      renderBaselineMd({
+        commit: 'deadbeef',
+        generatedAt: new Date(Date.now() - 60_000).toISOString(),
+        files: ['src/legacy.js'],
+      })
+    );
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'src', 'legacy.js'), 'module.exports = 1;\n');
+
+    const project = loadProject(loadConfig(root));
+    assert.ok(project.baseline.touchedSet.has('src/legacy.js'));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the mtime fallback never escalates a file it cannot stat — a missing file is simply left out @spec:AC-137', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'adp-baseline-nogit-'));
   try {
     writeFileSync(path.join(root, 'adp.config.json'), JSON.stringify({ testGlobs: ['test/**'], srcGlobs: ['src/**'] }));
     mkdirSync(path.join(root, '.spec'), { recursive: true });
     writeFileSync(
       path.join(root, '.spec', 'BASELINE.md'),
-      renderBaselineMd({ commit: 'deadbeef', generatedAt: new Date().toISOString(), files: ['src/legacy.js'] })
+      renderBaselineMd({ commit: 'deadbeef', generatedAt: new Date().toISOString(), files: ['src/gone.js'] })
     );
     const project = loadProject(loadConfig(root));
-    assert.equal(project.baseline.present, true);
-    assert.equal(project.baseline.touchedSet.size, 0);
+    assert.equal(project.baseline.touchedSet.has('src/gone.js'), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a BASELINE.md with no usable generated: timestamp exempts nothing — the same posture an unbaselined file already has @spec:AC-137', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'adp-baseline-nogit-'));
+  try {
+    writeFileSync(path.join(root, 'adp.config.json'), JSON.stringify({ testGlobs: ['test/**'], srcGlobs: ['src/**'] }));
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'src', 'legacy.js'), 'module.exports = 1;\n');
+    mkdirSync(path.join(root, '.spec'), { recursive: true });
+    // hand-written, no `> generated:` line at all
+    writeFileSync(
+      path.join(root, '.spec', 'BASELINE.md'),
+      '# Baseline\n\n> commit: none\n\n- src/legacy.js\n'
+    );
+    const project = loadProject(loadConfig(root));
+    assert.ok(project.baseline.touchedSet.has('src/legacy.js'));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

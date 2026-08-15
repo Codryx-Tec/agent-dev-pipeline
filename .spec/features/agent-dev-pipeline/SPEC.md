@@ -1068,6 +1068,22 @@ legacy project the same way it does on a fresh one.
   a real removal that never returns is the whole point of the ratchet,
   and a baseline nobody has edited yet has nothing to be dishonest about
 
+#### AC-137 — Outside git, a baselined file's own mtime against `BASELINE.md`'s `generated:` timestamp decides whether it is touched
+
+- **Given** a project with no git repository (or a `BASELINE.md` recording
+  no commit), a baselined file whose mtime predates the baseline's own
+  `generated:` timestamp; separately one whose mtime is later; separately
+  a baselined path that no longer exists on disk; separately a
+  hand-written `BASELINE.md` with no `generated:` line at all
+- **When** the project loads
+- **Then** the first is not in `touchedSet` — still exempt, the ratchet
+  discount applies; the second is — full severity applies, same as any
+  file genuinely worked on since adoption; the third is left out of
+  `touchedSet` without error, since a missing file is a different problem
+  this check does not own; the fourth exempts nothing, the same posture an
+  unbaselined file already gets, since there is no timestamp to compare
+  against and no signal is safer than a wrong one
+
 ### US-031 — The captain sees the chain happening, not just its verdict
 
 As a captain with the monitor open, I want to see a run's lanes moving,
@@ -2203,5 +2219,13 @@ Running that full sequence for real surfaced a second, genuine bug: under `ADP_T
 - Notes: Closes another `.spec/BACKLOG.md` item — SCOPE-0.6.0.md PRD-002's "o baseline só encolhe," already reserved in `gates.js`'s `NEVER_DEFERRABLE` since M4-readonly-core but never actually implemented. `widenedBaselineFiles()` (`project.js`, next to `loadBaseline`) walks `BASELINE.md`'s own commit history with one `git show` per commit that touched the file — not one spawn per listed file, same cost shape `touchedSet`'s single `git diff` already accepts — reconstructing each historical snapshot's file set and tracking which files were ever removed between consecutive snapshots. A file present in a later snapshot after being in that removed-ever set is widened. The current on-disk copy is appended as one final snapshot after the git-log ones, so an uncommitted re-add is caught the same session it happens, not only after a commit. No history yet (a single, never-committed snapshot) or no git at all: nothing to compare against, same "no discount, no verdict" posture the rest of the ratchet takes when git can't answer.
 
   `BASELINE_WIDENED` joins G6 (`Aligned`) — the same gate `FILE_ORPHAN` and `DOC_FOSSIL` already live in, since this is fundamentally a question of whether the project's own record still agrees with itself, not a new kind of check. Emitted unconditionally (not behind `--ci`), since it was already in `NEVER_DEFERRABLE` — the same posture `RFC_REQUIRED` takes toward a one-way-door decision left open, a fact about a rule being broken, not about the world changing underneath a document.
+
+## T-067 — The mtime fallback for "touched since baseline" outside git — and a real bug it uncovered [done]
+
+- Refs: AC-137
+- Files: src/core/project.js, test/baseline.test.js
+- Notes: Closes the last `.spec/BACKLOG.md` item this pass had planned to build. Empirically checking the *current* behavior outside git before writing the fallback (this session's own standing discipline) turned up something the existing code comment got backwards: it claimed a baselined file got "no discount at all" without git, but tracing `loadBaseline()` and then actually running `adp audit --ci` against a no-git fixture showed the opposite — `touchedSet` stayed permanently empty outside git, which means `baseline.files.has(f) && !touchedSet.has(f)` was **always true**, so a baselined file was exempt *forever*, with no way for the discount to ever expire once git was unavailable. The stale comment's own test (`'outside a git repository... touchedSet stays empty'`) passed for an unrelated reason — its fixture never wrote the file to disk, so the empty `touchedSet` came from a failed `statSync`-equivalent, not from the git-absence logic the test's title claimed to cover.
+
+  `mtimeFallbackTouchedSet()` fixes it: when `parsed.commit` is absent or `git diff` fails, each baselined file's own mtime is compared against `BASELINE.md`'s recorded `> generated:` timestamp — later means touched, earlier means still exempt. No usable timestamp at all exempts nothing, matching what an unbaselined file already gets — the safe default when the tool truly has no signal. Documented, not hidden: a bare file copy (extracted from an archive rather than cloned) stamps every file with a near-identical mtime, so a file edited moments after extraction would still read as untouched — no worse than the old always-exempt behavior for that one case, strictly better for the common one, a legacy project a human keeps editing in place over days or weeks after adoption.
 
 ---

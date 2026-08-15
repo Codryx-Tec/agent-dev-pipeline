@@ -23,12 +23,6 @@
   ceremony for its own sake, exactly what this whole antipattern family
   exists to catch elsewhere. Revisit case by case if any of these
   decisions are ever reopened, rather than as a batch.
-- The mtime fallback for "touched since baseline" when git is unavailable
-  or `git diff` fails. M4-readonly-core's ratchet only discounts severity
-  when git succeeds; without it, a baselined file gets no discount at all
-  rather than a less-precise guess. Brownfield adoption already assumes
-  git everywhere else in the source design (`adp archive`, D-017, refuses
-  outside one too); this keeps that assumption for the ratchet.
 - Module-comment scanning as a recognition source. The glob-matchable
   cases (README/docs/ADR/OpenAPI/migrations/CHANGELOG/CONTRIBUTING) are
   built; scanning source comments for documentation needs real parsing

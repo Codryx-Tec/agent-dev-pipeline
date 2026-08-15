@@ -150,15 +150,45 @@ function widenedBaselineFiles(rootDir, baselinePath, currentFiles) {
   return [...widened];
 }
 
+// No git, or `parsed.commit` is absent: fall back to comparing each
+// baselined file's own mtime against BASELINE.md's recorded `generated:`
+// timestamp. A file modified after the baseline was written reads as
+// touched; one untouched since (or with an mtime we can't read) stays
+// exempt. Deliberately imprecise, disclosed rather than hidden: a bare
+// file copy (extracted from an archive, rather than cloned) stamps every
+// file with a near-identical mtime, which would read as "nothing touched"
+// even for a file edited moments after extraction — no better than the old
+// behavior for that one case, but strictly better for the common one, a
+// baselined project a human keeps editing in place over days or weeks. No
+// usable `generated:` timestamp at all: nothing is exempt, matching what an
+// unbaselined file already gets — the safe default when the tool truly has
+// no signal to go on.
+function mtimeFallbackTouchedSet(rootDir, files, generatedAt) {
+  const cutoff = generatedAt ? Date.parse(generatedAt) : NaN;
+  if (Number.isNaN(cutoff)) return new Set(files);
+
+  const touched = new Set();
+  for (const f of files) {
+    try {
+      if (statSync(path.join(rootDir, f)).mtimeMs > cutoff) touched.add(f);
+    } catch {
+      // missing file — FILE_MISSING and friends already cover that; not
+      // this function's problem, and leaving it untouched costs nothing.
+    }
+  }
+  return touched;
+}
+
 // The brownfield ratchet (M4-readonly-core, SCOPE-0.6.0.md PRD-002): a
 // finding tied to a file present at adoption time, and untouched since,
 // stays a warning instead of escalating under --ci. `touchedSet` is built
 // from ONE `git diff` call against the working tree (not `..HEAD`, so an
 // uncommitted edit to a baselined file counts as "touched" too) — not one
-// spawn per file. No git, or the diff fails: no discount, same as an
-// unbaselined file — deliberately simpler than a per-file mtime fallback,
-// since brownfield adoption already assumes a git repository everywhere
-// else in the source design (`adp archive`, D-017, refuses without one too).
+// spawn per file. No git, or the diff fails: `mtimeFallbackTouchedSet`
+// above, since brownfield adoption's own git-repository assumption
+// (`adp archive`, D-017, refuses outside one too) is about archiving, not
+// about every command this tool has — the ratchet still owes an answer
+// when the only thing missing is git.
 function loadBaseline(rootDir, config) {
   const baselinePath = path.join(rootDir, config.specDir, 'BASELINE.md');
   const raw = readIfExists(baselinePath);
@@ -166,13 +196,14 @@ function loadBaseline(rootDir, config) {
 
   const parsed = parseBaseline(raw, rel(rootDir, baselinePath));
   const files = new Set(parsed.files.map((f) => f.path));
-  let touchedSet = new Set();
+  let touchedSet = null;
   if (parsed.commit) {
     const diff = spawnSync('git', ['diff', '--name-only', parsed.commit], { cwd: rootDir, encoding: 'utf8' });
     if (diff.status === 0) {
       touchedSet = new Set((diff.stdout ?? '').split('\n').map((s) => s.trim()).filter(Boolean));
     }
   }
+  if (touchedSet === null) touchedSet = mtimeFallbackTouchedSet(rootDir, files, parsed.generatedAt);
   const widened = widenedBaselineFiles(rootDir, baselinePath, files);
   return { present: true, file: rel(rootDir, baselinePath), commit: parsed.commit, files, touchedSet, widened };
 }
