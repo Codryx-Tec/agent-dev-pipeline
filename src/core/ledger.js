@@ -131,6 +131,22 @@ export function prune(config, { keep = DEFAULT_KEEP_RUNS } = {}) {
 }
 
 /**
+ * The most recent run's id, or null if nothing has ever run — `adp run`
+ * builds `runId` from `toISOString()`, so the lexicographically greatest
+ * one is also the most recent one; no need to parse it back into a date.
+ * Used by the monitor (M5-monitor-core) to show live lanes without the
+ * caller already knowing which run to ask for.
+ */
+export function latestRunId(config) {
+  const { events } = read(config);
+  let latest = null;
+  for (const e of events) {
+    if (e.runId && (!latest || e.runId > latest)) latest = e.runId;
+  }
+  return latest;
+}
+
+/**
  * The orchestrator's view: built from events and summaries, never transcripts.
  *
  * This function is the enforcement point for AC-021 on the read side. It takes

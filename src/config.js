@@ -13,11 +13,42 @@ export const DEFAULT_CONFIG = {
   specDir: '.spec',
   featuresDir: '.spec/features',
   verificationDir: '.spec/verification',
+  // RFCs are flat and global, not nested per feature — one RFC can serve
+  // several PRDs, and one PRD often needs several (Q-001, SCOPE-0.6.0.md).
+  rfcDir: '.spec/rfc',
   constitutionFile: '.spec/CONSTITUTION.md',
   scopeFile: '.spec/SCOPE.md',
+  // Optional and project-wide, like the constitution — its absence just
+  // means nothing has been pushed out of the MVP yet (M2c-core).
+  backlogFile: '.spec/BACKLOG.md',
+  // M5b — declared deferral (SCOPE-0.6.0.md §12.1, "camada 2"). Optional and
+  // project-wide, same shape as BACKLOG.md's absence: nothing has been
+  // deferred yet.
+  deferralsFile: '.spec/DEFERRALS.md',
+  // maxMatches: a deferral whose Scope matches more findings than this is
+  // DEFERRAL_TOO_BROAD — the rule (not good intentions) that keeps a
+  // deferral from becoming the gate-disable switch by the back door.
+  // maxDays: the ceiling on any single `Until:` date, measured from the
+  // moment the audit runs — a deferral with no ceiling is the finding
+  // deleted with extra steps.
+  deferrals: { maxMatches: 5, maxDays: 90 },
+  // PRD_WITH_SOLUTION's forbidden-vocabulary list (M3b, PRD-003b antipattern
+  // #4) — seeded at init, hand-editable per project.
+  prdVocabularyFile: '.spec/PRD_VOCABULARY.json',
+  // DOC_TOO_LONG's ceilings (M3b, antipattern #5), in lines. PRD and DESIGN
+  // only: SPEC.md's length scales with real story/criterion/task count, not
+  // padding, so a cap on it would punish a large feature for being large;
+  // RFC is a flat, global family that legitimately accumulates many
+  // decisions over a project's life, so a whole-file cap doesn't fit it
+  // either — a per-decision check would, but that's more parser surface
+  // than this pass earns, deferred.
+  docLengthLimits: { prd: 200, design: 400 },
 
-  // the three per-feature documents, each owning its own family of codes
-  documents: { prd: 'PRD.md', rfc: 'RFC.md', tdd: 'TDD.md' },
+  // the four per-feature documents, each owning its own family of codes.
+  // PRD is prose (what, for whom, why); RFC owns D-xxx decisions; SPEC owns
+  // US-xxx/AC-xxx/ASM-xxx/Q-xxx/T-xxx — "the layer the machine confers";
+  // DESIGN is prose (how, in detail), the blueprint a human reads.
+  documents: { prd: 'PRD.md', rfc: 'RFC.md', spec: 'SPEC.md', design: 'DESIGN.md' },
 
   // where @spec / @principle annotations are looked for
   testGlobs: [
@@ -43,9 +74,10 @@ export const DEFAULT_CONFIG = {
     '.spec/**',
     '.venv/**',
     '__pycache__/**',
-    // the worked example is a project of its own; auditing it from here would
-    // mix its traceability codes into this repository's
+    // the worked examples are projects of their own; auditing them from here
+    // would mix their traceability codes into this repository's
     '.exemplo/**',
+    '.exemplo-legado/**',
   ],
 
   // M4 — the read-only monitor. Loopback by default and never anything else
@@ -61,6 +93,13 @@ export const DEFAULT_CONFIG = {
 
   // M6 — background execution
   parallel: { maxParallel: 3, model: null, effort: 'medium' },
+  // M6, PRD-005 — model per phase, generalizing `parallel.model`. Keyed by
+  // phase (scope/prd/rfc/tdd/implementation); only `implementation` is ever
+  // read by this engine today, since it is the only phase `adp run` actually
+  // invokes headlessly — the rest are interactive work a human drives through
+  // a skill, unaffected by this config. `parallel.model` is still read as a
+  // fallback for `implementation` so an existing config keeps working.
+  agent: { models: {} },
 
   // D-008: local-only is the default; GitHub is a mode, never a requirement
   delivery: 'local-only', // local-only | direct-PR
@@ -88,6 +127,13 @@ export function loadConfig(rootDir) {
       ...raw,
       documents: { ...DEFAULT_CONFIG.documents, ...(raw.documents || {}) },
       parallel: { ...DEFAULT_CONFIG.parallel, ...(raw.parallel || {}) },
+      docLengthLimits: { ...DEFAULT_CONFIG.docLengthLimits, ...(raw.docLengthLimits || {}) },
+      deferrals: { ...DEFAULT_CONFIG.deferrals, ...(raw.deferrals || {}) },
+      agent: {
+        ...DEFAULT_CONFIG.agent,
+        ...(raw.agent || {}),
+        models: { ...DEFAULT_CONFIG.agent.models, ...(raw.agent?.models || {}) },
+      },
       rootDir,
       configPath,
     };

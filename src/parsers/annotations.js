@@ -60,11 +60,11 @@ const GREP_WORKER = `
 let input = '';
 process.stdin.on('data', (d) => (input += d));
 process.stdin.on('end', () => {
-  const { rootDir, pattern, files } = JSON.parse(input);
+  const { rootDir, pattern, files, flags } = JSON.parse(input);
   const { readFileSync } = require('fs');
   const path = require('path');
   let re;
-  try { re = new RegExp(pattern); } catch (err) {
+  try { re = new RegExp(pattern, flags || ''); } catch (err) {
     console.log(JSON.stringify({ error: 'invalid regex: ' + pattern + ' (' + err.message + ')', hits: [] }));
     return;
   }
@@ -82,21 +82,26 @@ process.stdin.on('end', () => {
 });
 `;
 
-export function grepPattern(rootDir, pattern, glob, ignoreGlobs) {
+// `flags` is optional and defaults to case-sensitive, matching every
+// existing caller (a constitution's `verification(forbidden|required)`
+// pattern is written by a human who chooses their own case) — PRD_WITH_
+// SOLUTION's vocabulary check is the first caller that needs `i`, since
+// prose capitalizes "PostgreSQL" and "postgresql" interchangeably.
+export function grepPattern(rootDir, pattern, glob, ignoreGlobs, flags = '') {
   const files = walkFiles(rootDir, { includeGlobs: [glob], ignoreGlobs });
 
   // Compiling is cheap and safe, and an invalid pattern must be reported even
   // when the glob matches nothing — otherwise a broken principle looks inert
   // rather than broken.
   try {
-    new RegExp(pattern);
+    new RegExp(pattern, flags);
   } catch (err) {
     return { error: `invalid regex: ${pattern} (${err.message})`, hits: [], files };
   }
   if (files.length === 0) return { error: null, hits: [], files };
 
   const proc = spawnSync(process.execPath, ['-e', GREP_WORKER], {
-    input: JSON.stringify({ rootDir, pattern, files }),
+    input: JSON.stringify({ rootDir, pattern, files, flags }),
     encoding: 'utf-8',
     timeout: GREP_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,

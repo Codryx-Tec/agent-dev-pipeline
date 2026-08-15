@@ -3,6 +3,7 @@
 **Scope status:** Approved
 **Gathering date:** 2026-08-03
 **Scope owner:** agent-dev-pipeline
+**Decision:** go
 
 > Gate G0 stays red until this line reads `**Scope status:** Approved`.
 > That is deliberate: development must not start on a scope nobody signed.
@@ -23,6 +24,7 @@
 ## 3. Features
 
 - **MVP (prioritized):**
+  - [x] class-enrolment — the feature below, by its directory slug
   - [x] Enrol a visitor in a class that has seats
   - [x] Refuse enrolment when the class is full
   - [x] Require guardian data before enrolling a minor

@@ -1,9 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { initProject, newFeature, detectAgent, AGENT_SKILL_DIRS } from '../src/core/init.js';
+import {
+  initProject,
+  newFeature,
+  newRfc,
+  detectAgent,
+  AGENT_SKILL_DIRS,
+  LOCKFILE_NAME,
+  shellAliasBlock,
+  shellRcPath,
+  installShellAlias,
+} from '../src/core/init.js';
+import { VERSION } from '../src/version.js';
+import { createHash } from 'crypto';
 import { loadConfig } from '../src/config.js';
 import { loadProject } from '../src/core/project.js';
 import { auditProject } from '../src/core/audit.js';
@@ -135,6 +147,45 @@ test('a stale singular .claude/skill directory is called out @spec:AC-002', () =
   });
 });
 
+test('init writes a lockfile whose hashes match the payload it just installed @spec:AC-051', () => {
+  fresh((root) => {
+    initProject(root, { project: 'Demo', owner: 'TI' });
+    const lockPath = path.join(root, '.spec', LOCKFILE_NAME);
+    assert.ok(existsSync(lockPath), 'the lockfile must exist after init');
+
+    const lockfile = JSON.parse(readFileSync(lockPath, 'utf-8'));
+    assert.equal(lockfile.algorithm, 'sha256');
+    assert.equal(lockfile.fileCount, Object.keys(lockfile.files).length);
+    assert.ok(lockfile.fileCount > 0);
+
+    for (const [projectRel, expected] of Object.entries(lockfile.files)) {
+      const actual = createHash('sha256').update(readFileSync(path.join(root, projectRel))).digest('hex');
+      assert.equal(actual, expected, `${projectRel} hash must match what was just written`);
+    }
+  });
+});
+
+test('re-running init never touches an existing lockfile @spec:AC-051', () => {
+  fresh((root) => {
+    initProject(root);
+    const lockPath = path.join(root, '.spec', LOCKFILE_NAME);
+    const before = readFileSync(lockPath, 'utf-8');
+
+    const second = initProject(root);
+
+    assert.equal(readFileSync(lockPath, 'utf-8'), before);
+    assert.ok(second.kept.includes(`.spec/${LOCKFILE_NAME}`));
+  });
+});
+
+test('the lockfile excludes SCOPE.md, since its content is per-project @spec:AC-051', () => {
+  fresh((root) => {
+    initProject(root, { project: 'Demo', owner: 'TI' });
+    const lockfile = JSON.parse(readFileSync(path.join(root, '.spec', LOCKFILE_NAME), 'utf-8'));
+    assert.equal(Object.prototype.hasOwnProperty.call(lockfile.files, '.spec/SCOPE.md'), false);
+  });
+});
+
 test('--agent none installs no skill @spec:AC-001', () => {
   fresh((root) => {
     const report = initProject(root, { agent: 'none' });
@@ -151,37 +202,97 @@ test('new refuses a feature name the grammar cannot carry @spec:AC-002', () => {
   });
 });
 
-test('new creates the three documents and does not renumber over existing codes @spec:AC-002', () => {
+test('new creates PRD and SPEC by default; DESIGN.md is not due at light ceremony @spec:AC-002 @spec:AC-058', () => {
   fresh((root) => {
     initProject(root);
     const first = newFeature(root, 'alpha');
-    assert.equal(first.created.length, 3);
-    // The first feature must not be told its own placeholders are already taken.
-    assert.equal(first.notes.length, 0);
+    assert.equal(first.created.length, 2, 'no signals declared means light ceremony (M2b) — DESIGN.md is skipped');
+    assert.deepEqual(first.created.sort(), ['.spec/features/alpha/PRD.md', '.spec/features/alpha/SPEC.md']);
+    assert.equal(first.ceremony.level, 'light');
+    // A ceremony note is expected; codes-in-use is not — first feature ever.
+    assert.equal(first.notes.filter((n) => /codes already in use/.test(n)).length, 0);
 
     const second = newFeature(root, 'beta');
     assert.match(second.notes.join(' '), /codes are unique project-wide/);
   });
 });
 
+test('new --signals raises the ceremony level and scaffolds DESIGN.md too @spec:AC-058', () => {
+  fresh((root) => {
+    initProject(root);
+    const report = newFeature(root, 'payment-flow', { signals: ['money-or-pii'] });
+    assert.equal(report.created.length, 3, 'full ceremony requires DESIGN.md up front');
+    assert.deepEqual(report.created.sort(), [
+      '.spec/features/payment-flow/DESIGN.md',
+      '.spec/features/payment-flow/PRD.md',
+      '.spec/features/payment-flow/SPEC.md',
+    ]);
+    assert.equal(report.ceremony.level, 'full');
+    assert.equal(report.ceremony.requiresRfc, true);
+
+    const prd = readFileSync(path.join(root, '.spec/features/payment-flow/PRD.md'), 'utf8');
+    assert.match(prd, /> signals: money-or-pii/);
+  });
+});
+
+test('new --signals with an unrecognized slug quietly drops it — the parser leaves it for SIGNAL_UNKNOWN to catch @spec:AC-058', () => {
+  fresh((root) => {
+    initProject(root);
+    const report = newFeature(root, 'gamma', { signals: ['not-a-real-signal'] });
+    assert.equal(report.ceremony.level, 'light', 'an unrecognized slug contributes nothing to the level');
+    assert.equal(report.created.length, 2);
+  });
+});
+
+test('newRfc creates a numbered, global decision record, decoupled from any feature @spec:AC-007', () => {
+  fresh((root) => {
+    initProject(root);
+    const first = newRfc(root, 'queue-provider');
+    assert.equal(first.id, 'RFC-001');
+    assert.deepEqual(first.created, ['.spec/rfc/RFC-001-queue-provider.md']);
+    assert.match(first.notes.join(' '), /rfcs: RFC-001/);
+
+    const second = newRfc(root, 'auth-strategy');
+    assert.equal(second.id, 'RFC-002', 'numbering is global, not per feature');
+    assert.deepEqual(second.created, ['.spec/rfc/RFC-002-auth-strategy.md']);
+  });
+});
+
+test('newRfc refuses a slug the grammar cannot carry @spec:AC-007', () => {
+  fresh((root) => {
+    initProject(root);
+    assert.throws(() => newRfc(root, 'Bad Slug'), /lower-case/);
+  });
+});
+
 test('an empty folder reaches every gate green once the documents are filled in @spec:AC-018', () => {
   fresh((root) => {
     initProject(root, { agent: 'none' });
-    writeFileSync(path.join(root, '.spec', 'SCOPE.md'), '**Scope status:** Approved\n');
+    writeFileSync(
+      path.join(root, '.spec', 'SCOPE.md'),
+      '**Scope status:** Approved\n\n## 3. Features\n\n- **MVP (prioritized):**\n  - [ ] greet\n'
+    );
     newFeature(root, 'greet');
 
     const dir = path.join(root, '.spec', 'features', 'greet');
+    // newFeature() already scaffolded the three feature documents from the
+    // payload templates; overwrite each with real content rather than
+    // leaving the placeholder text, which would pass the gates for the wrong
+    // reason. The RFC is scaffolded separately (Q-001: no longer nested).
+    writeFileSync(path.join(dir, 'PRD.md'), '# PRD\n\n> feature: greet\n> status: draft\n> rfcs: RFC-001\n');
+    mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
     writeFileSync(
-      path.join(dir, 'PRD.md'),
-      '### US-001 — a visitor is greeted\n\n#### AC-001 — it names them\n\n- **Given** a visitor\n- **When** greeted\n- **Then** the name appears\n'
+      path.join(root, '.spec', 'rfc', 'RFC-001-greet.md'),
+      '## Purpose\n\nSupport tickets about greeting format take 20 minutes to resolve.\n\n### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n'
     );
+    writeFileSync(path.join(dir, 'DESIGN.md'), '# DESIGN\n\n## 1. Shape of the solution\n');
     writeFileSync(
-      path.join(dir, 'RFC.md'),
-      '### D-001 — format\n\n**Alternatives considered**\n\n1. *Plain.* a\n2. *Localized.* b\n\n**Decision: alternative 1 — plain.**\n\n## Assumptions\n\n- **ASM-001** — names exist *(status: confirmed)*\n\n## Open questions\n\n- **Q-001** — anonymous? *(status: answered)*\n'
-    );
-    writeFileSync(
-      path.join(dir, 'TDD.md'),
-      '## T-001 — greeting [pending]\n\n- Refs: AC-001\n- Files: src/greet.js\n'
+      path.join(dir, 'SPEC.md'),
+      '### US-001 — a visitor is greeted\n\n#### AC-001 — it names them\n\n' +
+        '- **Given** a visitor\n- **When** greeted\n- **Then** the name appears\n\n' +
+        '## Assumptions\n\n- **ASM-001** — names exist *(status: confirmed)*\n\n' +
+        '## Open questions\n\n- **Q-001** — anonymous? *(status: answered, Door: two-way)*\n\n' +
+        '## T-001 — greeting [pending]\n\n- Refs: AC-001\n- Files: src/greet.js\n'
     );
     mkdirSync(path.join(root, 'src'), { recursive: true });
     mkdirSync(path.join(root, 'test'), { recursive: true });
@@ -230,4 +341,129 @@ test('the agent contract carries what an agent needs to obey it @spec:AC-050', (
 
   // Consent is the human's to give, in both places it can be asked for.
   assert.match(skill, /Never approve on the person's behalf/i);
+});
+
+// -------------------------------------------------------- --brownfield (M4)
+
+test('--brownfield finds doc-shaped files and reports them, without moving or rewriting anything @spec:AC-097', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, 'docs', 'adr'), { recursive: true });
+    writeFileSync(path.join(root, 'README.md'), '# Legacy project\n');
+    writeFileSync(path.join(root, 'docs', 'adr', '0001-x.md'), '# ADR 1\n');
+    writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n');
+
+    const report = initProject(root, { brownfield: true }, { srcGlobs: ['src/**'], ignoreGlobs: [] });
+
+    // Nothing about the recognized files themselves changed.
+    assert.equal(readFileSync(path.join(root, 'README.md'), 'utf8'), '# Legacy project\n');
+    assert.ok(existsSync(path.join(root, 'docs', 'adr', '0001-x.md')));
+    assert.equal(existsSync(path.join(root, 'project_old_artifacts')), false, 'nothing is archived by this pass');
+
+    const note = report.notes.find((n) => n.includes('brownfield recognition found'));
+    assert.ok(note);
+    assert.match(note, /3 existing doc-like file/);
+  });
+});
+
+test('--brownfield writes BASELINE.md listing the pre-existing srcGlobs files @spec:AC-097', () => {
+  fresh((root) => {
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'src', 'legacy.js'), 'module.exports = 1;\n');
+
+    initProject(root, { brownfield: true }, { srcGlobs: ['src/**'], ignoreGlobs: [] });
+
+    const baselinePath = path.join(root, '.spec', 'BASELINE.md');
+    assert.ok(existsSync(baselinePath));
+    const content = readFileSync(baselinePath, 'utf8');
+    assert.match(content, /- src\/legacy\.js/);
+    assert.match(content, /commit: none/, 'no git repository here, so the commit field says so honestly');
+  });
+});
+
+test('without --brownfield, no BASELINE.md is written and no recognition scan runs @spec:AC-097', () => {
+  fresh((root) => {
+    writeFileSync(path.join(root, 'README.md'), '# A project\n');
+    const report = initProject(root, {}, { srcGlobs: ['src/**'], ignoreGlobs: [] });
+    assert.equal(existsSync(path.join(root, '.spec', 'BASELINE.md')), false);
+    assert.equal(report.notes.some((n) => n.includes('brownfield recognition')), false);
+  });
+});
+
+// -------------------------------------------------------------- M6: ./adp wrapper
+
+test('init writes an executable ./adp wrapper pinned to the installing version, by default @spec:AC-113', () => {
+  fresh((root) => {
+    initProject(root);
+    const wrapperPath = path.join(root, 'adp');
+    assert.ok(existsSync(wrapperPath));
+    const content = readFileSync(wrapperPath, 'utf8');
+    assert.match(content, new RegExp(`@codryx/agent-dev-pipeline@${VERSION}`));
+    assert.match(content, /npx/);
+    assert.equal(content.includes('{{'), false, 'no placeholder may survive into the written file');
+    // 0o755 — the wrapper is meant to be run as ./adp, not sourced or piped to bash.
+    const mode = statSync(wrapperPath).mode & 0o777;
+    assert.equal(mode, 0o755);
+  });
+});
+
+test('init writes adp.cmd alongside, same pinned version, for Windows @spec:AC-113', () => {
+  fresh((root) => {
+    initProject(root);
+    const content = readFileSync(path.join(root, 'adp.cmd'), 'utf8');
+    assert.match(content, new RegExp(`@codryx/agent-dev-pipeline@${VERSION}`));
+    assert.equal(content.includes('{{'), false);
+  });
+});
+
+test('re-running init never overwrites a hand-edited ./adp wrapper @spec:AC-113', () => {
+  fresh((root) => {
+    initProject(root);
+    const wrapperPath = path.join(root, 'adp');
+    writeFileSync(wrapperPath, '#!/usr/bin/env bash\necho "hand-edited"\n');
+    const report = initProject(root);
+    assert.ok(report.kept.includes('adp'), 'a second init must report the wrapper as kept, not overwrite it');
+    assert.match(readFileSync(wrapperPath, 'utf8'), /hand-edited/);
+  });
+});
+
+// ---------------------------------------------------- M6: --shell-alias (opt-in)
+
+test('shellAliasBlock names the pinned version inside a marked, removable block @spec:AC-114', () => {
+  const block = shellAliasBlock('0.6.0');
+  assert.match(block, /^# >>> agent-dev-pipeline alias >>>/m);
+  assert.match(block, /^# <<< agent-dev-pipeline alias <<</m);
+  assert.match(block, /@codryx\/agent-dev-pipeline@0\.6\.0/);
+});
+
+test('shellRcPath picks .zshrc for zsh and .bashrc otherwise @spec:AC-114', () => {
+  assert.match(shellRcPath({ SHELL: '/bin/zsh' }), /\.zshrc$/);
+  assert.match(shellRcPath({ SHELL: '/bin/bash' }), /\.bashrc$/);
+  assert.match(shellRcPath({}), /\.bashrc$/, 'no $SHELL at all defaults to bash, not a guess at zsh');
+});
+
+test('installShellAlias appends the block once, and a second call leaves it untouched @spec:AC-114', () => {
+  fresh((root) => {
+    const rcPath = path.join(root, '.bashrc');
+    writeFileSync(rcPath, '# existing rc content\nexport FOO=bar\n');
+
+    const first = installShellAlias(rcPath, '0.6.0');
+    assert.equal(first.written, true);
+    const afterFirst = readFileSync(rcPath, 'utf8');
+    assert.match(afterFirst, /export FOO=bar/, 'existing content must survive, not be replaced');
+    assert.match(afterFirst, /agent-dev-pipeline alias/);
+
+    const second = installShellAlias(rcPath, '0.6.0');
+    assert.equal(second.written, false, 'a marker already present means nothing is written a second time');
+    assert.equal(readFileSync(rcPath, 'utf8'), afterFirst, 'no duplicate block, no silent edit');
+  });
+});
+
+test('installShellAlias creates the rc file if it does not exist yet @spec:AC-114', () => {
+  fresh((root) => {
+    const rcPath = path.join(root, '.bashrc');
+    assert.equal(existsSync(rcPath), false);
+    const result = installShellAlias(rcPath, '0.6.0');
+    assert.equal(result.written, true);
+    assert.match(readFileSync(rcPath, 'utf8'), /agent-dev-pipeline alias/);
+  });
 });

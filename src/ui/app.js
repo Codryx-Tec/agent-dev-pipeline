@@ -41,19 +41,20 @@
 
   // ---- gates ----------------------------------------------------------------
 
-  var MARK = { green: '✔', red: '✘', blocked: '·' };
+  var MARK = { green: '✔', red: '✘', blocked: '·', 'n/a': '○' };
 
   function renderGates(gates) {
     var list = el('gates');
     clear(list);
     gates.forEach(function (g) {
-      var li = text('li', 'gate ' + g.state);
+      var li = text('li', 'gate ' + g.state.replace('/', ''));
       li.appendChild(text('span', 'mark', MARK[g.state] || '?'));
       li.appendChild(text('span', 'id', g.id));
       li.appendChild(text('span', 'title', g.title));
 
       var right = '';
       if (g.state === 'blocked') right = 'blocked by ' + g.blockedBy;
+      else if (g.state === 'n/a') right = g.reason || 'n/a';
       else if (g.errors) right = g.errors + ' error' + (g.errors === 1 ? '' : 's');
       else if (g.warnings) right = g.warnings + ' warning' + (g.warnings === 1 ? '' : 's');
       li.appendChild(text('span', 'count', right));
@@ -85,6 +86,117 @@
       }
       list.appendChild(li);
     });
+
+    // The same text `adp prompt` prints — a readonly textarea, click to
+    // select all, so copying it costs one click and no clipboard
+    // permission the page has never asked for.
+    var promptBox = el('findings-prompt');
+    if (s.firstRedPrompt) {
+      promptBox.hidden = false;
+      promptBox.value = s.firstRedPrompt;
+    } else {
+      promptBox.hidden = true;
+    }
+  }
+
+  // ---- live run: lanes and their tasks --------------------------------------
+
+  var TERMINAL_LANE_STATES = { 'lane-done': 1, 'lane-merged': 1, 'lane-failed': 1, 'lane-error': 1, 'merge-conflict': 1 };
+  var FAILED_LANE_STATES = { 'lane-failed': 1, 'lane-error': 1, 'merge-conflict': 1 };
+  var FAILED_TASK_STATES = { 'task-failed': 1, 'task-tests-failed': 1, 'task-empty': 1, 'undeclared-files': 1 };
+
+  function renderRun(s) {
+    var section = el('run-section');
+    if (!s.run) { section.hidden = true; return; }
+    section.hidden = false;
+
+    el('run-status').textContent = s.run.live ? '— in progress' : '— finished';
+
+    var tasksByLane = {};
+    s.run.tasks.forEach(function (t) {
+      var key = t.laneId || '';
+      (tasksByLane[key] = tasksByLane[key] || []).push(t);
+    });
+
+    var list = el('lanes');
+    clear(list);
+    s.run.lanes.forEach(function (l) {
+      var cls = 'lane';
+      if (FAILED_LANE_STATES[l.state]) cls += ' failed';
+      else if (TERMINAL_LANE_STATES[l.state]) cls += ' ok';
+      else cls += ' live';
+      var li = text('li', cls);
+
+      var head = text('div', 'lane-head');
+      head.appendChild(text('span', 'id', l.id));
+      head.appendChild(text('span', 'state', l.state + (l.error ? ' — ' + l.error : '')));
+      li.appendChild(head);
+
+      var tasks = tasksByLane[l.id] || [];
+      if (tasks.length) {
+        var taskRow = text('div', 'lane-tasks');
+        tasks.forEach(function (t) {
+          var pillCls = 'pill' + (FAILED_TASK_STATES[t.state] ? ' task-failed' : t.state === 'task-done' ? ' task-done' : '');
+          var pill = text('span', pillCls);
+          pill.appendChild(text('b', null, t.id));
+          pill.appendChild(document.createTextNode(' ' + t.state));
+          taskRow.appendChild(pill);
+        });
+        li.appendChild(taskRow);
+      }
+
+      list.appendChild(li);
+    });
+  }
+
+  // ---- overview: decision, backlog, estimate ---------------------------------
+
+  function renderOverview(s) {
+    var host = el('overview');
+    clear(host);
+
+    if (s.scope) {
+      var decision = text('span', 'decision ' + (s.scope.decision || 'pending'),
+        s.scope.decision === 'go' ? 'GO' : s.scope.decision === 'no-go' ? 'NO-GO' : 'pending');
+      host.appendChild(decision);
+    }
+
+    if (s.backlog) {
+      var backlogFact = text('span', 'fact');
+      backlogFact.appendChild(document.createTextNode('backlog '));
+      backlogFact.appendChild(text('b', null, s.backlog.present ? s.backlog.items : '—'));
+      host.appendChild(backlogFact);
+    }
+
+    // `s.estimate` can carry only `lastClosure` when no `adp estimate` has
+    // run yet but `adp close` has — state.js's own null-vs-partial rule.
+    if (s.estimate && s.estimate.hours) {
+      var e = s.estimate;
+      var estFact = text('span', 'fact');
+      estFact.appendChild(text('b', null, e.pf + ' PF'));
+      estFact.appendChild(document.createTextNode(
+        ' → ' + e.hours.low + '–' + e.hours.high + 'h (' + e.rowUsed + ')' +
+        (e.calibration ? ' · ' + e.calibration : '')
+      ));
+      host.appendChild(estFact);
+    }
+
+    // Human hours only — wall-clock stays off this page. "Two clocks never
+    // mix" is the same rule that keeps them apart in hours-per-fp.json.
+    if (s.estimate && s.estimate.lastClosure) {
+      var closureFact = text('span', 'fact');
+      closureFact.appendChild(document.createTextNode('actual '));
+      closureFact.appendChild(text('b', null, s.estimate.lastClosure.hours + 'h'));
+      host.appendChild(closureFact);
+    }
+
+    // M4-readonly-core: old debt, visible, not another wall to scroll past.
+    if (s.baseline && s.baseline.present) {
+      var baselineFact = text('span', 'fact');
+      baselineFact.appendChild(document.createTextNode('baseline '));
+      baselineFact.appendChild(text('b', null, s.baseline.fileCount));
+      host.appendChild(baselineFact);
+    }
   }
 
   // ---- features -------------------------------------------------------------
@@ -114,12 +226,34 @@
 
     features.forEach(function (f) {
       var card = text('div', 'feature');
-      card.appendChild(text('h3', null, f.name));
+      var titleRow = text('div');
+      titleRow.appendChild(text('h3', null, f.name));
+      if (f.inMvp === false) titleRow.appendChild(text('span', 'mvp-flag', 'not in MVP'));
+      card.appendChild(titleRow);
       card.appendChild(text('div', 'path', f.dir));
 
+      if (f.ceremony) {
+        var cer = text('div', 'ceremony');
+        cer.appendChild(text('span', 'level', f.ceremony.level));
+        if (f.ceremony.signals.length) {
+          cer.appendChild(document.createTextNode(f.ceremony.signals.join(', ')));
+        }
+        card.appendChild(cer);
+      }
+
+      // RFC/DESIGN read "n/a" instead of "absent" when this feature's
+      // ceremony level does not require them — a light feature with no RFC
+      // is not missing anything, and showing it as red would say otherwise.
       var docs = text('div', 'docs');
-      [['PRD', f.hasPrd], ['RFC', f.hasRfc], ['TDD', f.hasTdd]].forEach(function (d) {
-        docs.appendChild(text('span', 'doc ' + (d[1] ? 'present' : 'absent'), d[0]));
+      var rfcState = f.hasRfc ? 'present' : (f.ceremony && !f.ceremony.requiresRfc ? 'na' : 'absent');
+      var designState = f.hasDesign ? 'present' : (f.ceremony && !f.ceremony.requiresDesign ? 'na' : 'absent');
+      [
+        ['PRD', f.hasPrd ? 'present' : 'absent'],
+        ['RFC', rfcState],
+        ['DESIGN', designState],
+        ['SPEC', f.hasSpec ? 'present' : 'absent'],
+      ].forEach(function (d) {
+        docs.appendChild(text('span', 'doc ' + d[1], d[0]));
       });
       card.appendChild(docs);
 
@@ -176,8 +310,10 @@
   function render(s) {
     state = s;
     renderVerdict(s);
+    renderOverview(s);
     renderGates(s.gates);
     renderFindings(s);
+    renderRun(s);
     renderFeatures(s.features);
     renderErrors(s.errors);
     el('stamp').textContent =

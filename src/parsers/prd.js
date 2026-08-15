@@ -1,28 +1,25 @@
-// PRD parser — owns US-xxx (stories) and AC-xxx (acceptance criteria).
+// PRD parser — prose only: what, for whom, why.
 //
-// Grammar:
-//   ### US-001 — Title
-//   #### AC-001 — Title
-//   - **Given** ... / - **When** ... / - **Then** ...
+// US-xxx (stories) and AC-xxx (acceptance criteria) moved to SPEC.md in
+// 0.6.0 (see spec.js). Keeping them in PRD.md pushed it toward the technical
+// side and made it spec disfarçada — the antipattern the 0.6.0 restructuring
+// exists to fix (.spec/SCOPE-0.6.0.md §2.1). What is left here is exactly
+// what a product owner needs to read and nothing an engine cross-references
+// against tasks or tests.
 //
-// Every structural regex is LINE-ANCHORED and runs over a code-stripped copy of
-// the document. A heading shown inside backticks is documentation about the
-// grammar, not an element of it.
+// `rfcs:` is the one exception — a link, not a code family this document
+// owns. RFC.md is no longer a fixed sibling file (Q-001: one RFC can serve
+// several PRDs, one PRD often needs several), so a PRD names which decision
+// records apply instead of the engine assuming a 1:1 nesting.
 
-import { lineOf, blocksBetween, stripNonGrammar } from '../util/text.js';
+import { splitList } from '../util/text.js';
 
-// Both languages are accepted: Projeto_Agent's documents already mix them, and
-// rejecting one would make the migration a rewrite.
-const CLAUSES = {
-  given: /^\s*[-*]\s*\*\*(Given|Dado)\*\*/m,
-  when: /^\s*[-*]\s*\*\*(When|Quando)\*\*/m,
-  then: /^\s*[-*]\s*\*\*(Then|Ent[ãa]o)\*\*/m,
-};
-
-const RE_STORY = /^###\s+(US-\d+)\s*[—–-]\s*(.+?)\s*$/gm;
-const RE_AC = /^####\s+(AC-\d+)\s*[—–-]\s*(.+?)\s*$/gm;
 const RE_STATUS = /^>\s*status:\s*(\S+)/m;
 const RE_FEATURE = /^>\s*feature:\s*(\S+)/m;
+// [ \t]*, not \s* — an empty "rfcs:" field must not let the match cross the
+// newline and swallow the next line's prose as if it were the value.
+const RE_RFCS = /^>\s*rfcs?:[ \t]*(.+)$/m;
+const RE_SIGNALS = /^>\s*signals:[ \t]*(.+)$/m;
 
 export const SPEC_STATUSES = [
   'draft',
@@ -32,62 +29,16 @@ export const SPEC_STATUSES = [
   'audited',
 ];
 
+// The recognized signal slugs live in core/ceremony.js, not here — a parser
+// stays a parser, and reports the raw list as written. Anything unrecognized
+// is audit.js's problem (SIGNAL_UNKNOWN), not this file's to silently drop.
 export function parsePrd(content, file) {
-  const scan = stripNonGrammar(content);
-
-  const storyMatches = [...scan.matchAll(RE_STORY)];
-  const acMatches = [...scan.matchAll(RE_AC)];
-
-  const acs = acMatches.map((m) => {
-    const id = m[1];
-    const index = m.index;
-    const start = index + m[0].length;
-    // the criterion body runs to the next criterion OR the next story,
-    // whichever comes first — otherwise the last criterion of a story would
-    // swallow the next story's prose
-    const nextAc = acMatches.find((x) => x.index > index)?.index ?? Infinity;
-    const nextUs = storyMatches.find((x) => x.index > index)?.index ?? Infinity;
-    const body = content.slice(start, Math.min(nextAc, nextUs, content.length));
-    const missing = Object.entries(CLAUSES)
-      .filter(([, re]) => !re.test(body))
-      .map(([name]) => name);
-    return {
-      id,
-      title: m[2],
-      file,
-      line: lineOf(content, index),
-      index,
-      body,
-      missingClauses: missing,
-      complete: missing.length === 0,
-    };
-  });
-
-  const stories = blocksBetween(scan, storyMatches).map(({ match, start, end }) => ({
-    id: match[1],
-    title: match[2],
-    file,
-    line: lineOf(content, match.index),
-    index: match.index,
-    acs: acs.filter((ac) => ac.index > start && ac.index < end),
-  }));
-
-  // A criterion that sits before the first story belongs to no story. It is not
-  // an error the parser decides on — audit.js reports it as AC_OUTSIDE_US.
-  const firstStoryIndex = storyMatches.length ? storyMatches[0].index : Infinity;
-  const orphanAcs = acs.filter((ac) => ac.index < firstStoryIndex);
-
   return {
     kind: 'prd',
     file,
     feature: content.match(RE_FEATURE)?.[1] ?? null,
     status: content.match(RE_STATUS)?.[1] ?? null,
-    stories,
-    acs,
-    orphanAcs,
+    rfcs: splitList(content.match(RE_RFCS)?.[1] ?? '').map((id) => id.toUpperCase()),
+    signals: splitList(content.match(RE_SIGNALS)?.[1] ?? ''),
   };
-}
-
-export function allAcs(prd) {
-  return prd ? prd.acs : [];
 }

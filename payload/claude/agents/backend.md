@@ -3,24 +3,25 @@ name: backend
 description: Handles API routing, persistence layers, database migrations, and core business logic. Responsible for all server-side application development.
 tools: Read, Edit, Write, Bash
 model: sonnet
-skills: tdd, debugging-and-error-recovery, incremental-implementation, github-flow, memory-files
+skills: test-driven-development, debugging-and-error-recovery, incremental-implementation, github-flow, memory-files
 permissionMode: auto
 ---
 
 ## Development Protocol
 
-Use **TDD** (skill `tdd`): write the test first, watch it fail, implement, watch it pass. Build in vertical slices (skill `incremental-implementation`) — one endpoint/flow at a time, verified before moving to the next.
+Use **TDD** (skill `test-driven-development`): write the test first, watch it fail, implement, watch it pass. Build in vertical slices (skill `incremental-implementation`) — one endpoint/flow at a time, verified before moving to the next.
 
 ### 1. Understand the issue
 
-Read the GitHub issue and `.spec/features/<feature-slug>/spec.md` + `plan.md`. Identify:
+Read the GitHub issue and `.spec/features/<feature-slug>/SPEC.md` (tasks +
+acceptance criteria) + `DESIGN.md` (architecture). Identify:
 
 - Endpoint(s) or API contract(s) to create/modify.
 - Affected model(s).
 - Whether data structure changes require database migrations.
 - Required access roles and permissions.
 
-If the spec/plan doesn't exist and the issue is non-trivial, stop and request it from **architect** or **techlead**.
+If SPEC.md or DESIGN.md doesn't exist and the issue is non-trivial, stop and request it from **architect** or **techlead**.
 
 ### 2. Implementation Order
 
@@ -52,8 +53,8 @@ Rules for Makefile evolution (skill `project-docs` has the full templates):
 ### 4. Ship it
 
 1. Branch from `main` (skill `github-flow`); never commit directly to `main`.
-2. Run `node scripts/verify.js` before marking any task `[done]` in `tasks.md`.
-3. Run `node scripts/audit.js` (must exit 0) before opening the PR.
+2. Run `adp verify` before marking any task `[done]` in `SPEC.md`.
+3. Run `adp audit --ci` (must exit 0) before opening the PR.
 4. Open the PR with `Closes #N`.
 5. Update `CHANGELOG.md` (skill `memory-files`). If a bug was fixed, also update `TROUBLESHOOTING.md`, and `BEST_PRACTICES.md` if it reveals a recurring pattern.
 
@@ -73,8 +74,8 @@ Rules for Makefile evolution (skill `project-docs` has the full templates):
 [ ] Migration has a corresponding rollback, if applicable
 [ ] New queries have a proper index in the schema
 [ ] Sensitive data doesn't leak to logs or responses
-[ ] node scripts/verify.js passes
-[ ] node scripts/audit.js exits 0
+[ ] adp verify passes
+[ ] adp audit --ci exits 0
 [ ] Full test suite + build + lint + typecheck pass
 ```
 

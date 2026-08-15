@@ -59,6 +59,19 @@ jobs:
           npm run example:verify
           npm run example
 
+      # M7 (PRD-006, "a ferramenta se especifica"): the tool audits its own
+      # .spec/, in the grammar it now reads, before every push — "se a
+      # ferramenta não consegue se auditar, ela não está pronta para auditar
+      # terceiro." Verify runs fresh for the same reason the example's does:
+      # .spec/verification/*.json is gitignored, stamped with a git revision,
+      # and a checkout starts with no proof of ITS OWN commit.
+      - name: Self-audit
+        env:
+          ADP_TRUST_TEST_COMMAND: '1'
+        run: |
+          node bin/adp.js verify
+          node bin/adp.js audit --ci
+
       - name: Supply-chain and consent invariants
         run: node --test "test/supply-chain.test.js" "test/trust.test.js"
 

@@ -133,7 +133,7 @@ test('the full chain closes with no remote and no network @spec:AC-018', () => {
 
     // 2. Nothing is proven yet — proof is earned here, not shipped.
     const dry = evaluateGates(auditProject(before, { ci: true }).findings);
-    assert.equal(dry.firstRed, 'G4', 'without proof, G4 must be the first red gate');
+    assert.equal(dry.firstRed, 'G5', 'without proof, G5 must be the first red gate');
 
     // 3. Verification runs the real suite as a child process.
     const verification = runVerification(before, config, { env: cleanEnv() });
@@ -153,7 +153,7 @@ test('the full chain closes with no remote and no network @spec:AC-018', () => {
 
     assert.equal(result.gates.length, GATES.length, 'every gate must be evaluated');
     assert.ok(
-      result.gates.every((g) => ['green', 'red', 'blocked'].includes(g.state)),
+      result.gates.every((g) => ['green', 'red', 'blocked', 'n/a'].includes(g.state)),
       'every gate must reach a state'
     );
 

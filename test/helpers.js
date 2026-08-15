@@ -8,14 +8,27 @@ import { loadConfig } from '../src/config.js';
 import { loadProject } from '../src/core/project.js';
 import { auditProject } from '../src/core/audit.js';
 import { evaluateGates } from '../src/core/gates.js';
+import { projectCeremony } from '../src/core/ceremony.js';
 
-export const APPROVED_SCOPE = `# Project Scope
+// A function, not a bare string, since M2c-core: a scope fixture now has to
+// say which feature slug(s) it declares in the MVP checklist, or every
+// feature using it trips PRD_UNPLACED.
+export const approvedScope = (mvp = ['f']) => `# Project Scope
 
 **Scope status:** Approved
 **Scope owner:** test
+
+## 3. Features
+
+- **MVP (prioritized):**
+${mvp.map((slug) => `  - [ ] ${slug}`).join('\n')}
 `;
 
 export const MINIMAL_RFC = `# RFC: t
+
+## Purpose
+
+Support tickets about this take 20 minutes to resolve.
 
 ### D-001 — A choice
 
@@ -23,16 +36,19 @@ export const MINIMAL_RFC = `# RFC: t
 
 1. *One.* first
 2. *Two.* second
+3. *Do nothing.* keep the current process
 
 **Decision: alternative 1 — one.**
+`;
 
-## Assumptions
+// ASM-xxx/Q-xxx moved from RFC.md to SPEC.md in 0.6.0 — see spec.js.
+export const MINIMAL_SPEC_TAIL = `## Assumptions
 
 - **ASM-001** — something assumed *(status: confirmed)*
 
 ## Open questions
 
-- **Q-001** — something asked *(status: answered)*
+- **Q-001** — something asked *(status: answered, Door: two-way)*
 `;
 
 export function makeProject(files, configOverrides = {}) {
@@ -49,12 +65,13 @@ export function makeProject(files, configOverrides = {}) {
   return root;
 }
 
-export function auditOf(files, { ci = false, config = {} } = {}) {
+export function auditOf(files, { ci = false, strict = false, now = undefined, config = {} } = {}) {
   const root = makeProject(files, config);
   try {
     const project = loadProject(loadConfig(root));
-    const audit = auditProject(project, { ci });
-    return { audit, gates: evaluateGates(audit.findings), project, root };
+    const audit = auditProject(project, { ci, strict, ...(now ? { now } : {}) });
+    const ceremony = projectCeremony(project.features);
+    return { audit, gates: evaluateGates(audit.findings, { ceremony }), ceremony, project, root };
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

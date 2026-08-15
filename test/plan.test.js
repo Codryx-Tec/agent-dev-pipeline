@@ -14,7 +14,7 @@ import path from 'path';
 import { buildPlan, renderPlan } from '../src/core/plan.js';
 import { runLane, mergeLane, git, filesInCommit, linkIntoWorktree } from '../src/core/executor.js';
 import { makeLaneTestRunner } from '../src/core/verify.js';
-import { grantTrust } from '../src/core/trust.js';
+import { grantTrust, TRUST_ENV } from '../src/core/trust.js';
 import { rerunLane } from '../src/core/rerun.js';
 import { append, read, progress, prune, streamPath, ledgerPath } from '../src/core/ledger.js';
 import { buildPrompt } from '../src/core/prompts.js';
@@ -24,7 +24,7 @@ import { buildPrompt } from '../src/core/prompts.js';
 function fakeProject(tasks) {
   return {
     rootDir: '/nowhere',
-    features: [{ name: 'demo', tdd: { tasks } }],
+    features: [{ name: 'demo', spec: { tasks } }],
   };
 }
 
@@ -493,9 +493,17 @@ test('a lane whose tests pass finishes normally @spec:AC-047', () => {
   assert.ok(read(cfg, { runId: 'rt2' }).events.some((e) => e.type === 'task-tests-passed'));
 });
 
-test('lane tests need no grant beyond the one already given @spec:AC-048', () => {
+test('lane tests need no grant beyond the one already given @spec:AC-048 @spec:AC-121', () => {
   const root = gitRepo();
   const project = { rootDir: root, features: [] };
+  // Isolated from the ambient environment on purpose: this whole test's point
+  // is "no grant recorded means refused," and ADP_TRUST_TEST_COMMAND=1 — the
+  // CI escape hatch — is exactly the kind of ambient state that would make
+  // that false. `adp verify` (M7's self-audit) sets that variable for its own
+  // outer approval and it leaks to every child process, this test's own
+  // included, so relying on `process.env` here made the test's correctness
+  // depend on who was invoking it rather than on what it declares.
+  const noEscape = { env: { ...process.env, [TRUST_ENV]: undefined } };
 
   // Nothing to run.
   const none = makeLaneTestRunner(project, state());
@@ -505,13 +513,13 @@ test('lane tests need no grant beyond the one already given @spec:AC-048', () =>
   // A command, but nobody approved it. The lane worktree is still this machine,
   // and a command out of the repository is still a stranger's code.
   const cfg = { ...state(), testCommand: MARKER_TEST };
-  const untrusted = makeLaneTestRunner(project, cfg);
+  const untrusted = makeLaneTestRunner(project, cfg, noEscape);
   assert.equal(untrusted.runner, null);
   assert.match(untrusted.reason, /adp trust/);
 
   // Approval of a DIFFERENT command does not carry over.
   grantTrust(root, 'npm run something-else', cfg);
-  assert.match(makeLaneTestRunner(project, cfg).reason, /changed since it was approved/);
+  assert.match(makeLaneTestRunner(project, cfg, noEscape).reason, /changed since it was approved/);
 
   // And a run with no test runner is still a run: the check is optional, so its
   // absence costs the run its attribution, not its result.
@@ -702,7 +710,7 @@ test('the brief carries the task, its criteria and the rules @spec:AC-020', asyn
     features: [
       {
         name: 'demo',
-        prd: {
+        spec: {
           acs: [
             { id: 'AC-001', title: 'A thing', body: '- **Given** g\n- **When** w\n- **Then** t' },
             { id: 'AC-999', title: 'Not referenced', body: 'irrelevant' },
@@ -772,6 +780,58 @@ test('a harness whose write flags are unknown refuses rather than guesses @spec:
     { allowEdits: true }
   );
   assert.deepEqual(declared.args, ['{{PROMPT}}', '--write']);
+});
+
+test('resolveConfiguredModel prefers agent.models.implementation, then parallel.model, then null @spec:AC-115', async () => {
+  const { resolveConfiguredModel } = await import('../src/core/agent.js');
+  assert.equal(resolveConfiguredModel({ agent: { models: { implementation: 'opus' } } }), 'opus');
+  // The older, single-phase key still works, so an existing config is not silently ignored.
+  assert.equal(resolveConfiguredModel({ parallel: { model: 'sonnet' } }), 'sonnet');
+  assert.equal(
+    resolveConfiguredModel({ agent: { models: { implementation: 'opus' } }, parallel: { model: 'sonnet' } }),
+    'opus',
+    'the generalized per-phase key wins over the older single one'
+  );
+  assert.equal(resolveConfiguredModel({}), null, 'no configuration means no opinion — let the harness pick');
+});
+
+test('a configured model becomes --model for a harness that knows the flag @spec:AC-115', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  const { args } = resolveAgentCommand({ agent: { name: 'claude' } }, { model: 'opus' });
+  assert.deepEqual(args, ['-p', '{{PROMPT}}', '--model', 'opus']);
+});
+
+test('a configured model combines with --allow-edits, model flags first @spec:AC-115', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  const { args } = resolveAgentCommand({ agent: { name: 'claude' } }, { model: 'opus', allowEdits: true });
+  assert.deepEqual(args, ['-p', '{{PROMPT}}', '--model', 'opus', '--permission-mode', 'acceptEdits']);
+});
+
+test('a harness with no known model flag refuses a configured model instead of guessing @spec:AC-116', async () => {
+  const { resolveAgentCommand } = await import('../src/core/agent.js');
+  // Guessing here is a real bill, not just a broken run: a wrong flag might be
+  // silently ignored by the harness, which then runs its own (possibly pricier
+  // or cheaper) default model with nobody the wiser.
+  assert.throws(
+    () => resolveAgentCommand({ agent: { name: 'codex' } }, { model: 'gpt-5' }),
+    /agent\.modelArgs/
+  );
+  assert.throws(
+    () => resolveAgentCommand({ agent: { command: 'my-agent', args: ['{{PROMPT}}'] } }, { model: 'x' }),
+    /agent\.modelArgs/
+  );
+  // ...and accepts it once the operator states the flag, same shape as editArgs.
+  const declared = resolveAgentCommand(
+    { agent: { command: 'my-agent', args: ['{{PROMPT}}'], modelArgs: ['--model', '{{MODEL}}'] } },
+    { model: 'x' }
+  );
+  assert.deepEqual(declared.args, ['{{PROMPT}}', '--model', 'x']);
+});
+
+test('describeAgentCommand resolves the configured model automatically, without the caller repeating the lookup @spec:AC-115', async () => {
+  const { describeAgentCommand } = await import('../src/core/agent.js');
+  const text = describeAgentCommand({ agent: { name: 'claude', models: { implementation: 'opus' } } });
+  assert.match(text, /--model opus/);
 });
 
 test('the summary is the one line the orchestrator reads @spec:AC-021', async () => {
@@ -850,13 +910,15 @@ test('the briefing is derived, and only the note is stored @spec:AC-041', async 
     features: [
       {
         name: 'demo',
-        prd: { acs: [{ id: 'AC-001', title: 'one' }, { id: 'AC-002', title: 'two' }] },
-        rfc: { questions: [{ id: 'Q-001', status: 'open', blocking: true, text: 'which path?' }] },
-        tdd: { tasks: [
-          { id: 'T-001', title: 'doing', status: 'in-progress' },
-          { id: 'T-002', title: 'resting', status: 'in-test' },
-          { id: 'T-003', title: 'also resting', status: 'in-test' },
-        ] },
+        spec: {
+          acs: [{ id: 'AC-001', title: 'one' }, { id: 'AC-002', title: 'two' }],
+          questions: [{ id: 'Q-001', status: 'open', blocking: true, text: 'which path?' }],
+          tasks: [
+            { id: 'T-001', title: 'doing', status: 'in-progress' },
+            { id: 'T-002', title: 'resting', status: 'in-test' },
+            { id: 'T-003', title: 'also resting', status: 'in-test' },
+          ],
+        },
       },
     ],
   };

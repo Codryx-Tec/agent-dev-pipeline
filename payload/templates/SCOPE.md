@@ -3,9 +3,16 @@
 **Scope status:** Draft
 **Gathering date:** {{DATE}}
 **Scope owner:** {{OWNER}}
+**Decision:** pending
 
 > Gate G0 stays red until this line reads `**Scope status:** Approved`.
 > That is deliberate: development must not start on a scope nobody signed.
+>
+> `**Decision:**` is `pending`, `go` or `no-go` — the recorded answer to
+> "do we build this?", read by `adp report`. It is declarative only: no
+> gate checks it, nothing refuses to run because it says `no-go`. If the
+> answer is "use another tool," the documents up to here are still yours —
+> that is the point of writing them first.
 
 ---
 
@@ -22,9 +29,16 @@
 
 ## 3. Features
 
-- **MVP (prioritized):**
+- **MVP (prioritized):** each line names the feature by its slug first —
+  `- [ ] <feature-slug> — description`, e.g. `- [ ] student-enrolment — a
+  visitor can enrol in an open class`. The slug is what `adp new` writes as
+  a directory name and what the audit cross-references: a PRD whose slug
+  is missing here is `PRD_UNPLACED` (G1). Checkbox state tracks delivery,
+  not membership — `[x]` still counts as in the MVP.
   - [ ]
-- **Nice-to-have (post-MVP):**
+- **Nice-to-have (post-MVP):** what got pushed out — write it in
+  `BACKLOG.md`, not here. Backlog items stay prose, on purpose: only a
+  promoted PRD earns a tracking code.
 
 ## 4. Out of scope
 
@@ -66,3 +80,12 @@ Project-level outcomes. The per-feature detail belongs in each feature's
 ## 10. Open scope items
 
 - [ ]
+
+## 11. Decision criteria
+
+Optional. Weighted criteria a scoring matrix judges options against — only
+an RFC decision that opts into that structure (SCOPE-0.6.0.md §2.4)
+references these, by id. Weights are a percentage split and should sum to
+100. Leave empty until an RFC actually needs one.
+
+- **W-001** — what matters and why (weight: n)

@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GATES, LABELS, allMappedCodes, evaluateGates, gateOf } from '../src/core/gates.js';
 import { renderTerminal, renderPrompt } from '../src/core/report.js';
-import { auditOf, APPROVED_SCOPE, MINIMAL_RFC, gate } from './helpers.js';
+import { auditOf, approvedScope, MINIMAL_RFC, gate } from './helpers.js';
 import { ATTEMPT_CAP } from '../src/core/prompts.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -47,33 +47,59 @@ test('every mapped code has a human-readable label @spec:AC-024', () => {
 
 test('gates after the first red one are blocked, never red @spec:AC-004', () => {
   const findings = [
-    { code: 'US_WITHOUT_AC', severity: 'error', message: 'x' },
-    { code: 'AC_WITHOUT_TASK', severity: 'error', message: 'y' },
+    { code: 'PRD_MISSING', severity: 'error', message: 'x' },
+    { code: 'SPEC_WITHOUT_US', severity: 'error', message: 'y' },
   ];
   const ev = evaluateGates(findings);
   assert.equal(gate(ev, 'G1').state, 'red');
-  assert.equal(gate(ev, 'G3').state, 'blocked');
+  assert.equal(gate(ev, 'G4').state, 'blocked');
   assert.equal(ev.firstRed, 'G1');
   assert.equal(ev.exitCode, 2);
 });
 
 test('warnings alone never turn a gate red @spec:AC-004', () => {
   const ev = evaluateGates([{ code: 'AC_WITHOUT_TASK', severity: 'warning', message: 'x' }]);
-  assert.equal(gate(ev, 'G3').state, 'green');
+  assert.equal(gate(ev, 'G4').state, 'green');
   assert.equal(ev.exitCode, 0);
 });
 
+test('n/a never suppresses a real finding — a gate with its own errors turns red, not n/a @spec:AC-058', () => {
+  // audit.js's global RFC-completeness block runs on every RFC file that
+  // EXISTS, unconditionally — deliberately independent of which feature's
+  // ceremony requires one. A gate must not report "not applicable" when it
+  // is sitting on real error findings; "not due" and "clean" are different
+  // claims, and only "clean" may suppress anything.
+  const ceremony = {
+    g2Applicable: false,
+    g3Applicable: false,
+    reason: { G2: 'no feature is at rfc-first or full ceremony', G3: 'no feature is above light ceremony' },
+  };
+  const findings = [
+    { code: 'DECISION_WITHOUT_ALTERNATIVE', severity: 'error', message: 'x', file: 'RFC-001.md', line: 1 },
+  ];
+  const ev = evaluateGates(findings, { ceremony });
+  assert.equal(gate(ev, 'G2').state, 'red');
+  assert.equal(gate(ev, 'G2').errors, 1);
+  assert.equal(ev.firstRed, 'G2');
+  assert.equal(ev.exitCode, 3);
+  // G3 comes after G2 in gate order, so once G2 turns red it reads
+  // "blocked", same as any other gate downstream of a real red one — G2
+  // being red takes priority over G3's own ceremony n/a-ness.
+  assert.equal(gate(ev, 'G3').state, 'blocked');
+});
+
 test('gateOf resolves a known code and refuses an unknown one @spec:AC-024', () => {
-  assert.equal(gateOf('AC_WITHOUT_TEST'), 'G4');
+  assert.equal(gateOf('AC_WITHOUT_TEST'), 'G5');
   assert.equal(gateOf('NOT_A_REAL_CODE'), null);
 });
 
 test('a finding renders its readable name before its stable code @spec:AC-024', () => {
   const { audit, gates } = auditOf({
-    '.spec/SCOPE.md': APPROVED_SCOPE,
-    '.spec/features/f/PRD.md': '### US-001 — lonely\n',
-    '.spec/features/f/RFC.md': MINIMAL_RFC,
-    '.spec/features/f/TDD.md': '## T-001 — x [pending]\n\n- Refs: US-001\n- Files: src/a.js\n',
+    '.spec/SCOPE.md': approvedScope(),
+    '.spec/features/f/PRD.md': '# PRD\n\n> rfcs: RFC-001\n',
+    '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
+    '.spec/features/f/DESIGN.md': '# DESIGN\n',
+    '.spec/features/f/SPEC.md': '### US-001 — lonely\n\n## T-001 — x [pending]\n\n- Refs: US-001\n- Files: src/a.js\n',
   });
   const text = renderTerminal(audit, gates);
   assert.match(text, /user story without acceptance criterion \(US_WITHOUT_AC\)/);
@@ -81,12 +107,12 @@ test('a finding renders its readable name before its stable code @spec:AC-024', 
 
 test('a red gate produces a paste-ready prompt with its findings @spec:AC-023', () => {
   const ev = evaluateGates([
-    { code: 'US_WITHOUT_AC', severity: 'error', message: 'US-001 has no criterion', file: 'PRD.md', line: 3 },
+    { code: 'US_WITHOUT_AC', severity: 'error', message: 'US-001 has no criterion', file: 'SPEC.md', line: 3 },
   ]);
-  const prompt = renderPrompt(gate(ev, 'G1'));
-  assert.match(prompt, /Gate G1/);
+  const prompt = renderPrompt(gate(ev, 'G4'));
+  assert.match(prompt, /Gate G4/);
   assert.match(prompt, /US_WITHOUT_AC/);
-  assert.match(prompt, /PRD\.md:3/);
+  assert.match(prompt, /SPEC\.md:3/);
   // The iteration cap belongs in the prompt itself: without it, an agent will
   // grind at the same finding forever instead of escalating. Asserted against
   // the constant rather than against the wording, so the text and the cap
@@ -96,11 +122,15 @@ test('a red gate produces a paste-ready prompt with its findings @spec:AC-023', 
 
 test('a clean project exits 0 with no red gate @spec:AC-018', () => {
   const { gates } = auditOf({
-    '.spec/SCOPE.md': APPROVED_SCOPE,
-    '.spec/features/f/PRD.md':
-      '### US-001 — x\n\n#### AC-001 — y\n\n- **Given** a\n- **When** b\n- **Then** c\n',
-    '.spec/features/f/RFC.md': MINIMAL_RFC,
-    '.spec/features/f/TDD.md': '## T-001 — x [pending]\n\n- Refs: AC-001\n- Files: src/a.js\n',
+    '.spec/SCOPE.md': approvedScope(),
+    '.spec/features/f/PRD.md': '# PRD\n\n> rfcs: RFC-001\n',
+    '.spec/rfc/RFC-001-t.md': MINIMAL_RFC,
+    '.spec/features/f/DESIGN.md': '# DESIGN\n',
+    '.spec/features/f/SPEC.md':
+      '### US-001 — x\n\n#### AC-001 — y\n\n- **Given** a\n- **When** b\n- **Then** c\n\n' +
+      '## Assumptions\n\n- **ASM-001** — a *(status: confirmed)*\n\n' +
+      '## Open questions\n\n- **Q-001** — a *(status: answered, Door: two-way)*\n\n' +
+      '## T-001 — x [pending]\n\n- Refs: AC-001\n- Files: src/a.js\n',
     'src/a.js': 'export const a = 1;\n',
     'test/a.test.js': "test('y @spec:AC-001', () => {});\n",
   });

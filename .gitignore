@@ -14,6 +14,13 @@ node_modules/
 # stamped with a git revision, so a committed copy would be stale immediately.
 .exemplo/.spec/verification/*.json
 
+# Same reasoning, for this repository's own self-audit (M7, PRD-006): proof
+# recorded before a commit is proof of the PARENT commit, not this one, so a
+# tracked copy reads PROOF_STALE on the very next fresh checkout — verified,
+# the hard way, by cloning this repo and running `adp audit --ci` against it.
+# CI runs `adp verify` fresh instead; a contributor does the same locally.
+.spec/verification/*.json
+
 # Scratch space for specifications handed to an agent mid-session. Consumed and
 # deleted once read, so nothing here is ever meant to outlive the conversation.
 .doc/

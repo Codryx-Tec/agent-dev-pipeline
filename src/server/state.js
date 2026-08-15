@@ -9,11 +9,49 @@
 // most expensive process on the machine (ASM-006).
 
 import { createHash } from 'crypto';
-import { statSync, existsSync, readdirSync } from 'fs';
+import { statSync, existsSync, readdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { loadProject } from '../core/project.js';
 import { auditProject } from '../core/audit.js';
 import { evaluateGates, GATES } from '../core/gates.js';
+import { projectCeremony } from '../core/ceremony.js';
+import { loadEstimate, loadHoursTable } from '../core/estimate.js';
+import { calibrationLabel, loadClosures } from '../core/closure.js';
+import { latestRunId, progress } from '../core/ledger.js';
+import { buildPrompt } from '../core/prompts.js';
+
+/**
+ * The last estimate, with the current calibration label for the table row
+ * it used — null when no `adp close` has ever recorded against that row
+ * (PRD-003c-core: this reads the row's own `observations` count, already
+ * updated by `adp close`, rather than re-reading closures.jsonl itself) —
+ * and the last closure's declared hours (M5-monitor-core), human hours
+ * only. Wall-clock stays off this page for the same reason it stays out of
+ * `hours-per-fp.json`: the two clocks never mix (SCOPE-0.6.0.md's own rule).
+ */
+function buildEstimateWithCalibration(rootDir, config) {
+  const estimate = loadEstimate(rootDir, config);
+  const closures = loadClosures(rootDir, config);
+  const lastClosure = closures.length ? closures[closures.length - 1] : null;
+  if (!estimate) return lastClosure ? { lastClosure } : null;
+  const hoursTable = loadHoursTable(rootDir, config);
+  const row = hoursTable?.find((r) => r.profile === estimate.rowUsed) ?? null;
+  return { ...estimate, calibration: row ? calibrationLabel(row.observations) : null, lastClosure };
+}
+
+// A lane's own state (never a task's — see ledger.js:progress(), which
+// only ever assigns a lane-level event to the lane map) is one of these
+// once it stops changing. Anything else means the run is still going.
+const TERMINAL_LANE_STATES = new Set(['lane-done', 'lane-merged', 'lane-failed', 'lane-error', 'merge-conflict']);
+
+/** The most recent run's lanes/tasks, or null if `adp run` has never executed here. */
+function buildRun(config) {
+  const runId = latestRunId(config);
+  if (!runId) return null;
+  const p = progress(config, runId);
+  const live = p.lanes.some((l) => !TERMINAL_LANE_STATES.has(l.state));
+  return { runId, live, lanes: p.lanes, tasks: p.tasks };
+}
 
 /** Files whose modification time decides whether the state could have changed. */
 function watchedPaths(config) {
@@ -75,7 +113,8 @@ export function buildState(config) {
   const project = loadProject(config);
   const audit = auditProject(project, { ci: false });
   const strict = auditProject(project, { ci: true });
-  const evaluation = evaluateGates(audit.findings);
+  const ceremony = projectCeremony(project.features);
+  const evaluation = evaluateGates(audit.findings, { ceremony });
 
   const gates = evaluation.gates.map((g) => {
     const meta = GATES.find((x) => x.id === g.id);
@@ -86,6 +125,7 @@ export function buildState(config) {
       errors: g.errors ?? 0,
       warnings: g.warnings ?? 0,
       blockedBy: g.blockedBy ?? null,
+      reason: g.reason ?? null,
       findings: (g.findings ?? []).map(shapeFinding),
     };
   });
@@ -98,11 +138,32 @@ export function buildState(config) {
     scope: {
       present: project.scope?.present ?? false,
       status: project.scope?.status ?? null,
+      decision: project.scope?.decision ?? 'pending',
+      mvp: project.scope?.mvp ?? [],
     },
+    backlog: {
+      present: project.backlog?.present ?? false,
+      items: project.backlog?.items?.length ?? 0,
+    },
+    // M4-readonly-core: file count only, never the list — the debt panel
+    // stays a summary, not another wall of file names to scroll past.
+    baseline: {
+      present: project.baseline?.present ?? false,
+      fileCount: project.baseline?.files?.size ?? 0,
+      commit: project.baseline?.commit ?? null,
+    },
+    // PRD-003-core: the last `adp estimate` run, or null if none has run yet.
+    estimate: buildEstimateWithCalibration(project.rootDir, config),
+    // M5-monitor-core: the same text `adp prompt` prints for the first red
+    // gate, so the page has something to copy, not just something to read.
+    firstRedPrompt: buildPrompt(gates.find((g) => g.state === 'red') ?? null),
+    // M5-monitor-core: "the parallel execution is invisible today" (PB-004)
+    // — null when `adp run`/`adp rerun` have never executed in this project.
+    run: buildRun(config),
     gates,
     firstRed: evaluation.firstRed,
     exitCode: evaluation.exitCode,
-    strictExitCode: evaluateGates(strict.findings).exitCode,
+    strictExitCode: evaluateGates(strict.findings, { ceremony }).exitCode,
     totals: {
       errors: audit.errors,
       warnings: audit.warnings,
@@ -111,7 +172,7 @@ export function buildState(config) {
       srcFiles: project.srcFiles.length,
       principles: project.constitution?.principles?.length ?? 0,
     },
-    features: project.features.map((f) => shapeFeature(f, project)),
+    features: project.features.map((f) => shapeFeature(f, project, ceremony)),
     errors: project.errors ?? [],
   };
 }
@@ -126,8 +187,8 @@ function shapeFinding(f) {
   };
 }
 
-function shapeFeature(f, project) {
-  const tasks = (f.tdd?.tasks ?? []).map((t) => ({
+function shapeFeature(f, project, ceremony) {
+  const tasks = (f.spec?.tasks ?? []).map((t) => ({
     code: t.id,
     title: t.title ?? '',
     status: t.status ?? 'pending',
@@ -138,7 +199,7 @@ function shapeFeature(f, project) {
   }));
 
   const record = project.verification?.[f.name] ?? null;
-  const criteria = (f.prd?.acs ?? []).map((c) => ({
+  const criteria = (f.spec?.acs ?? []).map((c) => ({
     code: c.id,
     title: c.title ?? '',
     complete: c.complete !== false,
@@ -147,17 +208,35 @@ function shapeFeature(f, project) {
     // "proven" is the engine's word, never the document's: a criterion is proven
     // when a verification record says a test PASSED, not when someone typed it.
     // With no record at all, nothing is proven — the absence of evidence is
-    // read as absence of proof, which is the only safe direction.
-    proven: record?.criteria?.[c.id]?.verdict === 'pass',
+    // read as absence of proof, which is the only safe direction. The record's
+    // real shape is `results[id].status` (verify.js) — `criteria`/`verdict`
+    // never existed there; this always read as 0 proven for every real record.
+    proven: record?.results?.[c.id]?.status === 'pass',
   }));
+
+  const featureCeremony = ceremony?.perFeature?.get(f.name) ?? null;
 
   return {
     name: f.name,
     dir: f.dir,
     hasPrd: f.hasPrd,
-    hasRfc: f.hasRfc,
-    hasTdd: f.hasTdd,
-    stories: (f.prd?.stories ?? []).map((s) => ({
+    // RFC is no longer a fixed sibling file (Q-001) — "has one" means the PRD
+    // links at least one, whether or not that link resolves (the audit
+    // already reports RFC_MISSING for a broken one).
+    hasRfc: f.rfcRefs.length > 0,
+    hasSpec: f.hasSpec,
+    hasDesign: f.hasDesign,
+    ceremony: featureCeremony
+      ? {
+          level: featureCeremony.level,
+          signals: featureCeremony.signals,
+          requiresRfc: featureCeremony.requiresRfc,
+          requiresDesign: featureCeremony.requiresDesign,
+        }
+      : null,
+    // M2c-core: is this feature named in SCOPE.md's MVP checklist?
+    inMvp: project.scope?.mvp?.includes(f.name) ?? false,
+    stories: (f.spec?.stories ?? []).map((s) => ({
       code: s.id,
       title: s.title ?? '',
       line: s.line ?? null,
@@ -166,8 +245,8 @@ function shapeFeature(f, project) {
     criteria,
     tasks,
     counts: {
-      stories: (f.prd?.stories ?? []).length,
-      orphanAcs: (f.prd?.orphanAcs ?? []).length,
+      stories: (f.spec?.stories ?? []).length,
+      orphanAcs: (f.spec?.orphanAcs ?? []).length,
       criteria: criteria.length,
       proven: criteria.filter((c) => c.proven).length,
       tasks: tasks.length,

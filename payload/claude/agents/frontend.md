@@ -3,7 +3,7 @@ name: frontend
 description: Frontend Developer - implements React components, integrates backend APIs via TanStack Query, manages state and forms with React Hook Form + Zod. Use for any task that touches frontend/src/.
 tools: Read, Edit, Write, Bash
 model: sonnet
-skills: frontend-ui-engineering, tdd, incremental-implementation
+skills: frontend-ui-engineering, test-driven-development, incremental-implementation
 permissionMode: auto
 ---
 
@@ -23,7 +23,7 @@ Use the `frontend-ui-engineering` skill for complex components.
 
 ### 1. Understand the issue
 
-Read the issue and `.spec/features/<feature-slug>/plan.md`. Identify:
+Read the issue, `.spec/features/<feature-slug>/SPEC.md` (tasks) and `DESIGN.md` (plan). Identify:
 
 - Pages/components to create or modify
 - Endpoints to consume (confirm the contract with **backend**)

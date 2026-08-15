@@ -1,14 +1,14 @@
 # Project Scope — agent-dev-pipeline 0.6.0
 
-**Scope status:** Draft
+**Scope status:** Approved
 **Gathering date:** 2026-08-05
+**Approved date:** 2026-08-10
 **Scope owner:** Tiago Tardelli
 
-> Gate G0 fica vermelho até esta linha dizer `**Scope status:** Approved`.
-> As doze questões da seção 10 estão respondidas. O que mantém este documento em
-> `Draft` são as duas pontas da §12.7 — o mapeamento código → gate → severidade e
-> a política de convivência 0.5 × 0.6 — mais a assinatura do dono do escopo.
-> Nenhuma das duas bloqueia começar o M1.
+> Gate G0 está verde: as doze questões da seção 10 estão respondidas, as duas
+> pontas da §12.7 — o mapeamento código → gate → severidade e a política de
+> convivência 0.5 × 0.6 — estão resolvidas em §12.7/§12.8, e o dono do escopo
+> assinou. Nada aqui impede começar o M1.
 
 > **Convenção.** A prosa é português; **todo token do motor é inglês** — statuses,
 > labels de campo, finding codes e famílias de código. Isso é o D-016 da 0.5.0 e
@@ -1099,7 +1099,7 @@ _(pesos a confirmar pelo dono do escopo — ver `Q-009`)_
 | **M5** | Monitor: trilha da cadeia, lanes ao vivo, estimado × realizado, painel de dívida | consome tudo que os anteriores produzem |
 | **M5b** | Quarto estado `n/a`, adiamento declarado (`DEFERRALS.md`), `audit --strict` | é o que torna o vermelho sustentável em projeto real sem abrir escapatória |
 | **M6** | Ergonomia: wrapper `./adp`, modelos por fase | independente; pode antecipar se algum bloquear |
-| **M6b** | Documentação reescrita (README EN/pt-BR, ARCHITECTURE, INSTALL, AGENTS.md, skill `adp`, templates) e os dois exemplos executáveis | sem isso a 0.6 publica com a documentação da 0.5 — o `DOC_FOSSIL` que a própria ferramenta audita |
+| **M6b** | Documentação reescrita (README EN/pt-BR, ARCHITECTURE, INSTALL — incluindo a política de convivência 0.5×0.6, §12.8 —, AGENTS.md, skill `adp`, templates) e os dois exemplos executáveis | sem isso a 0.6 publica com a documentação da 0.5 — o `DOC_FOSSIL` que a própria ferramenta audita |
 | **M7** | Self-audit verde na gramática nova + `publish` | é o critério de pronto da versão |
 
 Cada milestone é testável isoladamente antes do próximo. M1 pode ser publicado
@@ -1152,6 +1152,8 @@ como 0.5.1 e entregar valor sozinho.
 - `AC-P14c` — Um adiamento que casa mais de cinco achados é recusado.
 - `AC-P15` — O codemod 0.5→0.6 não perde uma linha de conteúdo do usuário, e o
   que falta depois dele aparece como achado, não como silêncio.
+- `AC-P16` — O `INSTALL.md` declara explicitamente que a 0.5.0 continua
+  publicada e suportada, com o comando exato para fixar versão em CI.
 
 ---
 
@@ -1480,19 +1482,213 @@ aproveitadas — a matriz de cerimônia, os seis antipadrões e o teste da
 longevidade —, mantendo o padrão que este repositório já pratica de registrar de
 onde cada coisa veio.
 
-### 12.7 Ainda em aberto
+### 12.7 O mapeamento código → gate → severidade
 
-Só sobraram duas, e nenhuma bloqueia começar o M1:
+Regra de fundo, herdada sem mudança: **todo código pertence a exatamente um
+gate.** `test/gates.test.js` continua falhando se algum não pertencer a gate
+nenhum — a 0.6 não relaxa essa garantia, só estende a tabela de 6 para 7 gates.
 
-- **O mapeamento código → gate → severidade.** ~26 códigos novos sobre os 40
-  existentes, e `test/gates.test.js` falha se algum não pertencer a gate nenhum.
-  Entregável do M2, **antes** do parser. As perguntas difíceis já estão claras:
-  `DOC_FOSSIL` é do G6 ou do gate do documento que apodreceu? `HOURS_UNDECLARED`
-  é gate ou é só relatório?
-- **A política de convivência 0.5 × 0.6.** Proposta a confirmar: a 0.6 lê apenas
-  gramática 0.6; a ponte é o `adp upgrade`; a 0.5.0 segue publicada para sempre,
-  então quem fixou versão nunca é forçado a migrar. Precisa estar no
-  `INSTALL.md`, não só no changelog.
+**A mudança estrutural que move a maioria dos códigos não é nova regra — é
+consequência de §2.1.** `US-xxx`, `AC-xxx`, `ASM-xxx` e `Q-xxx` saem do PRD e
+passam a ser donos da SPEC (a tabela de §2.1 já dizia isso). Logo, todo código
+de gate que hoje verifica essas famílias **muda de G1 para G4**, porque G4 é o
+gate da SPEC na numeração nova, não porque a checagem em si mudou. Da mesma
+forma, G3 deixa de ser "breakdown implementável" (TDD + tarefas) e passa a ser
+só DESIGN — as checagens de tarefa (`AC_WITHOUT_TASK`, `REF_BROKEN`,
+`REF_WITHOUT_AC`, `TASK_WITHOUT_FILES`, `TASK_STATUS_INVALID`, `FILE_MISSING`)
+migram para G4 pelo mesmo motivo: tarefa é uma família da SPEC.
+
+E a renumeração pura desloca o resto: G4 (Proven) vira **G5**; G5 (Aligned)
+vira **G6**. Nenhum código dessas duas listas muda de comportamento — só de
+número.
+
+#### G0 — Scope approved
+
+| Código | Origem | Severidade |
+|---|---|---|
+| `SCOPE_MISSING` | existente | erro |
+| `SCOPE_NOT_APPROVED` | existente | erro |
+| `SCOPE_FIELD_EMPTY` | existente | erro |
+| `MVP_WIDENED` | novo (§2.2) | warning · **erro em `--ci`** · não-adiável |
+| `PROFILE_UNDECLARED` | novo (§PRD-003) | erro |
+| `ESTIMATE_UNCONFIRMED` | novo (§PRD-003, Q-007) | warning · erro em `--ci` |
+| `ESTIMATE_STALE` | novo (§PRD-003) | warning · erro em `--ci` |
+| `FUNCTION_WITHOUT_SOURCE` | novo (§PRD-003, Q-007) | warning — função exclui-se do total, não bloqueia sozinha |
+
+Motivo de MVP e estimativa morarem aqui: ambos são donos do SCOPE (§2.2, e a
+contagem de PF "roda no nível do SCOPE"), não de um PRD específico.
+
+#### G1 — PRD complete
+
+| Código | Origem | Severidade |
+|---|---|---|
+| `PRD_MISSING` | existente | erro |
+| `ID_DUPLICATE` | existente | erro |
+| `ID_TOO_SHORT` | existente | erro |
+| `PRD_WITH_SOLUTION` | novo (§PRD-003b, antipadrão #4) | erro |
+| `PRD_UNPLACED` | novo (§2.2) | erro |
+| `BACKLOG_ITEM_WITH_CODE` | novo (§2.2) | erro |
+| `MILESTONE_MISMATCH` | novo (Q-004) | warning |
+
+`SPEC_WITHOUT_US`, `US_WITHOUT_AC`, `AC_INCOMPLETE` e `AC_OUTSIDE_US` **saem**
+daqui — ver G4. `SPEC_WITHOUT_US` mantém o nome (já dizia "SPEC", coincidência
+feliz); só o rótulo humano muda de "PRD has no user story" para "SPEC has no
+user story".
+
+#### G2 — Path decided (RFC)
+
+| Código | Origem | Severidade |
+|---|---|---|
+| `RFC_MISSING` | existente | erro |
+| `DECISION_WITHOUT_ALTERNATIVE` | existente | erro |
+| `DECISION_WITHOUT_CHOICE` | existente | erro |
+| `SECTION_MISSING` | existente | erro |
+| `STATUS_INVALID` | existente | erro |
+| `RFC_REQUIRED` | novo (§2.3) | erro · não-adiável |
+| `DOOR_UNDECLARED` | novo (§2.3) | erro · não-adiável |
+| `RFC_EXEMPTION_UNDECLARED` | novo (§12.4) | erro |
+| `CRITERIA_AFTER_OPTIONS` | novo (§2.4) | erro |
+| `OPTION_DO_NOTHING_MISSING` | novo (§PRD-003b, antipadrão #3) | erro |
+| `CONTEXT_WITHOUT_NUMBERS` | novo (§PRD-003b, antipadrão #2) | erro |
+| `RECOMMENDATION_AGAINST_SCORE` | novo (§2.4) | erro |
+| `CONTEXT_NUMBER_WITHOUT_SOURCE` | novo (§2.4) | warning |
+| `STRAW_OPTION` | novo (§PRD-003b, antipadrão #1) | warning |
+| `OPTION_BEYOND_TEAM` | novo (§2.4) | warning — dispara sinal de cerimônia, não bloqueia sozinho |
+
+`Q_BLOCKING_OPEN` e `ASM_WITHOUT_CODE` **saem** daqui — a família `Q-xxx` e
+`ASM-xxx` agora é dona da SPEC (§2.1), então a checagem estrutural delas migra
+para G4. O que fica em G2 é só o que pertence à *forma da RFC em si*.
+
+#### G3 — DESIGN
+
+| Código | Origem | Severidade |
+|---|---|---|
+| `DESIGN_MISSING` | renomeado de `TDD_MISSING` (Q-010) | erro |
+| `SKIP_UNDECLARED` | novo (§2.5) | erro |
+
+G3 fica deliberadamente curto: no nível leve da matriz de cerimônia (§2.5) ele
+é `n/a` na maioria dos projetos, e as checagens de conteúdo de tarefa que hoje
+moram junto com TDD migraram para G4 (SPEC), que é onde `T-xxx` de fato vive.
+
+#### G4 — SPEC
+
+| Código | Origem | Severidade |
+|---|---|---|
+| `SPEC_MISSING` | **novo, adicionado aqui** — ver nota abaixo | erro |
+| `SPEC_WITHOUT_US` | existente, migrado de G1 | erro |
+| `US_WITHOUT_AC` | existente, migrado de G1 | erro |
+| `AC_INCOMPLETE` | existente, migrado de G1 | erro |
+| `AC_OUTSIDE_US` | existente, migrado de G1 | erro |
+| `AC_WITHOUT_TASK` | existente, migrado de G3 | erro |
+| `REF_BROKEN` | existente, migrado de G3 | erro |
+| `REF_WITHOUT_AC` | existente, migrado de G3 | warning |
+| `TASK_WITHOUT_FILES` | existente, migrado de G3 | erro |
+| `TASK_STATUS_INVALID` | existente, migrado de G3 | erro |
+| `FILE_MISSING` | existente, migrado de G3 | erro |
+| `Q_BLOCKING_OPEN` | existente, migrado de G2 | erro |
+| `ASM_WITHOUT_CODE` | existente, migrado de G2 | erro |
+| `AC_NOT_OBSERVABLE` | novo (§PRD-003b) | erro |
+
+**Nota sobre `SPEC_MISSING`.** Nenhuma seção do escopo nomeou este código, mas
+a lacuna é a mesma que `PRD_MISSING`/`RFC_MISSING`/`DESIGN_MISSING` cobrem para
+os outros três documentos: SPEC.md é "sempre, 1 por PRD" (§2.1), então sua
+ausência precisa de sinal próprio, senão G4 fica mudo justamente no documento
+que ele existe para conferir. Registrado aqui de forma explícita — é uma
+adição, não uma inferência silenciosa — e conta para o "~26" do total.
+
+#### G5 — Proven (era G4)
+
+| Código | Origem | Severidade |
+|---|---|---|
+| `AC_WITHOUT_TEST` | existente, renumerado | erro |
+| `AC_WITHOUT_PROOF` | existente, renumerado | warning · erro em `--ci` · não-adiável |
+| `PROOF_STALE` | existente, renumerado | warning · erro em `--ci` · não-adiável |
+| `PROOF_WEAK` | existente, renumerado | erro · não-adiável |
+
+Sem adições — a pergunta "todo critério tem teste que passa" não muda de forma
+na 0.6.
+
+#### G6 — Aligned (era G5)
+
+| Código | Origem | Severidade |
+|---|---|---|
+| `TEST_ORPHAN` | existente, renumerado | warning |
+| `TASK_DONE_WITHOUT_PROOF` | existente, renumerado | erro · não-adiável |
+| `ASM_OPEN` | existente, renumerado | warning |
+| `Q_OPEN` | existente, renumerado | warning · erro em `--ci` |
+| `PRINCIPLE_WITHOUT_VERIFICATION` | existente, renumerado | warning |
+| `PRINCIPLE_VIOLATED` | existente, renumerado | erro |
+| `LEVEL_INVALID` | existente, renumerado | erro |
+| `VERIFICATION_MALFORMED` | existente, renumerado | erro |
+| `GLOB_WITHOUT_FILES` | existente, renumerado | warning |
+| `FILE_ORPHAN` | existente, renumerado | warning · erro em `--ci` |
+| `FEATURE_MISMATCH` | existente, renumerado | erro |
+| `PROJECT_INVALID` | existente, renumerado | erro |
+| `DOC_FOSSIL` | novo (§PRD-003b, antipadrão #6) | warning · erro em `--ci` |
+| `DOC_TOO_LONG` | novo (§PRD-003b, antipadrão #5) | warning |
+| `DUPLICATE_PROSE` | novo (§PRD-003b) — corrigido de "G5" para G6, ver nota | warning |
+| `BASELINE_WIDENED` | novo (§PRD-002) | erro · não-adiável |
+| `HOURS_UNDECLARED` | novo (§PRD-003c) | warning · erro em `--ci` |
+| `HOURS_IMPLAUSIBLE` | novo (§PRD-003c) | warning · erro em `--ci` · não-adiável |
+| `DEFERRAL_TOO_BROAD` | novo (§12.1) | erro |
+| `DEFERRAL_WITHOUT_OWNER` | novo (§12.1) | erro |
+| `DEFERRAL_EXPIRED` | novo (§12.1) | warning — soma-se ao achado original, que volta à severidade plena |
+| `DEFERRAL_RENEWED_REPEATEDLY` | novo (§12.1) | warning |
+
+**Nota sobre `DUPLICATE_PROSE`.** A §PRD-003b dizia "warning, G5" — escrito
+antes de a numeração de sete gates (Q-002) estar fechada, quando G5 ainda
+significava "Aligned". É o mesmo tipo de deriva que o commit `4f080c2` já
+corrigiu seis vezes neste documento; esta é a sétima, pega agora porque o
+mapeamento obrigou a percorrer cada código um a um. Semanticamente pertence
+aqui: "os documentos não se copiam" é exatamente a pergunta que G6 faz.
+
+#### As duas perguntas nomeadas, respondidas
+
+- **`DOC_FOSSIL` é do G6, para qualquer tipo de documento.** A alternativa —
+  um `DOC_FOSSIL` por gate de documento (`PRD_FOSSIL` em G1, `RFC_FOSSIL` em
+  G2…) — multiplicaria o código sem mudar a pergunta que ele faz, que é sempre
+  a mesma: *"este documento ainda concorda com o que ele descreve?"* Isso é
+  literalmente a pergunta do G6 ("os documentos, o código e a constituição
+  ainda concordam?"), então um código, um gate, aplicado a qualquer caminho de
+  documento. O achado carrega qual arquivo apodreceu; o gate não precisa saber.
+- **`HOURS_UNDECLARED` é gate, em G6, não só relatório.** A própria §PRD-003c
+  já tinha decidido isso na prática — "warning durante o trabalho, erro em
+  `--ci`" é exatamente o padrão `CI_ESCALATES` que só existe para código de
+  gate. A pergunta em aberto aqui não sobrevive à leitura do resto do
+  documento; só faltava dizer isso com todas as letras.
+
+#### O saldo
+
+**40 códigos existentes, redistribuídos** (nenhum perdido, oito migram de gate
+por causa da mudança de dono de família, o resto só renumera). **31 códigos
+novos** (30 nomeados ao longo do documento + `SPEC_MISSING`, adicionado aqui
+por necessidade estrutural) — o "~26" da nota original era subestimativa;
+ficou claro só ao somar. Total: **71 códigos, sete gates, nenhum órfão.**
+
+### 12.8 A política de convivência 0.5 × 0.6
+
+A proposta do rascunho original é confirmada, sem mudança: **a 0.6 lê apenas
+gramática 0.6; a ponte é o `adp upgrade`; a 0.5.0 segue publicada no registry
+para sempre.** Quem fixou a versão em CI (`@codryx/agent-dev-pipeline@0.5.0`,
+prática que o próprio `INSTALL.md` de hoje já recomenda) nunca é forçado a
+migrar — o pacote antigo continua instalável e continua rodando contra
+projetos escritos na gramática antiga.
+
+**A consequência que evita o problema do `README.pt-BR.md`** (§PRD-007: um
+documento que descreve um estado que já passou) **é que isto não pode viver só
+no `CHANGELOG.md`.** Changelog é histórico — alguém que instala pela primeira
+vez em 2027 não lê seis versões de changelog antes de rodar `init`. A decisão
+de convivência precisa estar onde quem está decidindo *agora* qual versão
+instalar vai procurar, e esse lugar é o `INSTALL.md`.
+
+**Isto é adicionado como item explícito do M6b** (§6), que já lista a reescrita
+do `INSTALL.md` por outro motivo (o wrapper `./adp` e o aviso automático do
+`upgrade`). Registrado aqui para que a reescrita do M6b não esqueça esta seção
+por não ter sido nomeada na lista original — o mesmo cuidado que fez o
+`DOC_FOSSIL` existir. Critério de aceite próprio, `AC-P16` (§7): o `INSTALL.md`
+declara explicitamente que a 0.5.0 continua publicada e suportada, com o
+comando exato para fixar versão, e não deixa essa informação implícita no
+número da versão do pacote.
 
 ---
 

@@ -1,0 +1,23 @@
+{
+  "pf": 14,
+  "profile": {
+    "stack": "plain JavaScript",
+    "familiarity": "delivered",
+    "appType": "business-crud",
+    "brownfield": false,
+    "hasTests": true,
+    "declaredAt": "2026-08-03T15:00:00.000Z",
+    "declared": true
+  },
+  "rowUsed": "business-crud/delivered",
+  "usedFallback": false,
+  "source": "cold-start",
+  "hours": {
+    "low": 112,
+    "likely": 168,
+    "high": 252
+  },
+  "limiarPF": 9,
+  "lowFit": false,
+  "generatedAt": "2026-08-03T15:00:30.000Z"
+}

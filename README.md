@@ -13,11 +13,11 @@ Zero runtime dependencies. Node ≥ 24 and `git`. Nothing to install: it runs fr
 `npx` and leaves nothing behind.
 
 ```
-SCOPE ──▶ PRD ──▶ RFC ──▶ TDD ──▶ code ──▶ test ──▶ audit
-  G0      G1      G2      G3               G4       G5
-what we   what,   which   how,             is it    do they
-agreed    whom,   path    in detail        proven   still agree
-          why
+SCOPE ──▶ PRD ──▶ RFC ──▶ DESIGN ──▶ SPEC ──▶ code ──▶ test ──▶ audit
+  G0      G1      G2       G3         G4                G5       G6
+what we   what,   which    how,       the layer          is it    do they
+agreed    whom,   path     in detail  the machine        proven   still agree
+          why                        confers
 ```
 
 ---
@@ -30,47 +30,99 @@ cd ~/my-project && git init
 npx @codryx/agent-dev-pipeline init     # installs everything below
 ```
 
-Then alias it once, because you will type it all day:
+`init` writes an executable `./adp` (and `adp.cmd` for Windows) **into the
+project**, pinned to the exact version that installed it — no alias to set
+up by hand, and it doubles as the pinned-version story for CI:
 
 ```sh
-alias adp='npx @codryx/agent-dev-pipeline'
-
-adp new student-enrolment
-adp status              # six lights
-adp monitor             # the read-only page
+./adp new student-enrolment
+./adp status              # seven lights
+./adp monitor             # the read-only page
 ```
+
+Want a bare `adp` on your `PATH` too? `./adp init --shell-alias` appends a marked,
+removable block to your shell rc file — opt-in, and it asks before writing
+anything outside the project, same as `adp trust` does before running
+anything from inside it.
 
 There is no other install route, and nothing to uninstall. `npx` fetches one
 small package and runs it; nothing is added to your project and no `node_modules`
 appears in it. See [`INSTALL.md`](INSTALL.md) — including why you should pin the
-version in CI.
+version in CI, and how the tool stays installable on the version you pinned
+after a new one ships.
 
-Or read a finished project instead: **[`.exemplo/`](.exemplo/)** is a complete,
-runnable project that reaches a clean `audit --ci` in three commands — `trust`,
-`verify`, `audit`. It arrives **unproven on purpose**: proof is not a file
-somebody hands you, it is the result of running the tests on your machine. Its
-README lists four ways to break it so you can watch each gate fire.
+Or read a finished project instead — two of them, one for each door in:
+**[`.exemplo/`](.exemplo/)** is a complete, runnable project that reaches a
+clean `audit --ci` in three commands — `trust`, `verify`, `audit`. It arrives
+**unproven on purpose**: proof is not a file somebody hands you, it is the
+result of running the tests on your machine. Its README lists eight ways to
+break it so you can watch each gate fire, and walks through a Function Point
+estimate that gets recalibrated by a real `adp close`.
+**[`.exemplo-legado/`](.exemplo-legado/)** is the other door: a small,
+real, pre-existing codebase — partial tests, a loose ADR, a spec that has
+drifted from the code — adopted with `adp init --brownfield`. Its
+[`START-HERE.md`](.exemplo-legado/START-HERE.md) walks through the
+recognition scan, the baseline, and the ratchet mechanism that keeps a
+legacy project's first audit to a handful of lines instead of a wall.
 
 ---
 
-## The six gates
+## The seven gates
 
-A gate is **green** when nothing it owns failed, **red** when something did, and
-**blocked** when an earlier gate is red. Blocked is a third state on purpose:
-"we have not got there yet" is not the same as "this is wrong", and rendering
-them alike sends people to fix consequences instead of causes.
+A gate is **green** when nothing it owns failed, **red** when something did,
+**blocked** when an earlier gate is red, and **n/a** when the ceremony
+matrix says it is not due. Four states, not two, on purpose: "we have not
+got there yet" is not the same as "this is wrong," and "not required at
+this size" is not the same as either — rendering them alike sends people to
+fix consequences instead of causes, or to write a document nobody needs.
 
 | Gate | Question | Passes when |
 |---|---|---|
 | **G0** | Is the scope agreed? | `.spec/SCOPE.md` says `Approved` |
-| **G1** | What, for whom, why? | every story owns a criterion; every criterion has Given/When/Then |
-| **G2** | Which path? | every decision records ≥2 alternatives and a chosen one; no blocking question open |
-| **G3** | How, in detail? | every criterion is covered by a task; every reference resolves |
-| **G4** | Is it proven? | every criterion has a test that PASSED |
-| **G5** | Do they still agree? | no orphan tests, no unproven "done", no violated principle |
+| **G1** | What, for whom, why? | the PRD exists, its `feature:` line matches its directory, and it is named in `SCOPE.md`'s MVP checklist |
+| **G2** | Which path? | every decision records ≥2 alternatives and a chosen one — `n/a` below rfc-first ceremony |
+| **G3** | How, in detail? | the design document exists — `n/a` at light ceremony |
+| **G4** | Is it implementable? | every story owns a criterion, every criterion has Given/When/Then, every criterion is covered by a task, every reference resolves, no blocking question open |
+| **G5** | Is it proven? | every criterion has a test that PASSED |
+| **G6** | Do they still agree? | no orphan tests, no unproven "done", no violated principle |
 
-**The exit code is the failing gate.** `0` clean, `1`–`6` for G0–G5. A pipeline
-learns *where* it broke from the status alone, with nothing to parse.
+**The exit code is the failing gate.** `0` clean, `1`–`7` for G0–G6. `n/a`
+never sets the exit code — G4, G5 and G6 are evaluated no matter what G2/G3
+read. A pipeline learns *where* it broke from the status alone, with
+nothing to parse.
+
+**Not every feature owes the same ceremony.** A PRD's `> signals:` line
+declares which of five things are true about it — `multiple-teams`,
+`hard-to-reverse`, `money-or-pii`, `new-tech`, `large-estimate` — and a
+level is computed from that, never written by hand: none declared means
+SPEC and tasks direct (G2/G3 both `n/a`); one softer signal means a light
+DESIGN is due; a cross-team open decision means RFC-first; money or
+personal data means the full chain. `adp new <feature> --signals <list>`
+scaffolds only what the computed level needs, and `adp status` reports the
+level and signals per feature.
+
+**Every PRD is in the MVP or nowhere at all.** `SCOPE.md`'s "MVP
+(prioritized)" checklist names features by slug — `- [ ] <feature-slug> —
+description` — and a PRD whose slug is missing there is `PRD_UNPLACED`
+(G1). What hasn't started belongs in `BACKLOG.md` instead: plain prose,
+one item per line, deliberately carrying no tracking code — only a
+promoted PRD earns one. An item that already looks like a real code
+(`AC-002`, `T-003`, ...) is `BACKLOG_ITEM_WITH_CODE`, a warning. To
+promote an item: remove its line, run `adp new <feature-slug>`, add the
+slug to the checklist — no dedicated command for it.
+
+**A decision can opt into a scored structure, but only that decision pays
+for it.** The default G2 shape (alternatives, a chosen one) is enough most
+of the time. A decision that declares `**Decision criteria:**` (weighted
+`W-xxx` ids from `SCOPE.md`'s own `## 11. Decision criteria`) or `**Options
+considered**` itself opts into stricter checks: order and completeness
+(`CRITERIA_AFTER_OPTIONS`), a recommendation that departs from the top
+score without saying why (`RECOMMENDATION_AGAINST_SCORE`), an uncited
+number inside an option's own prose (`CONTEXT_NUMBER_WITHOUT_SOURCE`), and
+an option's `Requires:` tag naming a capability `adp profile
+--capabilities` never declared (`OPTION_BEYOND_TEAM` — which also
+auto-lights the `new-tech` ceremony signal). Every decision written before
+this stays exactly as it was.
 
 Only the first red gate's findings are printed. For a project whose PRD is not
 written yet, printing all of them buries the one thing to do next under dozens of
@@ -78,7 +130,7 @@ its own consequences.
 
 ---
 
-## The three documents
+## The four documents
 
 Each one owns a distinct family of traceability codes, so every code has exactly
 one definition site and duplicate detection actually means something. Codes are
@@ -86,14 +138,22 @@ unique **across the whole project**, not per file.
 
 | Document | Answers | Owns |
 |---|---|---|
-| `PRD.md` | **what**, for **whom**, **why** | `US-xxx` stories · `AC-xxx` acceptance criteria |
-| `RFC.md` | **which path**, among the possible ones | `ASM-xxx` assumptions · `Q-xxx` open questions |
-| `TDD.md` | **how**, in detail | `T-xxx` tasks, each declaring `Refs:`, `Files:` and optionally `Reads:` and `Depends on:` |
+| `PRD.md` | **what**, for **whom**, **why** | nothing of its own — an `rfcs:` header line links the `RFC-xxx` file(s) it depends on |
+| `RFC.md` | **which path**, among the possible ones | `D-xxx` decisions, each with alternatives and a choice |
+| `DESIGN.md` | **how**, in detail — the blueprint a human reads | prose only — no code of its own |
+| `SPEC.md` | **what the machine confers** | `US-xxx` stories · `AC-xxx` criteria · `ASM-xxx` assumptions · `Q-xxx` open questions · `T-xxx` tasks, each declaring `Refs:`, `Files:` and optionally `Reads:` and `Depends on:` |
 
-They are three documents rather than one because the three questions have
+`RFC.md` is flat and global, at `.spec/rfc/RFC-<NNN>-<slug>.md` — not nested
+under a feature. One RFC can serve several PRDs, and one PRD often needs
+several, one per one-way door (Q-001); a fixed sibling file couldn't express
+that. Create one with `adp new --rfc <slug>`.
+
+Four documents rather than one because the questions they answer have
 different audiences and different lifetimes: *what and why* changes when the
-business changes, *which path* when the constraints change, *how* constantly.
-Splitting them lets each be approved on its own gate.
+business changes, *which path* when the constraints change, *how* rarely, and
+*what the machine confers* every time a task is written or a test is added.
+PRD and RFC stay prose a product owner and a reviewer can read without
+tripping over code; SPEC is the layer that exists purely to be checked.
 
 ### The chain, and why it holds
 
@@ -153,9 +213,11 @@ needs no migration step — the tool never assumes it wrote what is on disk.
 
 | Installed | What it is |
 |---|---|
-| `.spec/SCOPE.md`, `CONSTITUTION.md` | the agreement and the rules, from templates |
+| `./adp`, `adp.cmd` | the wrapper, pinned to the installing version — never overwritten |
+| `.spec/SCOPE.md`, `CONSTITUTION.md`, `BACKLOG.md` | the agreement, the rules, and what fell outside the MVP boundary |
 | `.spec/CHANGELOG.md`, `BEST_PRACTICES.md`, `TROUBLESHOOTING.md` | process memory — how the next session starts smarter than this one |
 | `.spec/STACK.md`, `STRUCTURE.md` | how to build, run and test without guessing |
+| `.spec/metrics/hours-per-fp.json`, `fp-weights.json` | the cold-start hours table `adp estimate` reads, and what it recalibrates as `adp close` records real outcomes |
 | `AGENTS.md` | the contract every AI reads first |
 | `docs/USAGE.md`, `DEPLOYMENT.md` | product documentation, for humans rather than agents |
 | `.claude/skills/**` | 15 skills, including `adp` and `create-rfc` |
@@ -167,7 +229,10 @@ Flags trim it: `--minimal` installs only `.spec/` and the engine's own skill;
 `--no-roles`, `--no-docs`, `--no-memory`, `--no-skills`, `--no-agents-md` each
 skip one part. `--agent claude|cursor|codex|antigravity|none` picks the harness;
 otherwise it is detected from the directories already present, and an ambiguous
-project is **told**, not gambled on.
+project is **told**, not gambled on. `--brownfield` scans an existing codebase
+for doc-shaped files and writes `.spec/BASELINE.md` — read-only, nothing moved
+or rewritten; see [Adopting an existing project](#adopting-an-existing-project)
+below.
 
 > **A trap worth knowing.** Claude Code reads `.claude/skills/` — plural. A
 > `.claude/skill/` directory looks right, is easy to create by hand, and is
@@ -185,13 +250,73 @@ forever.
 with genuine pros and cons, weighted decision criteria, RACI, outcome. **The
 engine reads its output natively**, with no conversion step: `### Option 1:`
 headings are the alternatives, and a `⭐` marker or an `## Outcome` decision line
-is the choice. Two additions make it fully traceable — code the assumptions
-`ASM-001` instead of `1`, and add an `## Open questions` section. See
+is the choice. Assumptions and open questions belong in `SPEC.md`, not here —
+code them `ASM-001` instead of a bare `1`. See
 [`payload/claude/skills/create-rfc/INTEGRATION.md`](payload/claude/skills/create-rfc/INTEGRATION.md).
 
-The other thirteen cover TDD, incremental implementation, debugging, front-end
-work, documentation, memory files, worktree cleanup, GitHub flow and project
-kickoff.
+The other thirteen cover test-driven development, incremental implementation,
+debugging, front-end work, documentation, memory files, worktree cleanup,
+GitHub flow and project kickoff.
+
+---
+
+## Adopting an existing project
+
+`adp init --brownfield` recognizes a codebase that already exists instead of
+treating it as if it were new. It scans for doc-shaped files —
+`README*`, `docs/**`, `adr/**`, OpenAPI specs, migrations, `CHANGELOG*`,
+`CONTRIBUTING*` — and **prints what it found; nothing is moved or
+rewritten**. What it does write is `.spec/BASELINE.md`: the current commit
+and the source files that already existed, so the audit can tell inherited
+debt from new debt.
+
+A file named in the baseline stays a **warning**, exempt from `--ci`
+escalation, for as long as it is untouched since that commit — a real edit
+(even uncommitted) owes the same full-strength check as any new file, from
+that moment on. The list only ever shrinks by design; growing it back is a
+finding in its own right. This is what keeps a legacy repository's first
+`adp audit` **legible** — a few dozen real lines, not a wall of thousands.
+
+The `archaeologist` role reads the recognition inventory and the code itself
+and proposes a `Draft` `SCOPE.md`, every claim cited to its source file — a
+starting point for the human who owns the scope, never a finished one.
+Archiving old documentation into `project_old_artifacts/` is deliberately
+not built yet: it is the one step in this whole tool that would move a
+user's real files, and it ships on its own once it exists, not bundled
+behind the safe, read-only half.
+
+See it happen against a real, small legacy codebase in
+[`.exemplo-legado/`](.exemplo-legado/) — recognition, the archaeologist,
+the baseline, and the ratchet, each with its own real command and output.
+
+## Living with a real finding on purpose
+
+Not every real finding gets fixed today, and the honest answer to that is
+neither "block everything" nor a hidden switch that turns a gate off.
+`.spec/DEFERRALS.md` — optional, project-wide — records a **dated, owned
+decision** to live with a specific finding for a while:
+
+```markdown
+## DEF-001 — legacy suite leaves with the billing migration
+
+- Finding: TEST_ORPHAN
+- Scope: test/legacy/**
+- Owner: alice
+- Reason: the old suite leaves with the billing migration
+- Opened: 2026-08-05
+- Until: 2026-11-03
+```
+
+Six rules keep this from becoming a second way to disable a gate: only
+findings that describe the world changing under a document — G5/G6 — are
+eligible at all, and ten of those (proof, and the decisions nothing should
+route around) never are; a `Scope:` too broad, an `Until:` too far out, a
+missing `Owner:`/`Reason:`/`Until:`, or three renewals of the same entry
+each earn their own finding. An expired deferral returns to full severity
+on its own — nobody has to remember to notice — and the active deferred
+count is always printed next to green and red, never folded in silently.
+`--ci` still honors a valid deferral; `adp audit --strict` ignores
+`DEFERRALS.md` entirely, for the run that shows the real state regardless.
 
 ---
 
@@ -201,17 +326,20 @@ kickoff.
 src/                 THE ENGINE — this is the project
   cli.js               command dispatch, in three cost rings
   config.js            everything defaulted; runs with no config file
-  parsers/             prd · rfc · tdd · constitution · annotations
-  core/                project · audit · principles · gates · init · report
+  parsers/             prd · rfc · spec · design · constitution · backlog · baseline · deferrals · annotations
+  core/                project · audit · principles · gates · ceremony · init
+                        estimate · count · closure · history · plan · executor
+                        ledger · resume · trust · upgrade · report(-html)
   util/                text · glob
 bin/adp.js           the command
   server/              read-only http server + state projection
   ui/                  index.html · app.css · app.js, inlined at request time
 scripts/             build-manifest.js — the payload's SHA-256 manifest
 .github/workflows/   ci, and publish with provenance from OIDC
-test/                139 tests, node:test, no framework
+test/                374 tests, node:test, no framework
 payload/             WHAT GETS INSTALLED — templates, AGENTS.md, skills, agents, hooks, docs
 .exemplo/            a finished, green, runnable project to read and break
+.exemplo-legado/     a small pre-existing codebase, adopted with --brownfield
 ARCHITECTURE.md      why the engine looks like it does — read before changing it
 INSTALL.md           the one install route, and why CI should pin a version
 ```
@@ -231,36 +359,62 @@ verdict, rather than two implementations that agree today.
 ## Commands
 
 ```sh
-adp init [--agent <name>] [--minimal]   scaffold a project
-adp new <feature>                       create PRD.md, RFC.md, TDD.md
-adp status                              six lights
-adp audit [--ci] [--json]               findings behind the first red gate
-adp gates [--list]                      gates and their state
+# the chain
+adp init [--agent <name>] [--minimal] [--brownfield] [--shell-alias]
+adp new <feature> [--signals <list>]    create PRD.md, SPEC.md, DESIGN.md if the ceremony matrix owes one
+adp new --rfc <slug>                    create a new decision record
+adp status                              seven lights
+adp audit [--ci] [--strict] [--json]    findings behind the first red gate
+adp gates [--list]                      gates and their state, without the findings
 adp prompt [<gate>]                     paste-ready text for your AI
+adp verify [--background]               run the test command and record what it proves
+
+# viability and estimate
+adp report [--html <path>] [--json]     a portable snapshot: gates, ceremony, MVP/backlog, estimate
+adp profile [--stack] [--familiarity] [--app-type] [--brownfield] [--tests]
+adp estimate [--pf <n>] [--csv] [--review] [--confirm] [--history]
+adp close --hours <n> [--note "<s>"]    record real hours; recalibrates the estimate table
+adp metrics import <file> | export [--csv]
+
+# background execution
+adp plan                                execution lanes, without running anything
+adp run [--lane <id>] [--allow-edits]   execute pending tasks in isolated git worktrees
+adp rerun <lane> [--allow-edits]        re-run one lane, leaving merged work alone
+adp resume | checkpoint --note "<s>"    where the work stands, across sessions
+adp clean [--force]                     remove worktrees whose work already merged
+
+# housekeeping
 adp monitor [--port <n>]                the read-only page
+adp upgrade [--apply] [--only-migrations]
 adp doctor                              verify this copy against its manifest
 adp trust [--revoke]                    approve this project's testCommand
 ```
 
-(`Makefile.txt` wraps these for working *on* the engine — rename it to
-`Makefile` if you are developing the tool. Using the tool needs no `make`.)
+`adp <command> --help` is `adp help` today — the full reference, with every
+flag, lives in one place: run `./adp help`. (`Makefile.txt` wraps a few of
+these for working *on* the engine itself — rename it to `Makefile` if you are
+developing the tool. Using the tool needs no `make`.)
 
 ### In CI
 
 ```yaml
-- run: npx @codryx/agent-dev-pipeline@0.4.0 audit --ci
+- run: ./adp audit --ci
 ```
 
 `--ci` escalates the softer findings — unproven criteria, stale proof, open
-questions, uncovered criteria, orphan source files — from warnings to errors. One
-engine, two postures: quiet enough to work under, strict enough to be a gate.
+questions, uncovered criteria, orphan source files — from warnings to errors,
+and still honors a valid `DEFERRALS.md` entry. One engine, two postures: quiet
+enough to work under, strict enough to be a gate.
 
-Pin the version in CI. Unpinned, `npx` runs whatever was published most
-recently, which means the gate guarding your repository can change without a
-commit — awkward for a tool whose job is producing evidence.
+**Pin the version in CI.** `./adp` already does this for you — it calls
+`npx --yes @codryx/agent-dev-pipeline@<the version that wrote it>`, so the
+gate guarding your repository cannot change without a commit. Without the
+wrapper, `npx @codryx/agent-dev-pipeline` (no version) runs whatever was
+published most recently, which is awkward for a tool whose job is producing
+evidence:
 
 ```yaml
-- run: npx @codryx/agent-dev-pipeline@0.4.0 audit --ci
+- run: npx --yes @codryx/agent-dev-pipeline@0.6.0 audit --ci
 ```
 
 ---
@@ -271,7 +425,7 @@ commit — awkward for a tool whose job is producing evidence.
 adp monitor          # http://127.0.0.1:7788
 ```
 
-A page showing the six gates, the findings behind the first red one, and each
+A page showing the seven gates, the findings behind the first red one, and each
 feature's progress. It is **read-only, structurally** — not by policy.
 
 Any method other than `GET` or `HEAD` is refused with 405 **before the path is
@@ -330,7 +484,7 @@ from a working tree is a normal state, and refusing there would only teach peopl
 to reach for the bypass.
 
 Every one of these is a `P-xxx` principle in `.spec/CONSTITUTION.md` with an
-executable verification, so the tool audits its own hardening and G5 turns red if
+executable verification, so the tool audits its own hardening and G6 turns red if
 someone weakens it. That is not decoration: the first draft of P-008's forbidden
 pattern matched the word `NODE_AUTH_TOKEN` in the comment explaining that no such
 token exists, and the audit caught it.
@@ -339,22 +493,29 @@ token exists, and the audit caught it.
 
 ## Where this is
 
-Built and tested: the engine, the six gates, the executable constitution, the
-installer, the templates, the skills, the read-only monitor, and the worked example.
-**139 tests**, each carrying its own `@spec:AC-xxx` or `@principle:P-xxx` annotation — the tool proves
-itself with its own mechanism.
+Built and tested: the engine, the seven gates, the executable constitution,
+the installer and its `./adp` wrapper, the ceremony matrix, MVP/backlog,
+Function Point estimation and closing the loop with real hours, background
+execution in isolated worktrees, brownfield adoption, declared deferral, and
+the read-only monitor. **374 tests**, each carrying its own `@spec:AC-xxx` or
+`@principle:P-xxx` annotation — the tool proves itself with its own
+mechanism.
 
-Specified but not built, in `.spec/features/agent-dev-pipeline/`: `verify` running
-the real test command and granting proof per criterion (M2), and background
-execution in isolated git worktrees (M6). Those documents are themselves written
-in the PRD/RFC/TDD chain and audited by this engine, which is the only honest way
-to specify a tool like this.
+This repository's own specification, in `.spec/features/agent-dev-pipeline/`,
+already runs the PRD/RFC/DESIGN/SPEC chain it describes above — `adp audit
+--ci` against this repository is clean. What is not wired up yet is the CI
+job that enforces that on every push (the last item on `.spec/SCOPE-0.6.0.md`'s
+own milestone table): today's CI runs the test suite and audits the worked
+example, not this repository's own `.spec/`.
 
-Specified and then **removed**: the browser monitor — a server, a projected
-kanban, a document editor. It was eight tasks of interface for one operator who
-is already sitting in a terminal. The reasoning, and the alternatives weighed
-against it, are recorded as D-011 rather than deleted, so the next person to
-propose a page finds the argument instead of repeating it.
+The browser monitor has a two-part history worth knowing, because the RFC
+records both halves rather than only the current one: **removed** first
+(D-011) — a server, a projected kanban, a document editor was eight tasks of
+interface for one operator already sitting in a terminal — then
+**reintroduced, read-only** (D-013), once "watch a background run without a
+terminal open" turned out to be a real need the removal had thrown out along
+with the parts that were never needed. `adp monitor`, documented above, is
+that second decision.
 
 One consequence you can watch in `.exemplo/`: its three tasks say `[done]`,
 and that word is worth nothing until `verify` has run. Delete the proof record and
@@ -379,4 +540,4 @@ truth, conversation memory is a cache*.
 CC-BY-4.0.
 
 The reasoning behind each borrowing, and the alternatives rejected, is recorded
-in `.spec/features/agent-dev-pipeline/RFC.md` — D-001 through D-010.
+in `.spec/rfc/RFC-001-agent-dev-pipeline.md` — D-001 through D-016.

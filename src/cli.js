@@ -11,40 +11,127 @@ import { loadConfig } from './config.js';
 import { loadProject } from './core/project.js';
 import { auditProject } from './core/audit.js';
 import { evaluateGates, GATES, allMappedCodes } from './core/gates.js';
+import { projectCeremony, computeCeremonySignals } from './core/ceremony.js';
 import { renderTerminal, renderJson, renderGates, renderPrompt } from './core/report.js';
-import { initProject, newFeature, renderReport, AGENT_SKILL_DIRS, PAYLOAD_DIR } from './core/init.js';
+import {
+  initProject,
+  newFeature,
+  newRfc,
+  renderReport,
+  AGENT_SKILL_DIRS,
+  PAYLOAD_DIR,
+  shellAliasBlock,
+  shellRcPath,
+  installShellAlias,
+} from './core/init.js';
 import { verifyPayload, renderIntegrity } from './core/integrity.js';
 import { checkTrust, grantTrust, revokeTrust, renderRefusal, storePath, TRUST_ENV } from './core/trust.js';
 import { startMonitor } from './server/server.js';
+import { buildState } from './server/state.js';
+import { renderReportHtml, renderReportText } from './core/report-html.js';
 import { runVerification, writeRecords, summarise, VerifyRefused, makeLaneTestRunner } from './core/verify.js';
 import { buildPlan, renderPlan } from './core/plan.js';
 import { runLane, mergeLane, isGitRepo, cleanupLane, cleanWorktrees, listOurWorktrees } from './core/executor.js';
 import { rerunLane } from './core/rerun.js';
-import { makeAgentRunner, describeAgentCommand } from './core/agent.js';
+import { makeAgentRunner, describeAgentCommand, resolveConfiguredModel } from './core/agent.js';
 import { progress, prune, append, read } from './core/ledger.js';
 import { buildResume, renderResume, saveCheckpoint, clearCheckpoint } from './core/resume.js';
-
-// Read from package.json rather than hard-coding. A version literal in the
-// source is a second truth: it drifts from the manifest the moment someone
-// bumps one and forgets the other, which is the exact failure this tool exists
-// to catch. Refusing to hold it twice is cheaper than auditing it.
-import { readFileSync } from 'fs';
+import { VERSION } from './version.js';
+import {
+  planUpgrade,
+  applyUpgrade,
+  renderUpgrade,
+  renderApplied,
+  loadLockfile,
+  describeVersionDrift,
+} from './core/upgrade.js';
 import { fileURLToPath } from 'url';
+import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import path from 'path';
-
-const VERSION = JSON.parse(
-  readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')
-).version;
+import {
+  profilePath,
+  estimateJsonPath,
+  loadProfile,
+  loadHoursTable,
+  loadEstimate,
+  computeEstimate,
+  renderEstimateMd,
+  renderEstimateCsv,
+  APP_TYPES,
+  FAMILIARITY_LEVELS,
+} from './core/estimate.js';
+import {
+  appendClosure,
+  recordClosure,
+  recalibrateRow,
+  calibrationLabel,
+  saveHoursTable,
+} from './core/closure.js';
+import {
+  loadDraft,
+  loadWeights,
+  loadConfirmed,
+  countConfirmedPath,
+  summarize,
+  renderCountSummary,
+  confirmCount,
+  currentAttribution,
+} from './core/count.js';
+import {
+  historyPath,
+  projectHash,
+  appendHistory,
+  loadHistory,
+  historyRecord,
+  observationsFor,
+  renderComposition,
+  parseImportFile,
+  renderHistoryCsv,
+} from './core/history.js';
 
 const HELP = `agent-dev-pipeline — the specification that stays true
 
 usage: adp <command> [options]
 
-  init [--agent <name>]     scaffold .spec/ here and install the agent skill
-  new <feature>             create PRD.md, RFC.md and TDD.md for a feature
+  init [--agent <name>] [--brownfield]
+                            scaffold .spec/ here and install the agent skill;
+                            --brownfield also scans for existing docs (read-only)
+                            and writes BASELINE.md — moving files is not built yet
+  new <feature> [--signals <list>]
+                            create PRD.md and SPEC.md; DESIGN.md too if the
+                            ceremony matrix says it is due (see --signals)
+  new --rfc <slug>          create a new decision record at .spec/rfc/RFC-NNN-<slug>.md
   status                    what exists and where the work stands
-  audit [--ci] [--json]     evaluate every gate and report the findings
-  gates [--list] [--json]   the six gates and their state, without the findings
+  report [--html <path>] [--json]
+                            a portable viability snapshot — gates, ceremony,
+                            MVP/backlog, the recorded decision, the estimate if one exists
+  profile [--stack <s>] [--familiarity <l>] [--app-type <t>] [--brownfield] [--tests]
+          [--capabilities <list>]
+                            declare the stack/team profile that adp estimate reads;
+                            --capabilities is what OPTION_BEYOND_TEAM (SCOPE-0.6.0.md §2.4)
+                            checks an OPT-xxx's own Requires: tags against
+  estimate [--pf <n>] [--csv]
+                            hours = Function Points x the profile's table row; PF comes
+                            from a confirmed count (see --review/--confirm) or --pf by
+                            hand — never proof either way
+  estimate --review        show the draft count (.spec/metrics/count-draft.json) and
+                            its PF total without recording anything
+  estimate --confirm [--yes]
+                            lock in the draft count as .spec/metrics/count-confirmed.json
+  close --hours <n> [--note "<s>"]
+                            record the real hours a feature took; recalibrates the
+                            table row adp estimate last used, from the shared
+                            cross-project history (see metrics below)
+  metrics import <file>    bring another project's/team's hours-history.jsonl
+                            records into yours; each one is marked imported
+  metrics export [<path>] [--csv]
+                            write out the shared hours-history.jsonl — already
+                            anonymized (no project/feature/person name is ever
+                            stored in it)
+  audit [--ci] [--strict] [--json]
+                            evaluate every gate and report the findings;
+                            --strict ignores DEFERRALS.md and shows the real state
+  gates [--list] [--json]   the seven gates and their state, without the findings
   prompt [<gate>]           the paste-ready text for a red gate
   verify [--background]     run the project's tests and record what they prove
   verify --status           how the last background verification is doing
@@ -58,6 +145,9 @@ usage: adp <command> [options]
   checkpoint --note "<s>"   record what you were doing, for the next session
   monitor [--port <n>]      serve the read-only page for this project
   doctor                    verify this copy of the tool against its manifest
+  upgrade [--apply] [--only-migrations] [--json]
+                            compare .spec/.adp-install.json against the current
+                            payload; dry-run unless --apply is passed
   trust [--revoke] [--yes]  approve this project's test command for execution
   version | help
 
@@ -71,21 +161,45 @@ options:
   --no-docs       skip docs/ (init)
   --no-memory     skip the .spec memory files (init)
   --no-agents-md  skip AGENTS.md (init)
+  --brownfield    scan for existing docs and write BASELINE.md, read-only (init)
+  --shell-alias   also append a marked, removable adp alias to ~/.bashrc or
+                  ~/.zshrc, with confirmation (init) — ./adp always exists either way
+  --rfc           create a decision record instead of a feature (new)
+  --signals <list>  comma-separated: multiple-teams, hard-to-reverse,
+                    money-or-pii, new-tech, large-estimate (new) — decides
+                    the ceremony level: which of RFC/DESIGN are due
+  --apply         write what upgrade would otherwise only report (upgrade)
+  --only-migrations  run pending .spec/** migrations without touching payload files (upgrade)
   --ci            escalate the softer findings to errors (use this in a pipeline)
+  --strict        ignore every entry in DEFERRALS.md — the real state, deferred or not (audit, gates, status)
   --json          machine-readable output
+  --html <path>   write the viability snapshot as a self-contained file (report)
+  --stack <s>     free text, e.g. "node" (profile)
+  --familiarity <l>  ${FAMILIARITY_LEVELS.join(' | ')} (profile)
+  --app-type <t>  ${APP_TYPES.join(' | ')} (profile) — APF measures the last three poorly
+  --brownfield    existing codebase, not a fresh one (profile)
+  --tests         the codebase already has automated tests (profile)
+  --capabilities <list>  comma-separated tags the team already has, e.g.
+                  "redis,postgres" (profile) — compared against an
+                  RFC's own OPT-xxx Requires: tags (§2.4)
+  --pf <n>        declared Function Point count (estimate) — never machine-counted
+  --hours <n>     real hours a feature took (close) — the one field nothing else supplies
+  --csv           print CSV instead of Markdown (estimate)
   --port <n>      port for the monitor (default 7788)
   --host <addr>   bind address for the monitor (default 127.0.0.1, loopback)
   --yes           skip the confirmation prompt (trust, run, rerun)
   --lane <id>     execute only this lane (run)
   --allow-edits   let the agent write to the worktree unasked (run, rerun)
   --no-lane-tests skip the approved test command after each task (run, rerun)
-  --note <s>      what the session was doing (checkpoint)
+  --note <s>      what the session was doing (checkpoint), or what surprised you /
+                  what you'd do differently (close) — stored, not auto-written to
+                  BEST_PRACTICES.md; same flag name, unrelated meaning per command
   --next <s>      what it intended to do next (checkpoint)
   --clear         forget the recorded note (checkpoint)
   --no-merge      leave lanes on their branches instead of merging back (run)
   --revoke        withdraw a previously granted approval (trust)
 
-exit code: 0 when every gate is clean, otherwise 1..6 for G0..G5 — the number
+exit code: 0 when every gate is clean, otherwise 1..7 for G0..G6 — the number
 IS the first gate that failed.
 
 init and new never overwrite: they create only what is missing and tell you
@@ -133,11 +247,16 @@ export async function run(argv) {
     return 0;
   }
 
-  // Ring 1: needs no config and no project. `doctor` checks the TOOL, not the
-  // project it is standing in — deliberately. Files installed into a project are
-  // meant to be edited (that is why init never overwrites), so comparing them to
-  // the manifest would report a user's own work as tampering, and a check that
-  // cries wolf is one people learn to skip.
+  // ---- ring 2 ----
+  const config = loadConfig(rootDir);
+
+  // `doctor` checks the TOOL, not the project it is standing in — deliberately.
+  // Files installed into a project are meant to be edited (that is why init
+  // never overwrites), so comparing them to the manifest would report a user's
+  // own work as tampering, and a check that cries wolf is one people learn to
+  // skip. It needs `config` (ring 2, not ring 1) only to find the project's own
+  // lockfile for the version-drift warning below — still far short of a full
+  // project load.
   if (command === 'doctor') {
     const result = verifyPayload(PAYLOAD_DIR);
     console.log(`agent-dev-pipeline ${VERSION}`);
@@ -149,11 +268,55 @@ export async function run(argv) {
       console.log('To check that the package itself came from its stated source:');
       console.log('  npm audit signatures');
     }
+    // Silent when there is no lockfile at all: a 0.4.x project pre-dating this
+    // feature is not "drifted," it is simply unmeasured, and `adp upgrade`
+    // itself already handles that case — doctor should not nag about
+    // something it cannot quantify.
+    const drift = describeVersionDrift(loadLockfile(rootDir, config), VERSION);
+    if (drift) {
+      console.log('');
+      console.log(`WARNING: this project was installed by agent-dev-pipeline ${drift.from}; this copy is ${drift.to}.`);
+      console.log('  adp upgrade            (dry-run — shows what would change)');
+      console.log('  adp upgrade --apply    (writes it)');
+    }
     return result.status === 'failed' ? 2 : 0;
   }
 
-  // ---- ring 2 ----
-  const config = loadConfig(rootDir);
+  if (command === 'upgrade') {
+    const payload = verifyPayload(PAYLOAD_DIR);
+    const plan = planUpgrade(rootDir, config);
+    if (plan.status === 'no-manifest') {
+      console.error('error: no MANIFEST.json in this copy of the tool — nothing to compare against.');
+      console.error('  expected when running from a working tree before `node scripts/build-manifest.js` has run.');
+      return 2;
+    }
+    if (payload.status === 'failed') {
+      // Same refusal as init: an upgrade would install content nothing
+      // verified, which is worse than doing nothing.
+      console.error(renderIntegrity(payload, { payloadDir: PAYLOAD_DIR }));
+      console.error('\nupgrade refused to write anything.');
+      return 2;
+    }
+
+    if (flags.json) {
+      console.log(JSON.stringify(plan, null, 2));
+    } else {
+      console.log(renderUpgrade(plan));
+    }
+
+    if (!flags.apply) {
+      console.log('');
+      console.log('DRY RUN — nothing was written. Re-run with --apply to write.');
+      return 0;
+    }
+
+    const applied = applyUpgrade(rootDir, config, plan, { onlyMigrations: Boolean(flags['only-migrations']) });
+    if (!flags.json) {
+      console.log('');
+      console.log(renderApplied(applied));
+    }
+    return 0;
+  }
 
   // init and new deliberately run BEFORE the project is loaded: a folder with
   // no .spec/ is exactly the case they exist for, and paying for a full walk of
@@ -169,23 +332,72 @@ export async function run(argv) {
       noDocs: Boolean(flags['no-docs']),
       noMemory: Boolean(flags['no-memory']),
       noAgents: Boolean(flags['no-agents-md']),
-    });
+      brownfield: Boolean(flags.brownfield),
+    }, config);
     console.log(renderReport(report, { title: `agent-dev-pipeline initialised in ${rootDir}` }));
     console.log('');
     console.log('next:');
     console.log('  1. fill in .spec/SCOPE.md and set its status to Approved   (opens gate G0)');
-    console.log('  2. adp new <feature>                                   (creates PRD, RFC, TDD)');
+    console.log('  2. adp new <feature> [--signals <list>]                (creates PRD, SPEC, maybe DESIGN)');
     console.log('  3. adp status                                          (see where you are)');
+    if (flags.brownfield) {
+      console.log('  4. hand the recognition notes above to the archaeologist role for a draft SCOPE.md');
+    }
+
+    // --shell-alias is opt-in and never silent (PRD-005): the exact block is
+    // shown before anything is written, and a dotfile edit needs the same
+    // "type yes" confirmation `trust` already asks for before it runs
+    // something out of the repository — writing to a file OUTSIDE the
+    // repository deserves at least that much.
+    if (flags['shell-alias']) {
+      const rcPath = shellRcPath();
+      const block = shellAliasBlock(VERSION);
+      console.log('');
+      console.log(`about to append this block to ${rcPath}:`);
+      console.log('');
+      console.log(block);
+      console.log('');
+      if (!flags.yes) {
+        if (!process.stdin.isTTY) {
+          console.error('refusing to edit your shell rc file without confirmation: stdin is not a terminal.');
+          console.error('use --yes deliberately.');
+          return 2;
+        }
+        const answer = await ask('type the word yes to append this block: ');
+        if (answer.trim().toLowerCase() !== 'yes') {
+          console.log('not written — your shell rc file was not touched.');
+          return 0;
+        }
+      }
+      const result = installShellAlias(rcPath, VERSION);
+      console.log(
+        result.written
+          ? `written to ${result.path} — restart your shell, or run: source ${result.path}`
+          : `already present in ${result.path} — left untouched`
+      );
+    }
     return 0;
   }
 
   if (command === 'new') {
-    const name = positional[1];
     try {
-      const report = newFeature(rootDir, name, { featuresDir: config.featuresDir });
+      // `--rfc <slug>` parses like `--project <s>`/`--owner <s>`: the next
+      // token IS the flag's value, so the slug never reaches `positional[1]`.
+      if (flags.rfc !== undefined) {
+        if (typeof flags.rfc !== 'string') {
+          console.error('error: --rfc needs a slug: adp new --rfc <slug>');
+          return 2;
+        }
+        const report = newRfc(rootDir, flags.rfc, { rfcDir: config.rfcDir });
+        console.log(renderReport(report, { title: `${report.id} scaffolded` }));
+        return 0;
+      }
+      const name = positional[1];
+      const signals = typeof flags.signals === 'string' ? flags.signals.split(',').map((s) => s.trim()) : [];
+      const report = newFeature(rootDir, name, { featuresDir: config.featuresDir, rfcDir: config.rfcDir, signals });
       console.log(renderReport(report, { title: `feature "${name}" scaffolded` }));
       console.log('');
-      console.log('next: write the stories and criteria in PRD.md, then run `adp status`');
+      console.log('next: write the stories and criteria in SPEC.md, then run `adp status`');
       return 0;
     } catch (err) {
       console.error(`error: ${err.message}`);
@@ -299,10 +511,270 @@ export async function run(argv) {
     return 0;
   }
 
+  // Neither `profile` nor `estimate` needs the full project walk — both read
+  // and write a couple of small JSON files under config.specDir. Ring 2.
+  if (command === 'profile') {
+    const p = profilePath(rootDir, config);
+    const existing = existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : {};
+    const appType = typeof flags['app-type'] === 'string' ? flags['app-type'] : existing.appType;
+    const familiarity = typeof flags.familiarity === 'string' ? flags.familiarity : existing.familiarity;
+    if (appType && !APP_TYPES.includes(appType)) {
+      console.error(`error: --app-type must be one of: ${APP_TYPES.join(', ')}`);
+      return 2;
+    }
+    if (familiarity && !FAMILIARITY_LEVELS.includes(familiarity)) {
+      console.error(`error: --familiarity must be one of: ${FAMILIARITY_LEVELS.join(', ')}`);
+      return 2;
+    }
+    const profile = {
+      stack: typeof flags.stack === 'string' ? flags.stack : existing.stack ?? 'unknown',
+      familiarity: familiarity ?? 'delivered',
+      appType: appType ?? 'business-crud',
+      brownfield: flags.brownfield !== undefined ? Boolean(flags.brownfield) : Boolean(existing.brownfield),
+      hasTests: flags.tests !== undefined ? Boolean(flags.tests) : Boolean(existing.hasTests),
+      capabilities:
+        typeof flags.capabilities === 'string'
+          ? flags.capabilities.split(',').map((s) => s.trim()).filter(Boolean)
+          : existing.capabilities ?? [],
+      declaredAt: new Date().toISOString(),
+    };
+    mkdirSync(path.dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify(profile, null, 2) + '\n');
+    console.log(`written ${path.relative(rootDir, p)}`);
+    console.log(JSON.stringify(profile, null, 2));
+    return 0;
+  }
+
+  if (command === 'estimate' && (flags.review || flags.confirm)) {
+    const draft = loadDraft(rootDir, config);
+    if (!draft.length) {
+      console.error('error: no .spec/metrics/count-draft.json (or it is empty) — write one first.');
+      console.error('one entry per counted function: { "name", "type": ALI|AIE|EE|CE|SE,');
+      console.error('"complexity": low|medium|high, "source": "<PRD.md/SCOPE.md citation>" }');
+      return 2;
+    }
+    const weights = loadWeights(rootDir, config);
+    if (!weights) {
+      console.error('error: no .spec/metrics/fp-weights.json — run `adp init` first (it seeds one).');
+      return 2;
+    }
+    const summary = summarize(draft, weights);
+    console.log(renderCountSummary(summary));
+
+    if (flags.review) return 0;
+
+    // --confirm from here down.
+    console.log('');
+    if (!flags.yes) {
+      // Same refusal `trust`/`run` already use: a confirmation nobody can
+      // answer is not a confirmation, and a non-TTY silent yes would let
+      // any script confirm a count no human actually reviewed.
+      if (!process.stdin.isTTY) {
+        console.error('refusing to confirm without a human: stdin is not a terminal.');
+        console.error('use --yes deliberately, only once a human has actually reviewed the count above.');
+        return 2;
+      }
+      const answer = await ask('confirm this count? type the word yes: ');
+      if (answer.trim().toLowerCase() !== 'yes') {
+        console.log('not confirmed.');
+        return 1;
+      }
+    }
+    const record = confirmCount(rootDir, config, {
+      entries: draft,
+      table: weights,
+      confirmedBy: currentAttribution(rootDir),
+    });
+    console.log(`confirmed. ${record.totalPf} PF recorded by ${record.confirmedBy}.`);
+    console.log(`wrote ${path.relative(rootDir, countConfirmedPath(rootDir, config))}`);
+    return 0;
+  }
+
+  if (command === 'estimate') {
+    const confirmed = loadConfirmed(rootDir, config);
+    let pf;
+    if (typeof flags.pf === 'string') {
+      if (!Number.isFinite(Number(flags.pf))) {
+        console.error('error: --pf needs a number: adp estimate --pf <n>');
+        return 2;
+      }
+      pf = Number(flags.pf);
+    } else if (confirmed) {
+      pf = confirmed.totalPf;
+    } else {
+      console.error('error: no PF to estimate from. Either pass --pf <n> directly, or count first:');
+      console.error('  adp estimate --review    # see the draft count');
+      console.error('  adp estimate --confirm   # lock it in');
+      return 2;
+    }
+    const profile = loadProfile(rootDir, config);
+    if (!profile.declared) {
+      console.error('note: no profile declared — run `adp profile` first; using the generic default for now.');
+    }
+    const hoursTable = loadHoursTable(rootDir, config);
+    if (!hoursTable) {
+      console.error('error: no .spec/metrics/hours-per-fp.json — run `adp init` first (it seeds one).');
+      return 2;
+    }
+    // Recalibrate from the shared cross-project history before computing —
+    // this is what lets a brand-new project's first estimate already come
+    // out calibrated, if the history already has matching observations.
+    // Silently skipped when no row matches this exact profile; computeEstimate
+    // falls back to the generic row in that case, same as always.
+    const rowKey = `${profile.appType}/${profile.familiarity}`;
+    const rowIdx = hoursTable.findIndex((r) => r.profile === rowKey);
+    let composition = null;
+    if (rowIdx !== -1) {
+      const obs = observationsFor(loadHistory(config), rowKey, projectHash(rootDir));
+      if (obs.values.length) {
+        hoursTable[rowIdx] = recalibrateRow(hoursTable[rowIdx], obs.values);
+        saveHoursTable(rootDir, config, hoursTable);
+        composition = renderComposition(obs);
+      }
+    }
+    let estimate;
+    try {
+      estimate = computeEstimate({ pf, profile, hoursTable });
+    } catch (err) {
+      console.error(`error: ${err.message}`);
+      return 2;
+    }
+    if (composition) console.error(`calibration: ${composition}`);
+    // Only ever attached when this PF came from a confirmed count, never
+    // from a bare --pf — even if a confirmed count exists on disk, an
+    // explicit --pf on this call means the human chose not to use it here.
+    const confirmedForRender = typeof flags.pf !== 'string' && confirmed ? confirmed : null;
+    const projectName = path.basename(rootDir);
+    if (flags.csv) {
+      console.log(renderEstimateCsv(estimate, projectName, confirmedForRender?.entries).trimEnd());
+      return 0;
+    }
+    const md = renderEstimateMd(estimate, projectName, confirmedForRender);
+    const estimatePath = path.join(rootDir, config.specDir ?? '.spec', 'ESTIMATE.md');
+    const estimateJsonFile = estimateJsonPath(rootDir, config);
+    mkdirSync(path.dirname(estimatePath), { recursive: true });
+    writeFileSync(estimatePath, md);
+    writeFileSync(estimateJsonFile, JSON.stringify(estimate, null, 2) + '\n');
+    console.log(md);
+    console.log(`wrote ${path.relative(rootDir, estimatePath)}`);
+    return 0;
+  }
+
+  if (command === 'close') {
+    if (typeof flags.hours !== 'string' || !Number.isFinite(Number(flags.hours))) {
+      console.error('error: --hours needs a number: adp close --hours <n>');
+      return 2;
+    }
+    const hours = Number(flags.hours);
+    const note = typeof flags.note === 'string' ? flags.note : null;
+    const estimate = loadEstimate(rootDir, config);
+    if (!estimate) {
+      console.error('note: no .spec/metrics/estimate.json — run `adp estimate --pf <n>` first for a deviation to report.');
+      console.error('recording the hours alone.');
+    }
+
+    let closure;
+    try {
+      closure = recordClosure({ hours, note, estimate });
+    } catch (err) {
+      console.error(`error: ${err.message}`);
+      return 2;
+    }
+    appendClosure(rootDir, config, closure);
+    console.log(`recorded : ${hours}h` + (closure.deviationPct !== null ? ` (estimate said ${closure.estimate.likely}h — ${closure.deviationPct > 0 ? '+' : ''}${closure.deviationPct}%)` : ''));
+
+    if (closure.rowUsed && closure.observedHoursPerFp !== null) {
+      // Shared history first — this closure has to be in it before the
+      // recalibration read below, or it would calibrate against everyone
+      // else's data but not its own.
+      const thisHash = projectHash(rootDir);
+      appendHistory(config, historyRecord({
+        profile: closure.rowUsed,
+        pf: closure.pf,
+        hours,
+        observedHoursPerFp: closure.observedHoursPerFp,
+        deviationPct: closure.deviationPct,
+        projectHash: thisHash,
+        toolVersion: VERSION,
+      }));
+
+      const hoursTable = loadHoursTable(rootDir, config);
+      if (hoursTable) {
+        const idx = hoursTable.findIndex((r) => r.profile === closure.rowUsed);
+        if (idx !== -1) {
+          const obs = observationsFor(loadHistory(config), closure.rowUsed, thisHash);
+          const updatedRow = recalibrateRow(hoursTable[idx], obs.values);
+          hoursTable[idx] = updatedRow;
+          saveHoursTable(rootDir, config, hoursTable);
+          console.log(`table    : ${closure.rowUsed} updated — ${calibrationLabel(updatedRow.observations)}`);
+          console.log(`         : ${renderComposition(obs)}`);
+        }
+      }
+    }
+
+    if (note) {
+      console.log('');
+      console.log('note recorded. If this taught you something worth repeating, add it to');
+      console.log('.spec/BEST_PRACTICES.md by hand — a pattern earns a place there after it');
+      console.log('has worked more than once, which a single closure cannot establish alone.');
+    }
+    return 0;
+  }
+
+  if (command === 'metrics') {
+    const sub = positional[1];
+
+    if (sub === 'import') {
+      const file = positional[2];
+      if (!file) {
+        console.error('error: adp metrics import <file>');
+        return 2;
+      }
+      let content;
+      try {
+        content = readFileSync(path.resolve(file), 'utf8');
+      } catch (err) {
+        console.error(`error: could not read ${file}: ${err.message}`);
+        return 2;
+      }
+      const { kept, skipped } = parseImportFile(content);
+      for (const record of kept) appendHistory(config, record);
+      console.log(`imported ${kept.length} record(s) into ${historyPath(config)}`);
+      if (skipped.length) {
+        console.log(`skipped ${skipped.length} invalid record(s):`);
+        for (const { problems } of skipped.slice(0, 10)) console.log(`  ${problems.join('; ')}`);
+        if (skipped.length > 10) console.log(`  ...${skipped.length - 10} more`);
+      }
+      return 0;
+    }
+
+    if (sub === 'export') {
+      const records = loadHistory(config);
+      const out = flags.csv ? renderHistoryCsv(records) : records.map((r) => JSON.stringify(r)).join('\n') + '\n';
+      const outPath = positional[2];
+      if (outPath) {
+        writeFileSync(path.resolve(outPath), out);
+        console.log(`wrote ${records.length} record(s) to ${outPath}`);
+      } else {
+        process.stdout.write(out);
+      }
+      return 0;
+    }
+
+    console.error('error: adp metrics import <file> | adp metrics export [<path>] [--csv]');
+    return 2;
+  }
+
   // ---- ring 3 ----
   const project = loadProject(config);
-  const audit = auditProject(project, { ci: Boolean(flags.ci) });
-  const evaluation = evaluateGates(audit.findings);
+  const audit = auditProject(project, { ci: Boolean(flags.ci), strict: Boolean(flags.strict) });
+  // Mirrors audit.js's own ceremony computation exactly (SCOPE-0.6.0.md
+  // §2.4's new-tech auto-light included) — two independently computed
+  // ceremonies would let a gate's "due or not" disagree with the findings
+  // that drove it.
+  const capabilities = new Set((loadProfile(rootDir, config).capabilities ?? []).map((c) => c.toLowerCase()));
+  const ceremony = projectCeremony(project.features, computeCeremonySignals(project.features, project.rfcs, capabilities));
+  const evaluation = evaluateGates(audit.findings, { ceremony });
 
   // Ring 3, and the only command that executes anything from the repository.
   if (command === 'verify' && flags.status) {
@@ -533,6 +1005,9 @@ export async function run(argv) {
     console.log(renderPlan(plan));
     console.log('');
     console.log(`agent : ${agentCommand}`);
+    console.log(
+      `model : ${resolveConfiguredModel(config) ?? 'harness default (no agent.models.implementation configured)'}`
+    );
     console.log(`edits : ${allowEdits ? 'ALLOWED — the agent may write without asking' : 'not allowed (pass --allow-edits)'}`);
     console.log(
       `tests : ${laneTests.runner ? `${laneTests.command} — after every task, in the lane` : `not run (${laneTests.reason})`}`
@@ -702,9 +1177,39 @@ export async function run(argv) {
     console.log(`principles: ${project.constitution.principles.length}`);
     console.log(`test files: ${project.testFiles.length} · src files: ${project.srcFiles.length}`);
     console.log(`codes     : ${allMappedCodes().size} mapped across ${GATES.length} gates`);
+    console.log(
+      `backlog   : ${project.backlog.present ? `${project.backlog.items.length} item(s)` : 'none (.spec/BACKLOG.md absent)'}`
+    );
+    console.log(
+      `deferrals : ${project.deferrals.present ? `${project.deferrals.items.length} item(s), ${audit.deferredCount} active` : 'none (.spec/DEFERRALS.md absent)'}`
+    );
+    if (project.features.length) {
+      console.log('');
+      console.log('ceremony  :');
+      for (const f of project.features) {
+        const c = ceremony.perFeature.get(f.name);
+        const signals = c.signals.length ? c.signals.join(', ') : 'none declared';
+        console.log(`  ${f.name.padEnd(24)} ${c.level.padEnd(10)} signals: ${signals}`);
+      }
+    }
     console.log('');
     console.log(renderGates(evaluation));
     return evaluation.exitCode;
+  }
+
+  if (command === 'report') {
+    const state = buildState(config);
+    if (flags.html !== undefined) {
+      if (typeof flags.html !== 'string') {
+        console.error('error: --html needs a path: adp report --html <path>');
+        return 2;
+      }
+      writeFileSync(flags.html, renderReportHtml(state));
+      console.log(`written ${flags.html}`);
+      return 0;
+    }
+    console.log(flags.json ? JSON.stringify(state, null, 2) : renderReportText(state));
+    return 0;
   }
 
   console.error(`unknown command: ${command}\n`);

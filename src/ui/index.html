@@ -17,6 +17,11 @@
 </header>
 
 <main>
+  <section id="overview-section">
+    <h2>Overview</h2>
+    <div class="overview" id="overview"></div>
+  </section>
+
   <section id="gates-section">
     <h2>Gates</h2>
     <ol class="gates" id="gates"></ol>
@@ -26,6 +31,13 @@
     <h2>What is blocking <span id="findings-gate"></span></h2>
     <p class="muted note">Only the first red gate is shown. The rest are its consequences.</p>
     <ul class="findings" id="findings"></ul>
+    <textarea class="prompt-box" id="findings-prompt" readonly rows="6" hidden
+      aria-label="paste-ready prompt for the first red gate"></textarea>
+  </section>
+
+  <section id="run-section" hidden>
+    <h2>Live run <span id="run-status" class="muted"></span></h2>
+    <ul class="lanes" id="lanes"></ul>
   </section>
 
   <section id="features-section">

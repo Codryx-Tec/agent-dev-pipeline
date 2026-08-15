@@ -147,13 +147,18 @@ function project(files, config = {}) {
   mkdirSync(path.join(root, 'test'), { recursive: true });
   writeFileSync(path.join(root, '.spec', 'SCOPE.md'), '# S\n\n**Scope status:** Approved\n');
   writeFileSync(path.join(root, '.spec', 'CONSTITUTION.md'), '# C\n');
+  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'PRD.md'), '# PRD\n\n> rfcs: RFC-001\n');
+  mkdirSync(path.join(root, '.spec', 'rfc'), { recursive: true });
   writeFileSync(
-    path.join(root, '.spec', 'features', 'demo', 'PRD.md'),
-    '# PRD\n\n### US-001 — S\n\n#### AC-001 — One\n\n- **Given** g\n- **When** w\n- **Then** t\n\n' +
+    path.join(root, '.spec', 'rfc', 'RFC-001-demo.md'),
+    '### D-001 — x\n\n**Alternatives considered**\n\n1. *A.* a\n2. *B.* b\n\n**Decision: alternative 1 — a.**\n'
+  );
+  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'DESIGN.md'), '# DESIGN\n');
+  writeFileSync(
+    path.join(root, '.spec', 'features', 'demo', 'SPEC.md'),
+    '# SPEC\n\n### US-001 — S\n\n#### AC-001 — One\n\n- **Given** g\n- **When** w\n- **Then** t\n\n' +
       '#### AC-002 — Two\n\n- **Given** g\n- **When** w\n- **Then** t\n'
   );
-  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'RFC.md'), '# RFC\n');
-  writeFileSync(path.join(root, '.spec', 'features', 'demo', 'TDD.md'), '# TDD\n');
   for (const [rel, body] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     writeFileSync(path.join(root, rel), body);
