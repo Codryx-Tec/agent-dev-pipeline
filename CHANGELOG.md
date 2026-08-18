@@ -6,7 +6,7 @@ This file starts at 0.5.0. Earlier releases are described from their commits and
 are summarised here for completeness rather than reconstructed in detail — the
 git history is the authority for anything before this file existed.
 
-## [0.6.0] — 2026-08-14
+## [0.6.0] — 2026-08-17
 
 Per `.spec/SCOPE-0.6.0.md`. This repository's own `adp audit --ci` is green
 under this grammar, self-audited in CI on every push (AC-P7) — the readiness
@@ -96,9 +96,22 @@ user content — what it cannot place automatically becomes a finding
   pre-existing source files at adoption time, whose findings stay warnings
   — exempt from `--ci` escalation — until touched again. The new
   `archaeologist` role proposes a `Draft` `SCOPE.md` from the inventory.
-  Deferred: the archiving step (`git mv` old docs into
-  `project_old_artifacts/`), `BASELINE_WIDENED`, and a no-git mtime
-  fallback for the ratchet.
+  Module-comment scanning (a file's own leading `/** */` block or `//` run)
+  is a recognition source too, scoped to JS/TS for now.
+- **`adp archive`, the brownfield adoption's write step (D-017).** Copies
+  matched files into `project_old_artifacts/` by default; `--move` opts
+  into `git mv`. Three non-negotiable guards apply in both modes: refuses
+  outside a git repository, refuses on a dirty working tree, and never
+  moves an untouchable basename (`README.md`, `LICENSE`, ...) or a path a
+  CI workflow's raw text references — those stay copied regardless of
+  mode.
+- **`BASELINE_WIDENED`, and a no-git mtime fallback for the ratchet.**
+  `BASELINE_WIDENED` walks `BASELINE.md`'s own commit history and flags a
+  file that was ever removed and later reappears — reserved since
+  M4-readonly-core, built now. Outside git, each baselined file's own
+  mtime against `BASELINE.md`'s `generated:` timestamp now decides touched
+  or not; the previous code left a baselined file exempt forever without
+  git, the opposite of what its own comment claimed.
 - **The monitor returns, read-only (D-013).** Live lanes and tasks for the
   current run, the same paste-ready prompt `adp prompt` prints, and a debt
   panel (baseline file count, backlog count, last closure's declared
@@ -146,7 +159,21 @@ user content — what it cannot place automatically becomes a finding
   number in an option's own prose with nothing backing it), and
   `OPTION_BEYOND_TEAM` (an option's `Requires:` tag naming a capability
   `adp profile --capabilities <list>` never declared — also auto-lights the
-  `new-tech` ceremony signal for that feature).
+  `new-tech` ceremony signal for that feature). A declared `Total` column
+  is weighted by each cited criterion's own `W-xxx` weight, normalized by
+  their weight sum rather than an assumed 100; a missing one still falls
+  back to a plain sum.
+- **`adp close` records exercised capabilities.** Each closure now carries
+  `capabilities: { exercised, gaps }`, read from the DECIDED option's own
+  `Requires:` tags across every scored RFC decision — the data-collection
+  half of §2.4's capability-gap hours multiplier, still a flat and
+  informational `1.5x` until enough closures exist to average a real one.
+- **The `security` agent's checklist widened.** A new item covers
+  client-authenticated databases (Supabase/Firebase): Row Level Security
+  ships off by default, and a frontend-only authorization check is UX,
+  never a boundary. XSS output-encoding, a broader rate-limiting scope,
+  and frontend-bundle/git-history secret exposure also gained explicit
+  checklist items.
 - **Six more agent harnesses, and a config escape hatch for any other one.**
   `--agent` now also knows `windsurf`/`gemini`/`copilot`/`cline`/`opencode`/
   `kilocode`, each verified against that tool's own current docs. Copilot's
@@ -179,6 +206,11 @@ user content — what it cannot place automatically becomes a finding
   default, so it passed for the wrong reason whenever that CI escape
   hatch was set around it — found by actually running the self-audit
   above end to end. Now isolates its own consent environment explicitly.
+- `RE_OPT_ITEM`'s option-title regex never matched a title wrapped onto a
+  second line, silently dropping that option from `scored.options` (it
+  stayed visible in the matrix by direct lookup, invisible to any check
+  walking the options list) — found testing `scored.decidedOptionId`
+  against this repo's own `D-017`, whose `OPT-003` title wraps.
 
 ## [0.5.0] — 2026-08-04
 
